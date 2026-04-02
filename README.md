@@ -27,21 +27,17 @@ Cloud-based scalable architecture
 🛠️ Tech Stack
 
 Frontend:
-
-React.js
-Tailwind CSS / Bootstrap (optional)
+-React.js
+-Tailwind CSS / Bootstrap (optional)
 
 Backend:
-
-Node.js
-Express.js
+-Node.js
+-Express.js
 
 Database:
-
-MongoDB (with optional Supabase/PostgreSQL support)
+-MongoDB (with optional Supabase/PostgreSQL support)
 
 Cloud & Services:
-
-Railway / Render (Server Hosting)
-Supabase / MongoDB Atlas (Database Hosting)
-OCR + ML APIs
+-Railway / Render (Server Hosting)
+-Supabase / MongoDB Atlas (Database Hosting)
+-OCR + ML APIs
