@@ -1,0 +1,232 @@
+/* 
+  Authentication Pages Styles 
+  Theme: Deep Red Background + White/Transparent Inputs
+*/
+
+/* ---------- Variables ---------- */
+:root {
+    --bg-color: #a00000;
+    /* Deep Red */
+    --text-color: #ffffff;
+    /* White text */
+    --input-border: #ffffff;
+    /* White input borders */
+    --input-placeholder: #e0e0e0;
+    /* Light placeholder */
+    --button-bg: #ffffff;
+    /* White button */
+    --button-text: #1a237e;
+    /* Dark blue button text */
+    --error-color: #ffcccc;
+    /* Error message color */
+}
+
+/* ---------- Global Styles ---------- */
+html,
+body,
+#root {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-family: 'Inter', sans-serif;
+}
+
+/* ---------- Auth Container ---------- */
+.auth-container {
+    display: flex;
+    justify-content: center;
+    /* horizontal center */
+    align-items: center;
+    /* vertical center */
+    min-height: 100vh;
+    /* full screen height */
+    width: 100%;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+/* ---------- Form Wrapper ---------- */
+.auth-form-wrapper {
+    width: 100%;
+    max-width: 400px;
+    padding: 20px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+
+}
+
+/* ---------- Logo Section ---------- */
+.logo-section {
+    margin-bottom: 30px;
+    /* reduced spacing */
+    display: flex;
+    justify-content: center;
+    width: 100%;
+}
+
+/* ---------- Logo Image ---------- */
+.logo-image {
+    width: 70%;
+    /* smaller logo size */
+    height: auto;
+    display: block;
+    margin: 0 auto;
+    border-radius: 0;
+    /* optional round look */
+
+}
+
+/* ---------- Placeholder Logo (if needed) ---------- */
+.logo-placeholder {
+    width: 100px;
+    height: 100px;
+    background-color: transparent;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid gold;
+    color: gold;
+    font-weight: bold;
+    text-align: center;
+    font-size: 0.8rem;
+}
+
+/* ---------- Form ---------- */
+form {
+    width: 100%;
+}
+
+/* ---------- Form Group ---------- */
+.form-group {
+    margin-bottom: 20px;
+    width: 100%;
+}
+
+/* ---------- Input Wrapper ---------- */
+.input-wrapper {
+    display: flex;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--input-border);
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+.input-wrapper:focus-within {
+    background-color: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+    border-color: #ffffff;
+}
+
+/* ---------- Input Icon ---------- */
+.input-icon-container {
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.3);
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-color);
+    flex-shrink: 0;
+}
+
+.input-icon-container svg {
+    width: 20px;
+    height: 20px;
+}
+
+/* ---------- Input Field ---------- */
+.form-input {
+    flex: 1;
+    padding: 15px;
+    background-color: transparent;
+    border: none;
+    color: var(--text-color);
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    box-sizing: border-box;
+    outline: none;
+}
+
+.form-input::placeholder {
+    color: var(--input-placeholder);
+    text-transform: uppercase;
+    font-size: 0.9rem;
+    letter-spacing: 1px;
+}
+
+.form-input:focus {
+    outline: none;
+}
+
+/* ---------- Auth Button ---------- */
+.auth-button {
+    width: 100%;
+    padding: 15px;
+    background-color: var(--button-bg);
+    color: var(--button-text);
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: 10px;
+}
+
+.auth-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* ---------- Links ---------- */
+.auth-link {
+    display: block;
+    text-align: right;
+    margin-top: 15px;
+    color: var(--text-color);
+    text-decoration: none;
+    font-size: 0.9rem;
+    opacity: 0.9;
+    cursor: pointer;
+}
+
+.auth-link:hover {
+    text-decoration: underline;
+    opacity: 1;
+}
+
+/* ---------- Error Message ---------- */
+.error-message {
+    color: var(--error-color);
+    font-size: 0.85rem;
+    text-align: left;
+    margin-top: 5px;
+    padding-left: 5px;
+}
+
+/* ---------- Responsive adjustments ---------- */
+@media (max-width: 480px) {
+    .auth-form-wrapper {
+        padding: 15px;
+    }
+
+    .logo-image {
+        width: 80px;
+        /* smaller on mobile */
+    }
+}
