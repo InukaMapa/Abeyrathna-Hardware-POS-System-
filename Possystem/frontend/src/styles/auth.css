@@ -5,18 +5,18 @@
 
 /* ---------- Variables ---------- */
 :root {
-    --bg-color: #a00000;
-    /* Deep Red */
+    --bg-color: #0F2D18;
+    /* Deep Forest Green */
     --text-color: #ffffff;
     /* White text */
-    --input-border: #ffffff;
-    /* White input borders */
+    --input-border: #D4AF37;
+    /* Gold input borders */
     --input-placeholder: #e0e0e0;
     /* Light placeholder */
-    --button-bg: #ffffff;
-    /* White button */
-    --button-text: #1a237e;
-    /* Dark blue button text */
+    --button-bg: #D4AF37;
+    /* Gold button */
+    --button-text: #0F2D18;
+    /* Dark green button text */
     --error-color: #ffcccc;
     /* Error message color */
 }
