@@ -1,7 +1,7 @@
 import React from 'react';
 import { useAuth } from '../../context/AuthContext';
 import '../../styles/dashboard.css';
-import logo from '../../assets/logo.png';
+import logo from '../../assets/logo.jpeg';
 
 const Sidebar = ({ onNavigate, activePage }) => {
     const { userRole } = useAuth();
@@ -36,9 +36,9 @@ const Sidebar = ({ onNavigate, activePage }) => {
         <div className="sidebar">
             <div className="sidebar-header" style={{ flexDirection: 'column', gap: '10px' }}>
                 <div className="sidebar-logo">
-                    <img src={logo} alt="Chill Grand POS" style={{ maxWidth: '100%', height: 'auto', maxHeight: '80px' }} />
+                    <img src={logo} alt="Abeyrathna Trade Center POS" style={{ maxWidth: '100%', height: 'auto', maxHeight: '80px' }} />
                 </div>
-                <div style={{ color: '#C9C9C9', fontWeight: 'bold', textAlign: 'center' }}>Chill Grand Restaurant</div>
+                <div style={{ color: '#C9C9C9', fontWeight: 'bold', textAlign: 'center' }}>Abeyrathna Trade Center</div>
                 <div style={{ color: '#9CA3AF', fontSize: '12px', textAlign: 'center', marginTop: '-5px' }}>
                     {userRole === 'ADMIN' ? 'Admin Panel' : userRole === 'CASHIER' ? 'Cashier Panel' : ''}
                 </div>

@@ -10,11 +10,9 @@ const AddInventoryModal = ({ onClose, onSuccess, onScanBillClick, categories = [
         category: categories.length > 0 ? categories[0].name : '', // Default to first category
         quantity: '',
         unit: 'kg',
-        reorder_level: '10',
         supplier_info: '',
         storage_location: '',
-        expiry_date: '',
-        batch_code: ''
+        expiry_date: ''
     });
     const [loading, setLoading] = useState(false);
 
@@ -132,13 +130,6 @@ const AddInventoryModal = ({ onClose, onSuccess, onScanBillClick, categories = [
                                 </div>
                             </div>
                             <div className="form-group">
-                                <label>Reorder Level</label>
-                                <input
-                                    type="number" step="0.01" name="reorder_level"
-                                    value={formData.reorder_level} onChange={handleChange}
-                                />
-                            </div>
-                            <div className="form-group">
                                 <label>Storage Location</label>
                                 <input
                                     type="text" name="storage_location"
@@ -146,15 +137,7 @@ const AddInventoryModal = ({ onClose, onSuccess, onScanBillClick, categories = [
                                     placeholder="e.g. Shelf A-1"
                                 />
                             </div>
-                            <div className="md:col-span-2 grid grid-cols-2 gap-4 border-t border-[#333] pt-4 mt-2">
-                                <div className="form-group">
-                                    <label>Batch Code (Optional)</label>
-                                    <input
-                                        type="text" name="batch_code"
-                                        value={formData.batch_code} onChange={handleChange}
-                                        placeholder="Auto-generated if empty"
-                                    />
-                                </div>
+                            <div className="md:col-span-2 border-t border-[#333] pt-4 mt-2">
                                 <div className="form-group">
                                     <label>Expiry Date (Optional)</label>
                                     <input

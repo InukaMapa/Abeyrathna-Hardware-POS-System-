@@ -1,6 +1,6 @@
 import React from 'react';
 import '../../styles/auth.css';
-import logo from '../../assets/logo.png';
+import logo from '../../assets/logo.jpeg';
 
 /**
  * AuthLayout Component
@@ -18,7 +18,7 @@ const AuthLayout = ({ children }) => {
                 <div className="logo-section">
                     <img
                         src={logo}
-                        alt="Chill Grand Restaurant & Pub Logo"
+                        alt="Abeyrathna Trade Center Logo"
                         className="logo-image"
                     />
                 </div>

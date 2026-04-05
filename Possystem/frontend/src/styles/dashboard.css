@@ -3,18 +3,18 @@
     /* Very Dark Gray Background */
     --bg-secondary: #1E1E1E;
     /* Dark Gray Panels */
-    --bg-sidebar: #000000;
-    /* Pure Black Sidebar */
+    --bg-sidebar: #0F2D18;
+    /* Forest Green Sidebar */
     --text-primary: #E0E0E0;
     /* Light Gray text */
     --text-secondary: #A0A0A0;
     /* Medium Gray text */
     --text-sidebar: #B0B0B0;
     /* Sidebar text */
-    --accent-color: #D32F2F;
-    /* Red */
-    --accent-hover: #B71C1C;
-    /* Darker Red */
+    --accent-color: #D4AF37;
+    /* Gold */
+    --accent-hover: #C5A028;
+    /* Darker Gold */
     --border-color: #333333;
     /* Dark Border */
     --success-color: #4caf50;
