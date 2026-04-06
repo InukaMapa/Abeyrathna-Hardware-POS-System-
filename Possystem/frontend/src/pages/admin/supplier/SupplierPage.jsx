@@ -5,20 +5,22 @@ import { Plus, Search, User, Mail, Phone, Building, Trash2, Edit } from 'lucide-
 import '../../../styles/dashboard.css';
 
 const SupplierPage = ({ onNavigate }) => {
-    const [suppliers, setSuppliers] = useState([
-        {
-            supplier_id: 'SUP-1001',
-            supplier_name: 'John Doe',
-            company_name: 'DSI Hardware',
-            phone_number: '011-222-3333'
-        },
-        {
-            supplier_id: 'SUP-1002',
-            supplier_name: 'Jane Smith',
-            company_name: 'Tech Solutions',
-            phone_number: '011-444-5555'
+    const [suppliers, setSuppliers] = useState(() => {
+        const savedSuppliers = localStorage.getItem('pos_suppliers');
+        if (savedSuppliers) {
+            try {
+                return JSON.parse(savedSuppliers);
+            } catch (e) {
+                console.error("Failed to parse local suppliers", e);
+            }
         }
-    ]);
+        return [
+        ];
+    });
+
+    useEffect(() => {
+        localStorage.setItem('pos_suppliers', JSON.stringify(suppliers));
+    }, [suppliers]);
     const [searchQuery, setSearchQuery] = useState('');
     const [isAddModalOpen, setAddModalOpen] = useState(false);
     const [editingSupplier, setEditingSupplier] = useState(null);
