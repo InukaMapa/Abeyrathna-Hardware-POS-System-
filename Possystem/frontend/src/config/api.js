@@ -19,5 +19,8 @@ export const ENDPOINTS = {
     TABLE_BY_ID: '/tables', // Will be used as /tables/:id
     
     // Cashier Operations
-    CASHIER_TABLES: '/cashier/tables'
+    CASHIER_TABLES: '/cashier/tables',
+    
+    // Supplier Management
+    SUPPLIERS: '/suppliers'
 };

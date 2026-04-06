@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { X, Save, User, Building, Phone, RefreshCw } from 'lucide-react';
+import axios from 'axios';
+import { API_BASE_URL, ENDPOINTS } from '../../../config/api';
 import '../../../styles/menu.css';
 
 const AddSupplierModal = ({ onClose, onSuccess, initialData }) => {
@@ -20,12 +22,27 @@ const AddSupplierModal = ({ onClose, onSuccess, initialData }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
-        // Simulate API call for now since backend is not yet updated
-        setTimeout(() => {
-            console.log('Supplier added:', formData);
+        try {
+            const token = localStorage.getItem('token');
+            const url = isEditing 
+                ? `${API_BASE_URL}${ENDPOINTS.SUPPLIERS}/${initialData.id}`
+                : `${API_BASE_URL}${ENDPOINTS.SUPPLIERS}`;
+            
+            const method = isEditing ? 'put' : 'post';
+
+            const response = await axios[method](url, formData, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            if (response.status === 200 || response.status === 201) {
+                onSuccess();
+            }
+        } catch (error) {
+            console.error('Error saving supplier:', error);
+            alert('Failed to save supplier. Please try again.');
+        } finally {
             setLoading(false);
-            onSuccess(formData);
-        }, 1000);
+        }
     };
 
     return (
