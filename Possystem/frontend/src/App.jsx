@@ -20,6 +20,7 @@ import OrdersPage from './pages/orders/OrdersPage';
 import CreateOrderPage from './pages/orders/CreateOrderPage';
 import CashCounterPage from './pages/dashboard/CashCounterPage';
 import CashManagementPage from './pages/admin/CashManagementPage';
+import SupplierPage from './pages/admin/supplier/SupplierPage';
 import './styles/auth.css';
 
 function AppContent() {
@@ -92,6 +93,11 @@ function AppContent() {
       {currentPage === 'cash-management' && (
         <ProtectedRoute allowedRoles={['ADMIN']} onNavigate={navigateTo}>
           <CashManagementPage onNavigate={navigateTo} />
+        </ProtectedRoute>
+      )}
+      {currentPage === 'supplier' && (
+        <ProtectedRoute allowedRoles={['ADMIN']} onNavigate={navigateTo}>
+          <SupplierPage onNavigate={navigateTo} />
         </ProtectedRoute>
       )}
 
