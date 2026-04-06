@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { X, Save, User, Building, Phone, RefreshCw } from 'lucide-react';
 import '../../../styles/menu.css';
 
-const AddSupplierModal = ({ onClose, onSuccess }) => {
-    const [formData, setFormData] = useState({
+const AddSupplierModal = ({ onClose, onSuccess, initialData }) => {
+    const isEditing = !!initialData;
+    const [formData, setFormData] = useState(initialData || {
         supplier_id: `SUP-${Math.floor(1000 + Math.random() * 9000)}`, // Auto-generated ID
         supplier_name: '',
         company_name: '',
@@ -31,7 +32,7 @@ const AddSupplierModal = ({ onClose, onSuccess }) => {
         <div className="modal-overlay">
             <div className="modal-content" style={{ width: '500px', maxWidth: '95%' }}>
                 <div className="modal-header">
-                    <h2>Add Supplier</h2>
+                    <h2>{isEditing ? 'Edit Supplier' : 'Add Supplier'}</h2>
                     <button onClick={onClose} className="close-btn"><X className="w-5 h-5" /></button>
                 </div>
 
@@ -108,7 +109,7 @@ const AddSupplierModal = ({ onClose, onSuccess }) => {
                         className="btn-primary flex items-center gap-2 "
                     >
                         {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                        Save Supplier
+                        {isEditing ? 'Update Supplier' : 'Save Supplier'}
                     </button>
                 </div>
             </div>

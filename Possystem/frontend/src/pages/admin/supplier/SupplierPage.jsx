@@ -21,6 +21,7 @@ const SupplierPage = ({ onNavigate }) => {
     ]);
     const [searchQuery, setSearchQuery] = useState('');
     const [isAddModalOpen, setAddModalOpen] = useState(false);
+    const [editingSupplier, setEditingSupplier] = useState(null);
 
     const filteredSuppliers = suppliers.filter(supplier =>
         supplier.supplier_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -31,6 +32,17 @@ const SupplierPage = ({ onNavigate }) => {
     const handleAddSupplier = (newSupplier) => {
         setSuppliers([...suppliers, newSupplier]);
         setAddModalOpen(false);
+    };
+
+    const handleEditSupplier = (updatedSupplier) => {
+        setSuppliers(suppliers.map(s => s.supplier_id === updatedSupplier.supplier_id ? updatedSupplier : s));
+        setEditingSupplier(null);
+    };
+
+    const handleDeleteSupplier = (supplierId) => {
+        if (window.confirm('Are you sure you want to delete this supplier?')) {
+            setSuppliers(suppliers.filter(s => s.supplier_id !== supplierId));
+        }
     };
 
     return (
@@ -99,8 +111,8 @@ const SupplierPage = ({ onNavigate }) => {
                                     </td>
                                     <td>
                                         <div className="flex gap-3">
-                                            <button className="text-[#A0A0A0] hover:text-[#D4AF37] transition-colors"><Edit className="w-4 h-4" /></button>
-                                            <button className="text-[#A0A0A0] hover:text-[#D32F2F] transition-colors"><Trash2 className="w-4 h-4" /></button>
+                                            <button onClick={() => setEditingSupplier(supplier)} className="text-[#A0A0A0] hover:text-[#D4AF37] transition-colors"><Edit className="w-4 h-4" /></button>
+                                            <button onClick={() => handleDeleteSupplier(supplier.supplier_id)} className="text-[#A0A0A0] hover:text-[#D32F2F] transition-colors"><Trash2 className="w-4 h-4" /></button>
                                         </div>
                                     </td>
                                 </tr>
@@ -118,6 +130,14 @@ const SupplierPage = ({ onNavigate }) => {
                 <AddSupplierModal
                     onClose={() => setAddModalOpen(false)}
                     onSuccess={handleAddSupplier}
+                />
+            )}
+
+            {editingSupplier && (
+                <AddSupplierModal
+                    initialData={editingSupplier}
+                    onClose={() => setEditingSupplier(null)}
+                    onSuccess={handleEditSupplier}
                 />
             )}
         </DashboardLayout>
