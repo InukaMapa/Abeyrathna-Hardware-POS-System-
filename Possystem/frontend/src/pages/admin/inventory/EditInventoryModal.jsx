@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Save, RefreshCw } from 'lucide-react';
 import axios from 'axios';
 import '../../../styles/menu.css';
+import { getSuppliers } from '../../../services/supplierService';
 
 const EditInventoryModal = ({ onClose, onSuccess, categories = [], initialData }) => {
     const [formData, setFormData] = useState({
@@ -12,11 +13,25 @@ const EditInventoryModal = ({ onClose, onSuccess, categories = [], initialData }
         unit: 'kg',
         reorder_level: '10',
         supplier_info: '',
+        supplier_id: '',
         storage_location: '',
         expiry_date: '',
         batch_code: ''
     });
+    const [suppliers, setSuppliers] = useState([]);
     const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        const fetchSuppliers = async () => {
+            try {
+                const data = await getSuppliers();
+                setSuppliers(data);
+            } catch (error) {
+                console.error('Error fetching suppliers:', error);
+            }
+        };
+        fetchSuppliers();
+    }, []);
 
     const units = ['kg', 'g', 'pcs', 'liters', 'bottles', 'cans'];
 
@@ -30,6 +45,7 @@ const EditInventoryModal = ({ onClose, onSuccess, categories = [], initialData }
                 unit: initialData.unit || 'kg',
                 reorder_level: initialData.reorder_level || '10',
                 supplier_info: initialData.supplier_info || '',
+                supplier_id: initialData.supplier_id || '',
                 storage_location: initialData.storage_location || '',
                 expiry_date: initialData.expiry_date ? new Date(initialData.expiry_date).toISOString().split('T')[0] : '',
                 batch_code: initialData.batch_code || ''
@@ -55,6 +71,7 @@ const EditInventoryModal = ({ onClose, onSuccess, categories = [], initialData }
                 unit: formData.unit,
                 reorder_level: formData.reorder_level,
                 supplier_info: formData.supplier_info,
+                supplier_id: formData.supplier_id,
                 storage_location: formData.storage_location
             };
 
@@ -163,12 +180,27 @@ const EditInventoryModal = ({ onClose, onSuccess, categories = [], initialData }
                                 </div>
                             </div>
                             <div className="md:col-span-2 form-group">
-                                <label>Supplier Info</label>
+                                <label>Supplier (Optional)</label>
+                                <select
+                                    name="supplier_id"
+                                    value={formData.supplier_id}
+                                    onChange={handleChange}
+                                >
+                                    <option value="">Select Supplier</option>
+                                    {suppliers.map(s => (
+                                        <option key={s.id} value={s.id}>
+                                            {s.supplier_name} ({s.company_name || 'N/A'})
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="md:col-span-2 form-group">
+                                <label>Additional Supplier Notes</label>
                                 <textarea
                                     name="supplier_info"
                                     value={formData.supplier_info} onChange={handleChange}
-                                    rows="2"
-                                    placeholder="Supplier Name, Contact..."
+                                    rows="1"
+                                    placeholder="Any additional details..."
                                 ></textarea>
                             </div>
                         </div>
