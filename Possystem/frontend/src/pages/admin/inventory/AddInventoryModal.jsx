@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Save, ScanLine, Type, RefreshCw } from 'lucide-react';
 import axios from 'axios';
 import '../../../styles/menu.css';
+import { getSuppliers } from '../../../services/supplierService';
 
 const AddInventoryModal = ({ onClose, onSuccess, onScanBillClick, categories = [] }) => {
     const [formData, setFormData] = useState({
@@ -11,12 +12,26 @@ const AddInventoryModal = ({ onClose, onSuccess, onScanBillClick, categories = [
         quantity: '',
         unit: 'kg',
         supplier_info: '',
+        supplier_id: '',
         storage_location: '',
         expiry_date: ''
     });
+    const [suppliers, setSuppliers] = useState([]);
     const [loading, setLoading] = useState(false);
 
     const units = ['kg', 'g', 'pcs', 'liters', 'bottles', 'cans'];
+
+    useEffect(() => {
+        const fetchSuppliers = async () => {
+            try {
+                const data = await getSuppliers();
+                setSuppliers(data);
+            } catch (error) {
+                console.error('Error fetching suppliers:', error);
+            }
+        };
+        fetchSuppliers();
+    }, []);
 
     useEffect(() => {
         if (categories.length > 0 && !formData.category) {
@@ -147,12 +162,27 @@ const AddInventoryModal = ({ onClose, onSuccess, onScanBillClick, categories = [
                                 </div>
                             </div>
                             <div className="md:col-span-2 form-group">
-                                <label>Supplier Info</label>
+                                <label>Supplier (Optional)</label>
+                                <select
+                                    name="supplier_id"
+                                    value={formData.supplier_id}
+                                    onChange={handleChange}
+                                >
+                                    <option value="">Select Supplier</option>
+                                    {suppliers.map(s => (
+                                        <option key={s.id} value={s.id}>
+                                            {s.supplier_name} ({s.company_name || 'N/A'})
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="md:col-span-2 form-group">
+                                <label>Additional Supplier Notes</label>
                                 <textarea
                                     name="supplier_info"
                                     value={formData.supplier_info} onChange={handleChange}
-                                    rows="2"
-                                    placeholder="Supplier Name, Contact..."
+                                    rows="1"
+                                    placeholder="Any additional details..."
                                 ></textarea>
                             </div>
                         </div>
