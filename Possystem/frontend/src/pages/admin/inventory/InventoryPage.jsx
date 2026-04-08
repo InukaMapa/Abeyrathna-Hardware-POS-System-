@@ -161,6 +161,7 @@ const InventoryPage = ({ onNavigate }) => {
                                     <th className="p-4 font-semibold">Item Name</th>
                                     <th className="p-4 font-semibold">Code</th>
                                     <th className="p-4 font-semibold">Category</th>
+                                    <th className="p-4 font-semibold">Supplier</th>
                                     <th className="p-4 font-semibold">Quantity</th>
                                     <th className="p-4 font-semibold">Status</th>
                                     <th className="p-4 font-semibold">Last Updated</th>
@@ -184,6 +185,11 @@ const InventoryPage = ({ onNavigate }) => {
                                                 <span className="px-2 py-1 bg-[#2A2A2A] text-[#E0E0E0] text-xs rounded-md border border-[#333]">
                                                     {item.category || 'Uncategorized'}
                                                 </span>
+                                            </td>
+                                            <td className="p-4">
+                                                <div className="text-sm text-[#E0E0E0]">
+                                                    {item.suppliers?.supplier_name || <span className="text-[#666] italic">No Supplier</span>}
+                                                </div>
                                             </td>
                                             <td className="p-4">
                                                 <div className="font-semibold text-[#E0E0E0]">

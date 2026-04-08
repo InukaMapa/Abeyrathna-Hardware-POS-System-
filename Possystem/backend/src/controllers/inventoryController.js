@@ -11,7 +11,7 @@ export const fetchInventoryList = async (req, res) => {
 
         let query = supabase
             .from('inventory')
-            .select('*')
+            .select('*, suppliers(supplier_name)')
             .order('ingredient_name', { ascending: true });
 
         if (search) {
@@ -64,7 +64,7 @@ export const fetchInventoryItemDetails = async (req, res) => {
         // 1. Get Item
         const { data: item, error: itemError } = await supabase
             .from('inventory')
-            .select('*')
+            .select('*, suppliers(supplier_name)')
             .eq('id', id)
             .single();
 
@@ -120,7 +120,8 @@ export const addInventoryItem = async (req, res) => {
             expiry_date,
             batch_code,
             method, // 'MANUAL' or 'SCAN'
-            admin_name
+            admin_name,
+            supplier_id
         } = req.body;
 
         if (!ingredient_name) {
@@ -171,6 +172,7 @@ export const addInventoryItem = async (req, res) => {
                     unit,
                     reorder_level: reorder_level || 10,
                     supplier_info,
+                    supplier_id,
                     storage_location
                 }])
                 .select()

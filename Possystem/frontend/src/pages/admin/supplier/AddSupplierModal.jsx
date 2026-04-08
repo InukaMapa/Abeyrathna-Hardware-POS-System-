@@ -3,6 +3,7 @@ import { X, Save, User, Building, Phone, RefreshCw } from 'lucide-react';
 import axios from 'axios';
 import { API_BASE_URL, ENDPOINTS } from '../../../config/api';
 import '../../../styles/menu.css';
+import { createSupplier, updateSupplier } from '../../../services/supplierService';
 
 const AddSupplierModal = ({ onClose, onSuccess, initialData }) => {
     const isEditing = !!initialData;
@@ -13,6 +14,7 @@ const AddSupplierModal = ({ onClose, onSuccess, initialData }) => {
         phone_number: ''
     });
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -22,6 +24,7 @@ const AddSupplierModal = ({ onClose, onSuccess, initialData }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
+<<<<<<< HEAD
         try {
             const token = localStorage.getItem('token');
             const url = isEditing 
@@ -40,6 +43,18 @@ const AddSupplierModal = ({ onClose, onSuccess, initialData }) => {
         } catch (error) {
             console.error('Error saving supplier:', error);
             alert('Failed to save supplier. Please try again.');
+=======
+        setError(null);
+        try {
+            if (isEditing) {
+                await updateSupplier(initialData.id, formData);
+            } else {
+                await createSupplier(formData);
+            }
+            onSuccess();
+        } catch (err) {
+            setError(err.message || 'Failed to save supplier');
+>>>>>>> Pasindu_dev
         } finally {
             setLoading(false);
         }
@@ -52,6 +67,12 @@ const AddSupplierModal = ({ onClose, onSuccess, initialData }) => {
                     <h2>{isEditing ? 'Edit Supplier' : 'Add Supplier'}</h2>
                     <button onClick={onClose} className="close-btn"><X className="w-5 h-5" /></button>
                 </div>
+
+                {error && (
+                    <div className="bg-red-900/30 border border-red-500 text-red-200 px-4 py-2 rounded-lg mt-4 text-sm">
+                        {error}
+                    </div>
+                )}
 
                 <div className="overflow-y-auto max-h-[60vh] custom-scrollbar pr-2 mt-4">
                     <form id="supplierForm" onSubmit={handleSubmit} className="space-y-4">
