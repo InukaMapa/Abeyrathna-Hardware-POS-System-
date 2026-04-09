@@ -24,10 +24,14 @@ export const login = async (req, res) => {
             .from('users')
             .select('*')
             .eq('username', username)
-            .single();
+            .maybeSingle();
 
-        if (error || !user) {
-            // Use generic error message for security
+        if (error) {
+            console.error('Supabase login query error:', error);
+            return res.status(500).json({ message: 'Internal server error.' });
+        }
+
+        if (!user) {
             return res.status(401).json({ message: 'Invalid username or password.' });
         }
 
@@ -101,11 +105,16 @@ export const register = async (req, res) => {
         }
 
         // Check if user exists
-        const { data: existingUser } = await supabase
+        const { data: existingUser, error: existingError } = await supabase
             .from('users')
             .select('id')
             .eq('username', username)
-            .single();
+            .maybeSingle();
+
+        if (existingError) {
+            console.error('Supabase registration lookup error:', existingError);
+            return res.status(500).json({ message: 'Internal server error.' });
+        }
 
         if (existingUser) {
             return res.status(400).json({ message: 'User with this username already exists.' });
