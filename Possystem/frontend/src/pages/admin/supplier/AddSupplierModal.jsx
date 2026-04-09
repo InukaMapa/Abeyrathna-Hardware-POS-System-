@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
 import { X, Save, User, Building, Phone, RefreshCw } from 'lucide-react';
-import axios from 'axios';
-import { API_BASE_URL, ENDPOINTS } from '../../../config/api';
 import '../../../styles/menu.css';
 import { createSupplier, updateSupplier } from '../../../services/supplierService';
 
@@ -24,26 +22,6 @@ const AddSupplierModal = ({ onClose, onSuccess, initialData }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
-<<<<<<< HEAD
-        try {
-            const token = localStorage.getItem('token');
-            const url = isEditing 
-                ? `${API_BASE_URL}${ENDPOINTS.SUPPLIERS}/${initialData.id}`
-                : `${API_BASE_URL}${ENDPOINTS.SUPPLIERS}`;
-            
-            const method = isEditing ? 'put' : 'post';
-
-            const response = await axios[method](url, formData, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-
-            if (response.status === 200 || response.status === 201) {
-                onSuccess();
-            }
-        } catch (error) {
-            console.error('Error saving supplier:', error);
-            alert('Failed to save supplier. Please try again.');
-=======
         setError(null);
         try {
             if (isEditing) {
@@ -53,8 +31,8 @@ const AddSupplierModal = ({ onClose, onSuccess, initialData }) => {
             }
             onSuccess();
         } catch (err) {
-            setError(err.message || 'Failed to save supplier');
->>>>>>> Pasindu_dev
+            console.error('Error saving supplier:', err);
+            setError(err.message || 'Failed to save supplier. Please try again.');
         } finally {
             setLoading(false);
         }

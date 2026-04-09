@@ -20,11 +20,7 @@ export const ENDPOINTS = {
 
     // Cashier Operations
     CASHIER_TABLES: '/cashier/tables',
-<<<<<<< HEAD
-    
-=======
 
->>>>>>> Pasindu_dev
     // Supplier Management
     SUPPLIERS: '/suppliers'
 };

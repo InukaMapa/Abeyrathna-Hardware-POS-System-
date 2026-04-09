@@ -2,10 +2,7 @@ import { supabase } from '../config/db.js';
 
 /**
  * Fetch all suppliers.
-<<<<<<< HEAD
-=======
  * @route GET /api/suppliers
->>>>>>> Pasindu_dev
  */
 export const fetchSuppliers = async (req, res) => {
     try {
@@ -24,46 +21,27 @@ export const fetchSuppliers = async (req, res) => {
 
 /**
  * Add a new supplier.
-<<<<<<< HEAD
-=======
  * @route POST /api/suppliers
->>>>>>> Pasindu_dev
  */
 export const addSupplier = async (req, res) => {
     try {
         const { supplier_id, supplier_name, company_name, phone_number } = req.body;
 
-<<<<<<< HEAD
-        if (!supplier_name || !phone_number) {
-            return res.status(400).json({ message: 'Supplier name and phone number are required.' });
-=======
         if (!supplier_id || !supplier_name || !phone_number) {
             return res.status(400).json({ message: 'Supplier ID, Name, and Phone Number are required.' });
->>>>>>> Pasindu_dev
         }
 
         const { data, error } = await supabase
             .from('suppliers')
-<<<<<<< HEAD
-            .insert([{ 
-                supplier_id, 
-                supplier_name, 
-                company_name, 
-                phone_number 
-=======
             .insert([{
                 supplier_id,
                 supplier_name,
                 company_name,
                 phone_number
->>>>>>> Pasindu_dev
             }])
             .select()
             .single();
 
-<<<<<<< HEAD
-        if (error) throw error;
-=======
         if (error) {
             if (error.code === '23505') {
                 return res.status(400).json({ message: 'Supplier ID already exists.' });
@@ -71,7 +49,6 @@ export const addSupplier = async (req, res) => {
             throw error;
         }
 
->>>>>>> Pasindu_dev
         res.status(201).json(data);
     } catch (err) {
         console.error('Error adding supplier:', err);
@@ -81,10 +58,7 @@ export const addSupplier = async (req, res) => {
 
 /**
  * Update an existing supplier.
-<<<<<<< HEAD
-=======
  * @route PUT /api/suppliers/:id
->>>>>>> Pasindu_dev
  */
 export const updateSupplier = async (req, res) => {
     try {
@@ -108,10 +82,7 @@ export const updateSupplier = async (req, res) => {
 
 /**
  * Delete a supplier.
-<<<<<<< HEAD
-=======
  * @route DELETE /api/suppliers/:id
->>>>>>> Pasindu_dev
  */
 export const deleteSupplier = async (req, res) => {
     try {

@@ -9,29 +9,7 @@ import { getSuppliers, deleteSupplier } from '../../../services/supplierService'
 const SupplierPage = ({ onNavigate }) => {
     const [suppliers, setSuppliers] = useState([]);
     const [loading, setLoading] = useState(true);
-<<<<<<< HEAD
-=======
     const [error, setError] = useState(null);
-
-    useEffect(() => {
-        fetchSuppliers();
-    }, []);
-
-    const fetchSuppliers = async () => {
-        try {
-            setLoading(true);
-            const data = await getSuppliers();
-            setSuppliers(data);
-            setError(null);
-        } catch (err) {
-            setError('Failed to load suppliers. Please try again.');
-            console.error(err);
-        } finally {
-            setLoading(false);
-        }
-    };
-
->>>>>>> Pasindu_dev
     const [searchQuery, setSearchQuery] = useState('');
     const [isAddModalOpen, setAddModalOpen] = useState(false);
     const [editingSupplier, setEditingSupplier] = useState(null);
@@ -57,15 +35,9 @@ const SupplierPage = ({ onNavigate }) => {
     }, []);
 
     const filteredSuppliers = suppliers.filter(supplier =>
-<<<<<<< HEAD
         (supplier.supplier_name?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
         (supplier.company_name?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
         (supplier.supplier_id?.toLowerCase() || '').includes(searchQuery.toLowerCase())
-=======
-        supplier.supplier_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (supplier.company_name && supplier.company_name.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        supplier.supplier_id.toLowerCase().includes(searchQuery.toLowerCase())
->>>>>>> Pasindu_dev
     );
 
     const handleAddSupplier = () => {
@@ -81,25 +53,11 @@ const SupplierPage = ({ onNavigate }) => {
     const handleDeleteSupplier = async (id) => {
         if (window.confirm('Are you sure you want to delete this supplier?')) {
             try {
-<<<<<<< HEAD
-                const token = localStorage.getItem('token');
-                const response = await fetch(`${API_BASE_URL}${ENDPOINTS.SUPPLIERS}/${id}`, {
-                    method: 'DELETE',
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (response.ok) {
-                    fetchSuppliers();
-                } else {
-                    alert('Failed to delete supplier');
-                }
-            } catch (err) {
-                console.error('Error deleting supplier:', err);
-=======
                 await deleteSupplier(id);
                 fetchSuppliers();
             } catch (err) {
-                alert('Failed to delete supplier');
->>>>>>> Pasindu_dev
+                console.error('Error deleting supplier:', err);
+                alert('Failed to delete supplier. Please try again.');
             }
         }
     };
