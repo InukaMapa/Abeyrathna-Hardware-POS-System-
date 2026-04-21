@@ -47,7 +47,7 @@ function AppContent() {
       {currentPage === 'reset-password' && <ResetPasswordPage onNavigate={navigateTo} />}
       {currentPage === 'unauthorized' && <UnauthorizedPage onNavigate={navigateTo} />}
       {currentPage === 'dashboard' && (
-        <ProtectedRoute allowedRoles={['ADMIN']} onNavigate={navigateTo}>
+        <ProtectedRoute allowedRoles={['ADMIN', 'CASHIER']} onNavigate={navigateTo}>
           <DashboardPage onNavigate={navigateTo} />
         </ProtectedRoute>
       )}

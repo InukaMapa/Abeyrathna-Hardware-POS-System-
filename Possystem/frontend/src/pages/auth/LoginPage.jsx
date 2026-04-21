@@ -51,8 +51,8 @@ const LoginPage = ({ onNavigate }) => {
                     console.log('✅ LoginPage: Redirecting ADMIN to dashboard');
                     onNavigate('dashboard');
                 } else if (userRole === 'CASHIER') {
-                    console.log('✅ LoginPage: Redirecting CASHIER to table-live-view');
-                    onNavigate('table-live-view');
+                    console.log('✅ LoginPage: Redirecting CASHIER to orders');
+                    onNavigate('orders');
                 } else {
                     // Role is undefined or invalid
                     console.error('❌ LoginPage: Invalid or missing role:', userRole);
