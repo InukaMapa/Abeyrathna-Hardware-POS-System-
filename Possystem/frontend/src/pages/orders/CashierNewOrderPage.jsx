@@ -39,6 +39,8 @@ const CashierNewOrderPage = ({ onNavigate }) => {
                     fetchInventoryCategories(),
                     fetchInventoryItems(),
                 ]);
+                console.log('DEBUG: Fetched Categories:', cats);
+                console.log('DEBUG: Fetched Items:', items);
                 setCategories(cats);
                 
                 // Map inventory items to common format

@@ -114,7 +114,7 @@ function AppContent() {
         </ProtectedRoute>
       )}
       {currentPage === 'cashier-new-order' && (
-        <ProtectedRoute allowedRoles={['CASHIER']} onNavigate={navigateTo}>
+        <ProtectedRoute allowedRoles={['CASHIER', 'ADMIN']} onNavigate={navigateTo}>
           <CashierNewOrderPage onNavigate={navigateTo} />
         </ProtectedRoute>
       )}
