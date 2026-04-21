@@ -18,6 +18,7 @@ import CashierTableOperationsPage from './pages/tables/CashierTableOperationsPag
 import LiveMenuPage from './pages/live-menu/LiveMenuPage';
 import OrdersPage from './pages/orders/OrdersPage';
 import CreateOrderPage from './pages/orders/CreateOrderPage';
+import CashierNewOrderPage from './pages/orders/CashierNewOrderPage';
 import CashCounterPage from './pages/dashboard/CashCounterPage';
 import CashManagementPage from './pages/admin/CashManagementPage';
 import SupplierPage from './pages/admin/supplier/SupplierPage';
@@ -110,6 +111,11 @@ function AppContent() {
       {currentPage === 'create-order' && (
         <ProtectedRoute allowedRoles={['CASHIER']} onNavigate={navigateTo}>
           <CreateOrderPage onNavigate={navigateTo} />
+        </ProtectedRoute>
+      )}
+      {currentPage === 'cashier-new-order' && (
+        <ProtectedRoute allowedRoles={['CASHIER']} onNavigate={navigateTo}>
+          <CashierNewOrderPage onNavigate={navigateTo} />
         </ProtectedRoute>
       )}
       {currentPage === 'cash-counter' && (

@@ -95,22 +95,14 @@ export const createOrder = async (req, res) => {
         // EXISTING LOGIC: Fetch prices and details to ensure data integrity
         // ============================================================
         const itemIds = items.map(i => i.id || i.menu_item_id).filter(Boolean);
-        const { data: menuItems, error: menuError } = await supabase
-            .from('menu_items')
-            .select(`
-                id, price, name,
-                menu_variants (
-                    id, name,
-                    menu_variant_options (
-                        id, name, price_delta
-                    )
-                )
-            `)
+        const { data: inventoryItems, error: invError } = await supabase
+            .from('inventory')
+            .select('id, selling_price, ingredient_name')
             .in('id', itemIds);
 
-        if (menuError) {
-            console.error('Error fetching menu items:', menuError);
-            return res.status(500).json({ error: 'Failed to validate menu items' });
+        if (invError) {
+            console.error('Error fetching inventory items:', invError);
+            return res.status(500).json({ error: 'Failed to validate inventory items' });
         }
 
         // 2. Prepare Data
@@ -119,35 +111,18 @@ export const createOrder = async (req, res) => {
 
         for (const reqItem of items) {
             const currentReqId = reqItem.id || reqItem.menu_item_id;
-            const menuItem = menuItems.find(m => m.id === currentReqId);
+            const invItem = inventoryItems.find(m => m.id === currentReqId);
 
-            if (!menuItem) {
-                return res.status(400).json({ error: `Item with ID ${currentReqId} not found` });
+            if (!invItem) {
+                return res.status(400).json({ error: `Item with ID ${currentReqId} not found in inventory` });
             }
 
-            let unitPrice = menuItem.price;
+            let unitPrice = parseFloat(invItem.selling_price || 0);
             let selectedVariantsSnapshot = [];
-
-            // Calculate Variants Price & Validate
-            if (reqItem.variants && Array.isArray(reqItem.variants)) {
-                for (const userVariant of reqItem.variants) {
-                    // Find matching variant group in menu item
-                    const dbVariant = menuItem.menu_variants?.find(v => v.id === userVariant.variantId);
-
-                    if (dbVariant) {
-                        // Find matching option
-                        const dbOption = dbVariant.menu_variant_options?.find(o => o.id === userVariant.optionId);
-
-                        if (dbOption) {
-                            unitPrice += dbOption.price_delta;
-                            selectedVariantsSnapshot.push({
-                                variant_name: dbVariant.name,
-                                option_name: dbOption.name,
-                                price_delta: dbOption.price_delta
-                            });
-                        }
-                    }
-                }
+            
+            // Variants are likely not used in Hardware Inventory for now, but keeping the loop structure for compatibility
+            if (reqItem.variants && Array.isArray(reqItem.variants) && reqItem.variants.length > 0) {
+                // If you add variants to inventory later, handle here
             }
 
             // TODO: Add stricter validation for required variants/min/max here if needed.
@@ -155,15 +130,15 @@ export const createOrder = async (req, res) => {
 
             const quantity = parseInt(reqItem.quantity);
             if (isNaN(quantity) || quantity <= 0) {
-                return res.status(400).json({ error: `Invalid quantity for item ${menuItem.name}` });
+                return res.status(400).json({ error: `Invalid quantity for item ${invItem.ingredient_name}` });
             }
 
             const subtotal = unitPrice * quantity;
             totalAmount += subtotal;
 
             orderItemsData.push({
-                item_id: menuItem.id,       // Schema: item_id
-                item_name: menuItem.name,   // Schema: item_name
+                item_id: invItem.id,       // Schema: item_id
+                item_name: invItem.ingredient_name,   // Schema: item_name
                 item_price: unitPrice,      // Store FINAL unit price (base + variants)
                 quantity: quantity,         // Schema: quantity
                 subtotal: subtotal,          // Schema: subtotal

@@ -164,15 +164,15 @@ const InventoryPage = ({ onNavigate }) => {
                                     <th className="p-4 font-semibold">Supplier</th>
                                     <th className="p-4 font-semibold">Quantity</th>
                                     <th className="p-4 font-semibold">Status</th>
-                                    <th className="p-4 font-semibold">Last Updated</th>
+                                    <th className="p-4 font-semibold text-right">Price</th>
                                     <th className="p-4 font-semibold text-right">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-[#333]">
                                 {loading ? (
-                                    <tr><td colSpan="7" className="p-12 text-center text-[#A0A0A0]"><Loader className="w-6 h-6 animate-spin mx-auto mb-2" />Loading inventory...</td></tr>
+                                    <tr><td colSpan="8" className="p-12 text-center text-[#A0A0A0]"><Loader className="w-6 h-6 animate-spin mx-auto mb-2" />Loading inventory...</td></tr>
                                 ) : inventory.length === 0 ? (
-                                    <tr><td colSpan="7" className="p-12 text-center text-[#A0A0A0]"><Package className="w-8 h-8 mx-auto mb-2 opacity-50" />No items found.</td></tr>
+                                    <tr><td colSpan="8" className="p-12 text-center text-[#A0A0A0]"><Package className="w-8 h-8 mx-auto mb-2 opacity-50" />No items found.</td></tr>
                                 ) : (
                                     inventory.map((item) => (
                                         <tr key={item.id} className="hover:bg-[#252525] transition-colors group">
@@ -206,8 +206,8 @@ const InventoryPage = ({ onNavigate }) => {
                                                     {item.status}
                                                 </span>
                                             </td>
-                                            <td className="p-4 text-sm text-[#A0A0A0]">
-                                                {item.last_updated ? new Date(item.last_updated).toLocaleDateString() : '-'}
+                                            <td className="p-4 text-right font-black text-red-500">
+                                                Rs. {parseFloat(item.selling_price || 0).toFixed(2)}
                                             </td>
                                             <td className="p-4 text-right">
                                                 <div className="flex items-center justify-end gap-2">
