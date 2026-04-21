@@ -46,9 +46,9 @@ const DashboardPage = ({ onNavigate }) => {
                     subtext="Incl. Orders & Cash In"
                 />
                 <KPICard
-                    title="Most Ordered Dish"
+                    title="Most Ordered Item"
                     value={stats.mostOrderedDish.name}
-                    subtext={`${stats.mostOrderedDish.quantity} orders this month`}
+                    subtext={`${stats.mostOrderedDish.quantity} sales this month`}
                 />
                 <KPICard
                     title="Online Cashiers"

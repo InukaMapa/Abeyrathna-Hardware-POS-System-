@@ -97,7 +97,7 @@ const OrdersPage = ({ onNavigate }) => {
 
             // If it was closed/paid, alert success.
             if (newStatus === 'PAID') {
-                alert('Order closed and table freed successfully!');
+                alert('Order closed and payment received successfully!');
             }
         } catch (err) {
             console.error('Error updating status:', err);
@@ -180,8 +180,8 @@ const OrdersPage = ({ onNavigate }) => {
                                         key={preset.id}
                                         onClick={() => setDateRange(preset.id)}
                                         className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${dateRange === preset.id
-                                                ? 'bg-red-600 text-white shadow-lg shadow-red-600/20'
-                                                : 'bg-[#252525] text-gray-400 hover:bg-[#333] border border-[#444]'
+                                            ? 'bg-red-600 text-white shadow-lg shadow-red-600/20'
+                                            : 'bg-[#252525] text-gray-400 hover:bg-[#333] border border-[#444]'
                                             }`}
                                     >
                                         {preset.label}
@@ -277,7 +277,6 @@ const OrdersPage = ({ onNavigate }) => {
                             <thead>
                                 <tr className="bg-gray-800/50 border-b border-[#333333]">
                                     <th className="p-5 font-bold uppercase tracking-widest text-xs text-gray-400">Order ID</th>
-                                    <th className="p-5 font-bold uppercase tracking-widest text-xs text-gray-400">Table</th>
                                     <th className="p-5 font-bold uppercase tracking-widest text-xs text-gray-400">Customer</th>
                                     <th className="p-5 font-bold uppercase tracking-widest text-xs text-gray-400">Items</th>
                                     <th className="p-5 font-bold uppercase tracking-widest text-xs text-gray-400">Total Amount</th>
@@ -289,7 +288,6 @@ const OrdersPage = ({ onNavigate }) => {
                                 {orders.map(order => (
                                     <tr key={order.order_id} className="hover:bg-white/5 transition-colors group">
                                         <td className="p-5 font-bold text-gray-500">#{order.order_id}</td>
-                                        <td className="p-5 font-black text-xl text-white">T{order.table_id}</td>
                                         <td className="p-5 font-medium text-red-500">{order.customer_phone || <span className="opacity-20">-</span>}</td>
                                         <td className="p-5">
                                             <div className="flex flex-col gap-1.5">
