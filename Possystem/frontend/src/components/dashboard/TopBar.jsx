@@ -44,7 +44,7 @@ const TopBar = ({ onNavigate }) => {
                     <circle cx="11" cy="11" r="8"></circle>
                     <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                 </svg>
-                <input type="text" placeholder="Search orders, menu, customers..." className="search-input" />
+                <input type="text" placeholder="Search orders, inventory, customers..." className="search-input" />
             </div>
             <div className="user-actions flex items-center gap-4">
                 <button className="icon-btn text-[#E0E0E0] hover:text-white transition-colors bg-transparent border-none cursor-pointer">

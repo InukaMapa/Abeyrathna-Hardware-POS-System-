@@ -13,7 +13,7 @@ const LowInventoryTable = ({ items }) => {
             <table className="orders-table">
                 <thead>
                     <tr>
-                        <th>Ingredient</th>
+                        <th>Product</th>
                         <th>Current Stock</th>
                         <th>Min. Level</th>
                         <th>Status</th>
