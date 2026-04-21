@@ -19,14 +19,7 @@ const CreateOrderPage = ({ onNavigate, tableData }) => {
     // Variant modal state
     const [variantModalItem, setVariantModalItem] = useState(null);
 
-    // Extract table info from tableData
-    const table = tableData || JSON.parse(sessionStorage.getItem('selectedTable') || '{}');
-
     useEffect(() => {
-        // Save table data to session storage for page refreshes
-        if (tableData) {
-            sessionStorage.setItem('selectedTable', JSON.stringify(tableData));
-        }
         loadMenuItems();
     }, []);
 
@@ -203,7 +196,7 @@ const CreateOrderPage = ({ onNavigate, tableData }) => {
             setError(null);
 
             const orderData = {
-                table_id: table.tableId || table.id,
+                table_id: 1, // Defaulting to 1 for hardware POS (Assumes a default sales counter exists)
                 items: selectedItems.map(item => ({
                     id: item.menu_item_id,
                     quantity: item.quantity,
@@ -215,12 +208,9 @@ const CreateOrderPage = ({ onNavigate, tableData }) => {
             console.log('Creating order:', orderData);
             const response = await createOrder(orderData);
 
-            // Clear session storage
-            sessionStorage.removeItem('selectedTable');
-
             // Show success message and navigate back
             alert(`Order #${response.id || response.orderId} created successfully!`);
-            onNavigate('table-live-view');
+            onNavigate('dashboard');
         } catch (err) {
             console.error('Failed to create order:', err);
             setError(err.message || 'Failed to create order. Please try again.');
@@ -234,8 +224,7 @@ const CreateOrderPage = ({ onNavigate, tableData }) => {
                 return;
             }
         }
-        sessionStorage.removeItem('selectedTable');
-        onNavigate('table-live-view');
+        onNavigate('dashboard');
     };
 
     return (
@@ -258,11 +247,9 @@ const CreateOrderPage = ({ onNavigate, tableData }) => {
                                     </svg>
                                 </button>
                                 <div>
-                                    <h1 className="text-3xl font-bold text-white uppercase tracking-tight">Create Order</h1>
+                                    <h1 className="text-3xl font-bold text-white uppercase tracking-tight">Create New Sale</h1>
                                     <p className="text-gray-400 mt-1 font-medium flex items-center gap-2">
-                                        <span className="text-red-500">•</span> {table.placeName}
-                                        <span className="text-gray-600 mx-1">|</span>
-                                        <span className="text-white">{table.tableName || `Table ${table.tableId}`}</span>
+                                        <span className="text-red-500">•</span> Direct Sale Counter
                                     </p>
                                 </div>
                             </div>
