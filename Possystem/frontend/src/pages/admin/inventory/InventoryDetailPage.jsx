@@ -80,6 +80,10 @@ const InventoryDetailPage = ({ inventoryId, onNavigate }) => {
                                     <div className="text-xl font-semibold text-[#BBB]">{item.reorder_level}</div>
                                 </div>
                                 <div className="p-4 bg-[#111] rounded-lg border border-[#333]">
+                                    <div className="text-xs text-[#d32f2f] uppercase font-semibold mb-1">Selling Price</div>
+                                    <div className="text-xl font-black text-red-500">Rs. {parseFloat(item.selling_price || 0).toFixed(2)}</div>
+                                </div>
+                                <div className="p-4 bg-[#111] rounded-lg border border-[#333]">
                                     <div className="text-xs text-[#666] uppercase font-semibold mb-1">Last Updated</div>
                                     <div className="text-sm font-medium text-[#BBB]">{new Date(item.last_updated).toLocaleDateString()}</div>
                                 </div>

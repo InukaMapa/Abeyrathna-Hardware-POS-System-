@@ -13,6 +13,7 @@ const AddInventoryModal = ({ onClose, onSuccess, onScanBillClick, categories = [
         unit: 'kg',
         supplier_info: '',
         supplier_id: '',
+        selling_price: '',
         storage_location: '',
         expiry_date: ''
     });
@@ -126,7 +127,7 @@ const AddInventoryModal = ({ onClose, onSuccess, onScanBillClick, categories = [
                                     )}
                                 </select>
                             </div>
-                            <div className="grid grid-cols-2 gap-4">
+                             <div className="grid grid-cols-2 gap-4">
                                 <div className="form-group">
                                     <label>Quantity *</label>
                                     <input
@@ -143,6 +144,14 @@ const AddInventoryModal = ({ onClose, onSuccess, onScanBillClick, categories = [
                                         {units.map(u => <option key={u} value={u}>{u}</option>)}
                                     </select>
                                 </div>
+                            </div>
+                            <div className="form-group">
+                                <label>Selling Price (Rs.) *</label>
+                                <input
+                                    type="number" step="0.01" required name="selling_price"
+                                    value={formData.selling_price} onChange={handleChange}
+                                    placeholder="0.00"
+                                />
                             </div>
                             <div className="form-group">
                                 <label>Storage Location</label>

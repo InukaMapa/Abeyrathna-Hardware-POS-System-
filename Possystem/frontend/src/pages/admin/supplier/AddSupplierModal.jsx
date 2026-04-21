@@ -31,7 +31,8 @@ const AddSupplierModal = ({ onClose, onSuccess, initialData }) => {
             }
             onSuccess();
         } catch (err) {
-            setError(err.message || 'Failed to save supplier');
+            console.error('Error saving supplier:', err);
+            setError(err.message || 'Failed to save supplier. Please try again.');
         } finally {
             setLoading(false);
         }

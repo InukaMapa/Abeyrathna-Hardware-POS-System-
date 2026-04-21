@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import DashboardLayout from '../../../components/layout/DashboardLayout';
 import AddSupplierModal from './AddSupplierModal';
 import { Plus, Search, User, Mail, Phone, Building, Trash2, Edit } from 'lucide-react';
+import { API_BASE_URL, ENDPOINTS } from '../../../config/api';
 import '../../../styles/dashboard.css';
 import { getSuppliers, deleteSupplier } from '../../../services/supplierService';
 
@@ -9,33 +10,34 @@ const SupplierPage = ({ onNavigate }) => {
     const [suppliers, setSuppliers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-
-    useEffect(() => {
-        fetchSuppliers();
-    }, []);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [isAddModalOpen, setAddModalOpen] = useState(false);
+    const [editingSupplier, setEditingSupplier] = useState(null);
 
     const fetchSuppliers = async () => {
         try {
             setLoading(true);
-            const data = await getSuppliers();
-            setSuppliers(data);
-            setError(null);
+            const token = localStorage.getItem('token');
+            const response = await fetch(`${API_BASE_URL}${ENDPOINTS.SUPPLIERS}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await response.json();
+            if (response.ok) setSuppliers(data);
         } catch (err) {
-            setError('Failed to load suppliers. Please try again.');
-            console.error(err);
+            console.error('Failed to fetch suppliers:', err);
         } finally {
             setLoading(false);
         }
     };
 
-    const [searchQuery, setSearchQuery] = useState('');
-    const [isAddModalOpen, setAddModalOpen] = useState(false);
-    const [editingSupplier, setEditingSupplier] = useState(null);
+    useEffect(() => {
+        fetchSuppliers();
+    }, []);
 
     const filteredSuppliers = suppliers.filter(supplier =>
-        supplier.supplier_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (supplier.company_name && supplier.company_name.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        supplier.supplier_id.toLowerCase().includes(searchQuery.toLowerCase())
+        (supplier.supplier_name?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+        (supplier.company_name?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+        (supplier.supplier_id?.toLowerCase() || '').includes(searchQuery.toLowerCase())
     );
 
     const handleAddSupplier = () => {
@@ -54,7 +56,8 @@ const SupplierPage = ({ onNavigate }) => {
                 await deleteSupplier(id);
                 fetchSuppliers();
             } catch (err) {
-                alert('Failed to delete supplier');
+                console.error('Error deleting supplier:', err);
+                alert('Failed to delete supplier. Please try again.');
             }
         }
     };
@@ -131,6 +134,10 @@ const SupplierPage = ({ onNavigate }) => {
                                     </td>
                                 </tr>
                             ))
+                        ) : loading ? (
+                            <tr>
+                                <td colSpan="5" className="text-center py-8 text-[#A0A0A0]">Loading suppliers...</td>
+                            </tr>
                         ) : (
                             <tr>
                                 <td colSpan="5" className="text-center py-8 text-[#A0A0A0]">No suppliers found matching your search.</td>

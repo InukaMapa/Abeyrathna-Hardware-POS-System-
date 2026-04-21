@@ -14,6 +14,7 @@ const EditInventoryModal = ({ onClose, onSuccess, categories = [], initialData }
         reorder_level: '10',
         supplier_info: '',
         supplier_id: '',
+        selling_price: '',
         storage_location: '',
         expiry_date: '',
         batch_code: ''
@@ -46,6 +47,7 @@ const EditInventoryModal = ({ onClose, onSuccess, categories = [], initialData }
                 reorder_level: initialData.reorder_level || '10',
                 supplier_info: initialData.supplier_info || '',
                 supplier_id: initialData.supplier_id || '',
+                selling_price: initialData.selling_price || '',
                 storage_location: initialData.storage_location || '',
                 expiry_date: initialData.expiry_date ? new Date(initialData.expiry_date).toISOString().split('T')[0] : '',
                 batch_code: initialData.batch_code || ''
@@ -72,6 +74,7 @@ const EditInventoryModal = ({ onClose, onSuccess, categories = [], initialData }
                 reorder_level: formData.reorder_level,
                 supplier_info: formData.supplier_info,
                 supplier_id: formData.supplier_id,
+                selling_price: formData.selling_price,
                 storage_location: formData.storage_location
             };
 
@@ -152,6 +155,14 @@ const EditInventoryModal = ({ onClose, onSuccess, categories = [], initialData }
                                 <input
                                     type="number" step="0.01" name="reorder_level"
                                     value={formData.reorder_level} onChange={handleChange}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>Selling Price (Rs.) *</label>
+                                <input
+                                    type="number" step="0.01" required name="selling_price"
+                                    value={formData.selling_price} onChange={handleChange}
+                                    placeholder="0.00"
                                 />
                             </div>
                             <div className="form-group">

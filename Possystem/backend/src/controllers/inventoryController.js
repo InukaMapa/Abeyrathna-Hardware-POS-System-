@@ -121,7 +121,8 @@ export const addInventoryItem = async (req, res) => {
             batch_code,
             method, // 'MANUAL' or 'SCAN'
             admin_name,
-            supplier_id
+            supplier_id,
+            selling_price
         } = req.body;
 
         if (!ingredient_name) {
@@ -171,6 +172,7 @@ export const addInventoryItem = async (req, res) => {
                     quantity,
                     unit,
                     reorder_level: reorder_level || 10,
+                    selling_price: selling_price || 0,
                     supplier_info,
                     supplier_id,
                     storage_location

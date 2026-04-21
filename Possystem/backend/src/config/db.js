@@ -5,7 +5,9 @@ const supabaseUrl = config.supabaseUrl;
 const supabaseKey = config.supabaseKey;
 
 if (!supabaseUrl || !supabaseKey) {
-    throw new Error('Supabase URL and Key are required.');
+    console.warn('WARNING: Supabase URL and Key are not defined. Database operations will fail until these are configured.');
 }
 
-export const supabase = createClient(supabaseUrl, supabaseKey);
+export const supabase = supabaseUrl && supabaseKey
+    ? createClient(supabaseUrl, supabaseKey)
+    : null;

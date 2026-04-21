@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { API_BASE_URL } from '../../config/api';
 import { fetchOrders } from '../../services/orderService';
+import { useAuth } from '../../context/AuthContext';
 import '../../styles/dashboard.css'; // Reuse dashboard styles
 
 const OrdersPage = ({ onNavigate }) => {
+    const { userRole } = useAuth();
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -159,6 +161,18 @@ const OrdersPage = ({ onNavigate }) => {
                             <p className="text-gray-500 text-sm font-bold uppercase tracking-widest mt-1">Real-time Order Management</p>
                         </div>
                     </div>
+
+                    {userRole === 'CASHIER' && (
+                        <button
+                            onClick={() => onNavigate('cashier-new-order')}
+                            className="flex items-center gap-2 px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-black uppercase tracking-widest rounded-xl transition-all shadow-lg shadow-red-600/20 active:scale-95"
+                        >
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                            </svg>
+                            Create Order
+                        </button>
+                    )}
                 </div>
 
                 {/* Filters Section */}
