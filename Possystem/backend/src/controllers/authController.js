@@ -19,11 +19,11 @@ export const login = async (req, res) => {
             return res.status(400).json({ message: 'Username and password are required.' });
         }
 
-        // Find user in database by username
+        // Find user in database by username or email
         const { data: user, error } = await supabase
             .from('users')
             .select('*')
-            .eq('username', username)
+            .or(`username.eq.${username},email.eq.${username}`)
             .maybeSingle();
 
         if (error) {
