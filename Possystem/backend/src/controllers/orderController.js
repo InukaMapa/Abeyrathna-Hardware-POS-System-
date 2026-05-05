@@ -21,75 +21,73 @@ export const createOrder = async (req, res) => {
         const staffId = req.user?.userId;
 
         // Basic validation
-        if (!table_id || !items || !Array.isArray(items) || items.length === 0) {
-            return res.status(400).json({ error: 'Valid Table ID and items are required' });
+        if (!items || !Array.isArray(items) || items.length === 0) {
+            return res.status(400).json({ error: 'Items are required' });
         }
 
-        const tableIdInt = parseInt(table_id, 10);
-        if (isNaN(tableIdInt)) {
-            return res.status(400).json({ error: 'Table ID must be a valid integer' });
+        let tableIdInt = null;
+
+        if (table_id) {
+            tableIdInt = parseInt(table_id, 10);
+            if (isNaN(tableIdInt)) {
+                return res.status(400).json({ error: 'Table ID must be a valid integer' });
+            }
+
+            console.log(`[ORDER] Creating order for table ${tableIdInt} by staff ${staffId}`);
+
+            // ============================================================
+            // CRITICAL BUSINESS RULE: Check for existing active orders
+            // Active order = status NOT 'CLOSED'
+            // ============================================================
+            const { data: activeOrders, error: activeOrderError } = await supabase
+                .from('orders')
+                .select('order_id, status, created_at')
+                .eq('table_id', tableIdInt)
+                .neq('status', 'CLOSED')
+                .limit(1);
+
+            if (activeOrderError) {
+                console.error('[ORDER] Error checking active orders:', activeOrderError);
+                return res.status(500).json({
+                    error: 'Failed to validate table availability',
+                    message: 'Database query error. Please contact support.'
+                });
+            }
+
+            if (activeOrders && activeOrders.length > 0) {
+                const existingOrder = activeOrders[0];
+                console.log(`[ORDER] Conflict: Table ${tableIdInt} already has active order #${existingOrder.order_id}`);
+                return res.status(409).json({
+                    error: 'This table already has an active order',
+                    existingOrderId: existingOrder.order_id,
+                    status: existingOrder.status,
+                    message: 'Please close or complete the existing order before creating a new one'
+                });
+            }
+
+            console.log(`[ORDER] ✓ Table ${tableIdInt} is available (no active orders)`);
+
+            // ============================================================
+            // VALIDATION: Ensure table exists in table_info
+            // ============================================================
+            const { data: tableData, error: tableError } = await supabase
+                .from('table_info')
+                .select('table_id, place_id, seats')
+                .eq('table_id', tableIdInt)
+                .single();
+
+            if (tableError || !tableData) {
+                console.error('[ORDER] Table validation failed:', tableError);
+                return res.status(400).json({
+                    error: `Table ID ${tableIdInt} does not exist`,
+                    message: 'Please select a valid table'
+                });
+            }
+
+            console.log(`[ORDER] Table ${tableIdInt} validated (Place: ${tableData.place_id}, Seats: ${tableData.seats})`);
+        } else {
+            console.log(`[ORDER] Creating direct order by staff ${staffId} without table`);
         }
-
-        console.log(`[ORDER] Creating order for table ${tableIdInt} by staff ${staffId}`);
-
-        // ============================================================
-        // CRITICAL BUSINESS RULE: Check for existing active orders
-        // Active order = status NOT 'CLOSED'
-        // ============================================================
-        const { data: activeOrders, error: activeOrderError } = await supabase
-            .from('orders')
-            .select('order_id, status, created_at')
-            .eq('table_id', tableIdInt)
-            .neq('status', 'CLOSED')
-            .limit(1);
-
-        if (activeOrderError) {
-            console.error('[ORDER] Error checking active orders:', {
-                error: activeOrderError,
-                code: activeOrderError.code,
-                message: activeOrderError.message,
-                details: activeOrderError.details,
-                hint: activeOrderError.hint
-            });
-            return res.status(500).json({
-                error: 'Failed to validate table availability',
-                message: 'Database query error. Please contact support.',
-                debug: process.env.NODE_ENV === 'development' ? activeOrderError.message : undefined
-            });
-        }
-
-        if (activeOrders && activeOrders.length > 0) {
-            const existingOrder = activeOrders[0];
-            console.log(`[ORDER] Conflict: Table ${tableIdInt} already has active order #${existingOrder.order_id} (status: ${existingOrder.status})`);
-            return res.status(409).json({
-                error: 'This table already has an active order',
-                existingOrderId: existingOrder.order_id,
-                status: existingOrder.status,
-                message: 'Please close or complete the existing order before creating a new one'
-            });
-        }
-
-        console.log(`[ORDER] ✓ Table ${tableIdInt} is available (no active orders)`);
-
-
-        // ============================================================
-        // VALIDATION: Ensure table exists in table_info
-        // ============================================================
-        const { data: tableData, error: tableError } = await supabase
-            .from('table_info')
-            .select('table_id, place_id, seats')
-            .eq('table_id', tableIdInt)
-            .single();
-
-        if (tableError || !tableData) {
-            console.error('[ORDER] Table validation failed:', tableError);
-            return res.status(400).json({
-                error: `Table ID ${tableIdInt} does not exist`,
-                message: 'Please select a valid table'
-            });
-        }
-
-        console.log(`[ORDER] Table ${tableIdInt} validated (Place: ${tableData.place_id}, Seats: ${tableData.seats})`);
 
         // ============================================================
         // EXISTING LOGIC: Fetch prices and details to ensure data integrity
@@ -119,7 +117,7 @@ export const createOrder = async (req, res) => {
 
             let unitPrice = parseFloat(invItem.selling_price || 0);
             let selectedVariantsSnapshot = [];
-            
+
             // Variants are likely not used in Hardware Inventory for now, but keeping the loop structure for compatibility
             if (reqItem.variants && Array.isArray(reqItem.variants) && reqItem.variants.length > 0) {
                 // If you add variants to inventory later, handle here
@@ -231,6 +229,7 @@ export const fetchAllOrders = async (req, res) => {
                 created_at,
                 order_items (
                     order_item_id,
+                    item_id,
                     item_name,
                     quantity,
                     item_price,
@@ -354,28 +353,38 @@ export const updateOrderStatus = async (req, res) => {
 export const closeOrder = async (req, res) => {
     try {
         const { id } = req.params;
+        const { final_total, discount, other_charges, payments, customer_name, customer_phone, notes } = req.body || {};
 
         const orderId = parseInt(id, 10);
         if (isNaN(orderId)) {
             return res.status(400).json({ error: 'Invalid order ID' });
         }
 
-        // Update the order to CLOSED status, and track shift/time
-        // We find the active shift
+        // Handle case where cashier has no open shift gracefully
         const { data: activeShift } = await supabase
             .from('cash_shifts')
             .select('shift_id')
             .eq('status', 'OPEN')
             .limit(1)
-            .single();
+            .maybeSingle();
+
+        // Prepare the update payload. If final_total is provided from the checkout page, we override total_amount.
+        const updatePayload = {
+            status: 'CLOSED',
+            closed_at: new Date().toISOString(),
+            shift_id: activeShift ? activeShift.shift_id : null
+        };
+
+        if (final_total !== undefined) {
+            updatePayload.total_amount = final_total;
+        }
+        if (customer_phone !== undefined) {
+            updatePayload.customer_phone = customer_phone;
+        }
 
         const { data, error } = await supabase
             .from('orders')
-            .update({
-                status: 'CLOSED',
-                closed_at: new Date().toISOString(),
-                shift_id: activeShift ? activeShift.shift_id : null
-            })
+            .update(updatePayload)
             .eq('order_id', orderId)
             .select()
             .single();
@@ -525,5 +534,184 @@ export const getOrderItem = async (req, res) => {
         res.status(500).json({
             error: 'Failed to retrieve order item'
         });
+    }
+};
+
+/**
+ * Cancel an order entirely
+ * @route DELETE /api/orders/:id
+ */
+export const cancelOrder = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { error } = await supabase
+            .from('orders')
+            .delete()
+            .eq('order_id', id);
+
+        if (error) throw error;
+
+        res.status(200).json({ message: 'Order cancelled successfully' });
+    } catch (error) {
+        console.error('Error cancelling order:', error);
+        res.status(500).json({ error: 'Failed to cancel order' });
+    }
+};
+
+/**
+ * Remove an item from an order
+ * @route DELETE /api/orders/items/:orderItemId
+ */
+export const removeOrderItem = async (req, res) => {
+    try {
+        const { orderItemId } = req.params;
+
+        // Find order_id and subtotal first to update order total_amount
+        const { data: itemData, error: itemError } = await supabase
+            .from('order_items')
+            .select('order_id, subtotal')
+            .eq('order_item_id', orderItemId)
+            .single();
+
+        if (itemError || !itemData) throw itemError || new Error('Item not found');
+
+        const { error: deleteError } = await supabase
+            .from('order_items')
+            .delete()
+            .eq('order_item_id', orderItemId);
+
+        if (deleteError) throw deleteError;
+
+        // Recalculate total
+        const { data: allItems } = await supabase.from('order_items').select('subtotal').eq('order_id', itemData.order_id);
+        const newTotal = (allItems || []).reduce((acc, curr) => acc + parseFloat(curr.subtotal), 0);
+        await supabase.from('orders').update({ total_amount: newTotal }).eq('order_id', itemData.order_id);
+
+        res.status(200).json({ message: 'Item removed successfully', newTotal });
+    } catch (error) {
+        console.error('Error removing order item:', error);
+        res.status(500).json({ error: 'Failed to remove order item' });
+    }
+};
+
+/**
+ * Fetch order details by ID
+ * @route GET /api/orders/:id
+ */
+export const getOrderById = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { data: order, error } = await supabase
+            .from('orders')
+            .select(`
+                order_id,
+                table_id,
+                total_amount,
+                status,
+                customer_phone,
+                created_at,
+                order_items (
+                    order_item_id,
+                    item_id,
+                    item_name,
+                    quantity,
+                    item_price,
+                    subtotal
+                )
+            `)
+            .eq('order_id', id)
+            .single();
+
+        if (error || !order) {
+            return res.status(404).json({ error: 'Order not found' });
+        }
+
+        res.status(200).json(order);
+    } catch (error) {
+        console.error('Error fetching order by ID:', error);
+        res.status(500).json({ error: 'Failed to fetch order details' });
+    }
+};
+
+/**
+ * Replace entire cart items for an order
+ * @route PUT /api/orders/:id/cart
+ */
+export const updateOrderCart = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { items, customer_phone } = req.body; // array of items: { id, quantity }
+
+        if (!items || !Array.isArray(items)) {
+            return res.status(400).json({ error: 'Items array is required' });
+        }
+
+        // 1. Fetch inventory items to ensure pricing is correct
+        const itemIds = items.map(i => i.id || i.menu_item_id).filter(Boolean);
+        if (itemIds.length === 0) {
+            // Empty cart basically means clearing it
+            await supabase.from('order_items').delete().eq('order_id', id);
+            await supabase.from('orders').update({ total_amount: 0, customer_phone: customer_phone || null }).eq('order_id', id);
+            return res.status(200).json({ message: 'Cart updated successfully', totalAmount: 0 });
+        }
+
+        const { data: inventoryItems, error: invError } = await supabase
+            .from('inventory')
+            .select('id, selling_price, ingredient_name')
+            .in('id', itemIds);
+
+        if (invError) throw invError;
+
+        let totalAmount = 0;
+        const newOrderItems = [];
+
+        for (const reqItem of items) {
+            const currentReqId = reqItem.id || reqItem.menu_item_id;
+            const invItem = inventoryItems.find(m => m.id === currentReqId);
+            if (!invItem) continue;
+
+            const unitPrice = parseFloat(invItem.selling_price) || 0;
+            const quantity = parseInt(reqItem.quantity, 10);
+            if (isNaN(quantity) || quantity <= 0) continue;
+
+            const subtotal = unitPrice * quantity;
+            totalAmount += subtotal;
+
+            newOrderItems.push({
+                order_id: id,
+                item_id: invItem.id,
+                item_name: invItem.ingredient_name,
+                item_price: unitPrice,
+                quantity: quantity,
+                subtotal: subtotal,
+                selected_variants: []
+            });
+        }
+
+        // 2. Delete existing items
+        const { error: delError } = await supabase.from('order_items').delete().eq('order_id', id);
+        if (delError) throw delError;
+
+        // 3. Insert new items
+        if (newOrderItems.length > 0) {
+            const { error: insError } = await supabase.from('order_items').insert(newOrderItems);
+            if (insError) throw insError;
+        }
+
+        // 4. Update order total & customer phone
+        const { error: updError } = await supabase
+            .from('orders')
+            .update({
+                total_amount: totalAmount,
+                customer_phone: customer_phone || null
+            })
+            .eq('order_id', id);
+
+        if (updError) throw updError;
+
+        res.status(200).json({ message: 'Cart updated successfully', totalAmount });
+    } catch (error) {
+        console.error('Error updating order cart:', error);
+        res.status(500).json({ error: 'Failed to update order cart' });
     }
 };
