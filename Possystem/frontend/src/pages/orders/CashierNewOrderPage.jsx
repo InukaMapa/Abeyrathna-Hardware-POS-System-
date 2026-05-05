@@ -14,20 +14,35 @@ const getAuthHeaders = () => {
 
 /* ───────────────────────────── component ───────────────────────────── */
 
-const CashierNewOrderPage = ({ onNavigate }) => {
+const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
     /* ── data state ── */
-    const [categories, setCategories]   = useState([]);
+    const [categories, setCategories] = useState([]);
     const [inventoryItems, setInventoryItems] = useState([]);
-    const [loading,    setLoading]      = useState(true);
-    const [error,      setError]        = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
     /* ── ui state ── */
     const [selectedCategory, setSelectedCategory] = useState('all');
-    const [searchQuery,      setSearchQuery]      = useState('');
-    const [cartItems,        setCartItems]        = useState([]);
-    const [submitting,       setSubmitting]       = useState(false);
-    const [submitError,      setSubmitError]      = useState(null);
-    const [showCart,         setShowCart]         = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [cartItems, setCartItems] = useState([]);
+    const [submitting, setSubmitting] = useState(false);
+    const [submitError, setSubmitError] = useState(null);
+    const [showCart, setShowCart] = useState(false);
+    const [customerPhone, setCustomerPhone] = useState(editOrder?.customer_phone || '');
+
+    // Initialize cart from editOrder if present
+    useEffect(() => {
+        if (editOrder && editOrder.order_items) {
+            const initialCart = editOrder.order_items.map(item => ({
+                id: item.item_id,
+                name: item.item_name,
+                price: parseFloat(item.item_price) || 0,
+                // image is not in order_items but will be merged or handled
+                quantity: item.quantity
+            }));
+            setCartItems(initialCart);
+        }
+    }, [editOrder]);
 
     /* ── load data on mount ── */
     useEffect(() => {
@@ -42,7 +57,7 @@ const CashierNewOrderPage = ({ onNavigate }) => {
                 console.log('DEBUG: Fetched Categories:', cats);
                 console.log('DEBUG: Fetched Items:', items);
                 setCategories(cats);
-                
+
                 // Map inventory items to common format
                 const mappedItems = items.map(item => ({
                     id: item.id,
@@ -53,7 +68,7 @@ const CashierNewOrderPage = ({ onNavigate }) => {
                     unit: item.unit,
                     quantity: item.quantity
                 }));
-                
+
                 setInventoryItems(mappedItems);
             } catch (err) {
                 console.error('Failed to load inventory/categories:', err);
@@ -104,10 +119,10 @@ const CashierNewOrderPage = ({ onNavigate }) => {
                 );
             }
             return [...prev, {
-                id:       item.id,
-                name:     item.name,
-                price:    parseFloat(item.price) || 0,
-                image:    item.image,
+                id: item.id,
+                name: item.name,
+                price: parseFloat(item.price) || 0,
+                image: item.image,
                 quantity: 1,
             }];
         });
@@ -134,22 +149,40 @@ const CashierNewOrderPage = ({ onNavigate }) => {
         setSubmitting(true);
         setSubmitError(null);
         try {
-            // Build order — no table needed for a direct cashier order;
-            // send table_id = null (backend may default or handle it).
             const orderData = {
                 table_id: null,
+                customer_phone: customerPhone || null,
                 items: cartItems.map(c => ({
-                    id:       c.id,
+                    id: c.id,
                     quantity: c.quantity,
                     variants: [],
                 })),
             };
-            const res = await createOrder(orderData);
-            alert(`✅ Order #${res.id || res.orderId || ''} created successfully!`);
-            onNavigate('orders');
+
+            if (editOrder) {
+                // Update existing order cart
+                const response = await fetch(`${API_BASE}/orders/${editOrder.order_id}/cart`, {
+                    method: 'PUT',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify(orderData)
+                });
+
+                if (!response.ok) {
+                    const errPayload = await response.json().catch(() => ({}));
+                    throw new Error(errPayload.error || 'Failed to update order cart.');
+                }
+
+                alert(`✅ Order #${editOrder.order_id} updated successfully!`);
+                onNavigate('order-details', { orderId: editOrder.order_id });
+            } else {
+                // Create new order
+                const res = await createOrder(orderData);
+                alert(`✅ Order #${res.id || res.orderId || ''} created successfully!`);
+                onNavigate('orders');
+            }
         } catch (err) {
-            console.error('Order creation failed:', err);
-            setSubmitError(err.message || 'Failed to create order. Please try again.');
+            console.error('Order logic failed:', err);
+            setSubmitError(err.message || 'Failed to process order. Please try again.');
         } finally {
             setSubmitting(false);
         }
@@ -170,7 +203,13 @@ const CashierNewOrderPage = ({ onNavigate }) => {
                 <div className="flex items-center justify-between mb-8">
                     <div className="flex items-center gap-4">
                         <button
-                            onClick={() => onNavigate('orders')}
+                            onClick={() => {
+                                if (editOrder) {
+                                    onNavigate('order-details', { orderId: editOrder.order_id });
+                                } else {
+                                    onNavigate('orders');
+                                }
+                            }}
                             className="p-2 rounded-full bg-[#1E1E1E] border border-[#333] hover:border-red-600 hover:text-red-500 transition-all"
                         >
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -178,8 +217,10 @@ const CashierNewOrderPage = ({ onNavigate }) => {
                             </svg>
                         </button>
                         <div>
-                            <h1 className="text-3xl font-black uppercase tracking-tight">New Order</h1>
-                            <p className="text-gray-500 text-xs font-bold uppercase tracking-widest mt-0.5">
+                            <h2 className="text-2xl font-black uppercase tracking-tight m-0">
+                                {editOrder ? `Update Order #${editOrder.order_id}` : 'New Order'}
+                            </h2>
+                            <p className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mt-1">
                                 Select items from the menu below
                             </p>
                         </div>
@@ -258,39 +299,29 @@ const CashierNewOrderPage = ({ onNavigate }) => {
                                             <span className="w-1 h-4 bg-red-600 rounded-full inline-block" />
                                             Categories
                                         </h2>
-                                        <div className="flex flex-wrap gap-3">
-                                            {/* ALL */}
-                                            <button
-                                                id="cat-all"
-                                                onClick={() => setSelectedCategory('all')}
-                                                className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all border ${selectedCategory === 'all'
-                                                    ? 'bg-red-600 border-red-600 text-white shadow-lg shadow-red-600/20'
-                                                    : 'bg-[#252525] border-[#444] text-gray-400 hover:border-red-600/50 hover:text-white'
-                                                    }`}
+                                        <div className="relative">
+                                            <select
+                                                id="category-select"
+                                                value={selectedCategory}
+                                                onChange={(e) => setSelectedCategory(e.target.value)}
+                                                className="w-full bg-[#252525] text-white text-[10px] font-black uppercase tracking-widest px-4 py-3 rounded-lg border border-[#444] outline-none focus:border-red-600 transition-all appearance-none cursor-pointer"
                                             >
-                                                All Items
-                                            </button>
-
-                                            {categories.map(cat => {
-                                                const display = getCategoryDisplay(cat);
-                                                const catId   = cat.id || display;
-                                                const isActive =
-                                                    selectedCategory === display ||
-                                                    selectedCategory === catId;
-                                                return (
-                                                    <button
-                                                        key={catId}
-                                                        id={`cat-${catId}`}
-                                                        onClick={() => setSelectedCategory(display || catId)}
-                                                        className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all border ${isActive
-                                                            ? 'bg-red-600 border-red-600 text-white shadow-lg shadow-red-600/20'
-                                                            : 'bg-[#252525] border-[#444] text-gray-400 hover:border-red-600/50 hover:text-white'
-                                                            }`}
-                                                    >
-                                                        {display}
-                                                    </button>
-                                                );
-                                            })}
+                                                <option value="all">All Items</option>
+                                                {categories.map(cat => {
+                                                    const display = getCategoryDisplay(cat);
+                                                    const catId = cat.id || display;
+                                                    return (
+                                                        <option key={catId} value={display || catId}>
+                                                            {display}
+                                                        </option>
+                                                    );
+                                                })}
+                                            </select>
+                                            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-white/50">
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                                </svg>
+                                            </div>
                                         </div>
                                     </div>
                                 )}
@@ -476,6 +507,16 @@ const CashierNewOrderPage = ({ onNavigate }) => {
                             {/* Total + Submit */}
                             {cartItems.length > 0 && (
                                 <>
+                                    <div className="mb-4">
+                                        <label className="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">Customer Mobile (Optional)</label>
+                                        <input
+                                            type="tel"
+                                            value={customerPhone}
+                                            onChange={(e) => setCustomerPhone(e.target.value)}
+                                            placeholder="e.g. 07XXXXXXXX"
+                                            className="w-full bg-[#161616] border border-[#333] rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600/30 transition-all font-bold"
+                                        />
+                                    </div>
                                     <div className="border-t border-[#2a2a2a] pt-4 mb-4">
                                         <div className="flex justify-between items-center">
                                             <span className="text-gray-500 text-xs font-black uppercase tracking-widest">Total</span>
