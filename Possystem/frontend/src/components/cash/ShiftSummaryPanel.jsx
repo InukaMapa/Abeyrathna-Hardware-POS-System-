@@ -41,43 +41,44 @@ const ShiftSummaryPanel = ({ shiftId, onSummaryUpdate }) => {
     if (error) return <div className="cash-card error">{error}</div>;
 
     return (
-        <div className="cash-card">
-            <h3 className="section-title">POS Cash Summary</h3>
-            <div className="summary-grid">
-                <div className="summary-item">
-                    <div className="summary-label">Opening Cash</div>
-                    <div className="summary-value">Rs. {summary.opening_cash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+        <div className="bg-[#1E1E1E] border border-[#333333] rounded-2xl p-6 shadow-xl relative overflow-hidden mb-6">
+            <h3 className="text-sm font-black uppercase tracking-[0.2em] text-gray-500 mb-6 relative z-10 flex items-center gap-2">
+                <span className="w-1.5 h-4 bg-red-600 rounded-full"></span>
+                POS Cash Summary
+            </h3>
+            <div className="grid grid-cols-2 gap-3">
+                <div className="bg-[#121212] border border-[#333333] p-3 rounded-xl flex flex-col justify-center">
+                    <div className="text-[9px] font-black uppercase tracking-widest text-gray-500 mb-1">Opening Cash</div>
+                    <div className="text-sm font-black text-gray-300 truncate whitespace-nowrap">Rs. {summary.opening_cash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                 </div>
                 <div
-                    className="summary-item"
-                    style={{ color: 'var(--success-color)', cursor: 'pointer' }}
+                    className="bg-[#121212] border border-[#333333] hover:border-red-600/50 transition-colors p-3 rounded-xl cursor-pointer group flex flex-col justify-center"
                     onClick={() => setIsOrdersModalOpen(true)}
                     title="Click to view detailed sales"
                 >
-                    <div className="summary-label">
+                    <div className="text-[9px] font-black uppercase tracking-widest text-gray-400 group-hover:text-red-500 mb-1 transition-colors">
                         + Cash Sales
                         {summary.cash_sales_count !== undefined && (
-                            <span style={{ fontSize: '0.8rem', opacity: 0.8, marginLeft: '5px' }}>
-                                ({summary.cash_sales_count} orders)
+                            <span className="opacity-70 ml-1">
+                                ({summary.cash_sales_count})
                             </span>
                         )}
                     </div>
-                    <div className="summary-value">Rs. {summary.cash_sales.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                    <div className="text-sm font-black text-white truncate whitespace-nowrap">Rs. {summary.cash_sales.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                 </div>
                 <div
-                    className="summary-item"
-                    style={{ color: 'var(--success-color)' }}
+                    className="bg-[#121212] border border-[#333333] hover:border-red-600/50 transition-colors p-3 rounded-xl flex flex-col justify-center"
                 >
-                    <div className="summary-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                    <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-widest text-gray-400 mb-1">
                         <span
                             onClick={() => setMovementModal({ isOpen: true, type: 'cash_in', mode: 'details' })}
-                            style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                            className="cursor-pointer hover:text-red-500 transition-colors"
                             title="Click for details"
                         >
                             + Cash In
                         </span>
                         <button
-                            className="add-inline-btn"
+                            className="bg-[#252525] border border-[#444] hover:bg-red-600 hover:border-red-600 hover:text-white px-1.5 py-[1px] rounded text-gray-400 transition-colors"
                             onClick={() => setMovementModal({ isOpen: true, type: 'cash_in', mode: 'add' })}
                             title="Add Cash In"
                         >
@@ -85,27 +86,25 @@ const ShiftSummaryPanel = ({ shiftId, onSummaryUpdate }) => {
                         </button>
                     </div>
                     <div
-                        className="summary-value"
+                        className="text-sm font-black text-white cursor-pointer hover:text-red-500 transition-colors truncate whitespace-nowrap"
                         onClick={() => setMovementModal({ isOpen: true, type: 'cash_in', mode: 'details' })}
-                        style={{ cursor: 'pointer' }}
                     >
                         Rs. {summary.cash_in.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </div>
                 </div>
                 <div
-                    className="summary-item"
-                    style={{ color: 'var(--accent-color)' }}
+                    className="bg-[#121212] border border-[#333333] hover:border-red-600/50 transition-colors p-3 rounded-xl flex flex-col justify-center"
                 >
-                    <div className="summary-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                    <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-widest text-gray-400 mb-1">
                         <span
                             onClick={() => setMovementModal({ isOpen: true, type: 'cash_out', mode: 'details' })}
-                            style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                            className="cursor-pointer hover:text-red-500 transition-colors"
                             title="Click for details"
                         >
                             - Cash Out
                         </span>
                         <button
-                            className="add-inline-btn out"
+                            className="bg-[#252525] border border-[#444] hover:bg-red-600 hover:border-red-600 hover:text-white px-1.5 py-[1px] rounded text-gray-400 transition-colors"
                             onClick={() => setMovementModal({ isOpen: true, type: 'cash_out', mode: 'add' })}
                             title="Add Cash Out"
                         >
@@ -113,24 +112,17 @@ const ShiftSummaryPanel = ({ shiftId, onSummaryUpdate }) => {
                         </button>
                     </div>
                     <div
-                        className="summary-value"
+                        className="text-sm font-black text-white cursor-pointer hover:text-red-500 transition-colors truncate whitespace-nowrap"
                         onClick={() => setMovementModal({ isOpen: true, type: 'cash_out', mode: 'details' })}
-                        style={{ cursor: 'pointer' }}
                     >
                         Rs. {summary.cash_out.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </div>
                 </div>
-                <div className="summary-item" style={{ border: '2px solid var(--accent-color)', background: 'transparent' }}>
-                    <div className="summary-label">Expected Cash</div>
-                    <div className="summary-value" style={{ fontWeight: '800' }}>
-                        Rs. {summary.expected_cash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </div>
-                </div>
             </div>
+
             <button
                 onClick={fetchSummary}
-                className="btn btn-secondary no-print"
-                style={{ marginTop: '20px', fontSize: '0.8rem' }}
+                className="w-full mt-6 py-3 bg-[#252525] hover:bg-[#333333] border border-[#444] text-gray-400 font-bold uppercase tracking-widest text-[10px] rounded-xl transition-all"
             >
                 Refresh Summary
             </button>

@@ -13,6 +13,8 @@ import InventoryDetailPage from './pages/admin/inventory/InventoryDetailPage';
 import ProfilePage from './pages/dashboard/ProfilePage';
 
 import OrdersPage from './pages/orders/OrdersPage';
+import HardwareOrderDetailPage from './pages/orders/HardwareOrderDetailPage';
+import BillOpenPage from './pages/orders/BillOpenPage';
 import CreateOrderPage from './pages/orders/CreateOrderPage';
 import CashierNewOrderPage from './pages/orders/CashierNewOrderPage';
 import CashCounterPage from './pages/dashboard/CashCounterPage';
@@ -26,6 +28,12 @@ function AppContent() {
   // State to hold selected inventory item ID for detail view
   const [selectedInventoryId, setSelectedInventoryId] = useState(null);
 
+  // State to hold selected order ID for detail view
+  const [selectedOrderId, setSelectedOrderId] = useState(null);
+
+  // State to hold order object when editing from details
+  const [editOrderData, setEditOrderData] = useState(null);
+
   const navigateTo = (page, params = {}) => {
     setCurrentPage(page);
     // Optional: update URL
@@ -34,6 +42,12 @@ function AppContent() {
     // Handle params if needed
     if (page === 'inventory-detail' && params.id) {
       setSelectedInventoryId(params.id);
+    }
+    if ((page === 'order-details' || page === 'bill-open') && params.orderId) {
+      setSelectedOrderId(params.orderId);
+    }
+    if (page === 'cashier-new-order') {
+      setEditOrderData(params.editOrder || null);
     }
   };
 
@@ -88,7 +102,7 @@ function AppContent() {
       )}
       {currentPage === 'cashier-new-order' && (
         <ProtectedRoute allowedRoles={['CASHIER', 'ADMIN']} onNavigate={navigateTo}>
-          <CashierNewOrderPage onNavigate={navigateTo} />
+          <CashierNewOrderPage onNavigate={navigateTo} editOrder={editOrderData} />
         </ProtectedRoute>
       )}
       {currentPage === 'cash-counter' && (
@@ -106,6 +120,16 @@ function AppContent() {
       {currentPage === 'orders' && (
         <ProtectedRoute allowedRoles={['ADMIN', 'CASHIER']} onNavigate={navigateTo}>
           <OrdersPage onNavigate={navigateTo} />
+        </ProtectedRoute>
+      )}
+      {currentPage === 'order-details' && (
+        <ProtectedRoute allowedRoles={['ADMIN', 'CASHIER']} onNavigate={navigateTo}>
+          <HardwareOrderDetailPage onNavigate={navigateTo} orderId={selectedOrderId} />
+        </ProtectedRoute>
+      )}
+      {currentPage === 'bill-open' && (
+        <ProtectedRoute allowedRoles={['ADMIN', 'CASHIER']} onNavigate={navigateTo}>
+          <BillOpenPage onNavigate={navigateTo} orderId={selectedOrderId} />
         </ProtectedRoute>
       )}
     </>

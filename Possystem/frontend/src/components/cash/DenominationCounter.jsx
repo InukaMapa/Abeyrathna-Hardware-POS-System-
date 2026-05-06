@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-const DenominationCounter = ({ onTotalChange, initialCounts, readOnly = false }) => {
+const DenominationCounter = ({ onTotalChange, initialCounts, shiftId = 'default', readOnly = false }) => {
     const denominations = [
         { label: 'Rs 5000', value: 5000, key: 'rs5000' },
         { label: 'Rs 2000', value: 2000, key: 'rs2000' },
@@ -15,10 +15,29 @@ const DenominationCounter = ({ onTotalChange, initialCounts, readOnly = false })
         { label: 'Rs 1', value: 1, key: 'rs1' },
     ];
 
-    const [counts, setCounts] = useState({
-        rs5000: 0, rs2000: 0, rs1000: 0, rs500: 0, rs100: 0,
-        rs50: 0, rs20: 0, rs10: 0, rs5: 0, rs2: 0, rs1: 0,
-        ...initialCounts
+    const [counts, setCounts] = useState(() => {
+        const defaultCounts = {
+            rs5000: 0, rs2000: 0, rs1000: 0, rs500: 0, rs100: 0,
+            rs50: 0, rs20: 0, rs10: 0, rs5: 0, rs2: 0, rs1: 0
+        };
+
+        const hasInitial = initialCounts && Object.values(initialCounts).some(v => v > 0);
+
+        if (hasInitial) {
+            return { ...defaultCounts, ...initialCounts };
+        }
+
+        try {
+            const draftStr = localStorage.getItem(`cash_denominations_draft_${shiftId}`);
+            if (draftStr) {
+                const draft = JSON.parse(draftStr);
+                return { ...defaultCounts, ...draft };
+            }
+        } catch (e) {
+            console.error('Failed to parse draft from localStorage', e);
+        }
+
+        return { ...defaultCounts, ...initialCounts };
     });
 
     const [totals, setTotals] = useState({});
@@ -35,7 +54,11 @@ const DenominationCounter = ({ onTotalChange, initialCounts, readOnly = false })
         setTotals(newTotals);
         setGrandTotal(newGrandTotal);
         onTotalChange(newGrandTotal, counts);
-    }, [counts]);
+
+        if (!readOnly) {
+            localStorage.setItem(`cash_denominations_draft_${shiftId}`, JSON.stringify(counts));
+        }
+    }, [counts, shiftId, readOnly]);
 
     const handleCountChange = (key, value) => {
         const num = parseInt(value) || 0;
@@ -73,7 +96,7 @@ const DenominationCounter = ({ onTotalChange, initialCounts, readOnly = false })
                                         className="w-20 px-3 py-2 bg-gray-900/50 border border-[#444] rounded-lg text-white text-center font-bold focus:outline-none focus:ring-2 focus:ring-red-600/50 focus:border-red-600 transition-all placeholder-gray-700 disabled:opacity-50"
                                     />
                                 </td>
-                                <td className="p-4 text-right font-black text-red-500 tabular-nums">
+                                <td className="p-4 text-right font-black text-white tabular-nums">
                                     Rs. {totals[den.key]?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </td>
                             </tr>
@@ -82,9 +105,9 @@ const DenominationCounter = ({ onTotalChange, initialCounts, readOnly = false })
                 </table>
             </div>
 
-            <div className="mt-8 pt-8 border-t-2 border-dashed border-[#333333] flex justify-between items-center relative z-10">
-                <span className="text-gray-400 font-black uppercase tracking-widest">Grand Total</span>
-                <span className="text-4xl font-black text-red-600 tracking-tighter">
+            <div className="mt-6 pt-6 border-t-2 border-dashed border-[#333333] flex justify-between items-center relative z-10">
+                <span className="text-gray-400 text-sm font-black uppercase tracking-widest">Grand Total</span>
+                <span className="text-xl font-black text-red-600 tracking-tighter truncate whitespace-nowrap">
                     Rs. {grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
             </div>

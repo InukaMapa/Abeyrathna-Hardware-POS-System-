@@ -238,8 +238,7 @@ const CashCounterPage = ({ onNavigate }) => {
                         </svg>
                     </button>
                     <div>
-                        <h1 className="text-3xl font-black uppercase tracking-tight m-0">Cash Counter Operations</h1>
-                        <p className="text-gray-500 text-sm font-bold uppercase tracking-widest mt-1">Shift Reconciliation & Tracking</p>
+                        <h2 className="text-2xl lg:text-3xl font-black uppercase tracking-tight m-0">Cash Counter</h2>
                     </div>
                 </div>
 
@@ -253,6 +252,7 @@ const CashCounterPage = ({ onNavigate }) => {
                                 key={`${currentShift.shift_id}-${counterKey}`}
                                 onTotalChange={handleDenominationChange}
                                 initialCounts={initialCounts}
+                                shiftId={currentShift.shift_id}
                             />
                             <p style={{ marginTop: '10px', fontSize: '0.8rem', color: '#666' }}>
                                 * Edit counts above and click "Save Progress" to sync latest counts.
@@ -296,14 +296,6 @@ const CashCounterPage = ({ onNavigate }) => {
                                     </div>
                                 </div>
 
-                                {Math.abs(actualTotal - (summaryData?.expected_cash || 0)) > 500 && (
-                                    <div className="flex items-center gap-3 p-4 bg-red-600/10 border border-red-600/20 rounded-xl text-red-500 font-bold mb-6 text-sm animate-pulse">
-                                        <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                        </svg>
-                                        Warning: Cash difference exceeds LKR 500.00
-                                    </div>
-                                )}
 
                                 <div className="grid grid-cols-1 gap-3 relative z-10">
                                     <button

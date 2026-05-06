@@ -134,8 +134,7 @@ const OrdersPage = ({ onNavigate }) => {
     const getStatusColor = (status) => {
         switch (status?.toUpperCase()) {
             case 'PLACED': return '#3498db';
-            case 'served': return '#2ecc71';
-            case 'pending': return '#f1c40f'; // using pending as default mapped in schema
+            case 'BILL_OPEN': return '#f1c40f';
             case 'PAID':
             case 'CLOSED': return '#95a5a6';
             default: return '#95a5a6';
@@ -157,8 +156,7 @@ const OrdersPage = ({ onNavigate }) => {
                             </svg>
                         </button>
                         <div>
-                            <h2 className="text-3xl font-black uppercase tracking-tight m-0">Incoming Orders</h2>
-                            <p className="text-gray-500 text-sm font-bold uppercase tracking-widest mt-1">Real-time Order Management</p>
+                            <h2 className="text-2xl font-black uppercase tracking-tight m-0">Order Management</h2>
                         </div>
                     </div>
 
@@ -181,26 +179,24 @@ const OrdersPage = ({ onNavigate }) => {
                         {/* Date Range Presets */}
                         <div className="md:col-span-2">
                             <label className="block text-gray-500 text-[10px] font-black uppercase tracking-widest mb-3">Time Period</label>
-                            <div className="flex flex-wrap gap-2">
-                                {[
-                                    { id: 'today', label: 'Today' },
-                                    { id: 'yesterday', label: 'Yesterday' },
-                                    { id: 'week', label: 'Last 7 Days' },
-                                    { id: 'month', label: 'This Month' },
-                                    { id: 'all', label: 'All History' },
-                                    { id: 'custom', label: 'Custom' }
-                                ].map((preset) => (
-                                    <button
-                                        key={preset.id}
-                                        onClick={() => setDateRange(preset.id)}
-                                        className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${dateRange === preset.id
-                                            ? 'bg-red-600 text-white shadow-lg shadow-red-600/20'
-                                            : 'bg-[#252525] text-gray-400 hover:bg-[#333] border border-[#444]'
-                                            }`}
-                                    >
-                                        {preset.label}
-                                    </button>
-                                ))}
+                            <div className="relative">
+                                <select
+                                    value={dateRange}
+                                    onChange={(e) => setDateRange(e.target.value)}
+                                    className="w-full bg-[#252525] text-white text-[10px] font-black uppercase tracking-widest px-4 py-3 rounded-lg border border-[#444] outline-none focus:border-red-600 transition-all appearance-none cursor-pointer"
+                                >
+                                    <option value="today">Today</option>
+                                    <option value="yesterday">Yesterday</option>
+                                    <option value="week">Last 7 Days</option>
+                                    <option value="month">This Month</option>
+                                    <option value="all">All History</option>
+                                    <option value="custom">Custom</option>
+                                </select>
+                                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-white/50">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </div>
                             </div>
                         </div>
 
@@ -214,7 +210,7 @@ const OrdersPage = ({ onNavigate }) => {
                             >
                                 <option value="ALL">ALL STATUSES</option>
                                 <option value="PLACED">PLACED</option>
-                                <option value="SERVED">SERVED</option>
+                                <option value="BILL_OPEN">BILL OPEN</option>
                                 <option value="PAID">CLOSED / PAID</option>
                             </select>
                         </div>
@@ -300,29 +296,34 @@ const OrdersPage = ({ onNavigate }) => {
                             </thead>
                             <tbody className="divide-y divide-[#333333]">
                                 {orders.map(order => (
-                                    <tr key={order.order_id} className="hover:bg-white/5 transition-colors group">
-                                        <td className="p-5 font-bold text-gray-500">#{order.order_id}</td>
-                                        <td className="p-5 font-medium text-red-500">{order.customer_phone || <span className="opacity-20">-</span>}</td>
+                                    <tr
+                                        key={order.order_id}
+                                        className="hover:bg-white/5 transition-colors group cursor-pointer"
+                                        onClick={() => onNavigate('order-details', { orderId: order.order_id })}
+                                    >
+                                        <td className="p-5 font-bold text-gray-400">#{order.order_id}</td>
+                                        <td className="p-5 font-bold text-white">{order.customer_phone || <span className="opacity-20">-</span>}</td>
                                         <td className="p-5">
                                             <div className="flex flex-col gap-1.5">
                                                 {order.order_items && order.order_items.map(item => (
                                                     <span key={item.order_item_id} className="text-sm font-medium text-gray-300">
-                                                        <span className="text-red-600 font-bold">{item.quantity}x</span> {item.item_name}
+                                                        <span className="text-white bg-[#333333] px-1.5 py-0.5 rounded mr-2 font-bold text-xs">{item.quantity}x</span>
+                                                        {item.item_name}
                                                     </span>
                                                 ))}
                                                 {(!order.order_items || order.order_items.length === 0) && <span className="opacity-30 italic">No items</span>}
                                             </div>
                                         </td>
                                         <td className="p-5">
-                                            <span className="font-black text-lg text-red-600">Rs. {order.total_amount}</span>
+                                            <span className="font-bold text-white text-lg tabular-nums">Rs. {parseFloat(order.total_amount).toFixed(2)}</span>
                                         </td>
-                                        <td className="p-5 text-center">
+                                        <td className="p-5 text-center" onClick={(e) => e.stopPropagation()}>
                                             <div className="relative inline-block">
                                                 <select
                                                     value={order.status === 'CLOSED' ? 'PAID' : order.status}
                                                     onChange={(e) => handleStatusChange(order.order_id, e.target.value)}
                                                     disabled={updatingStatusId === order.order_id || order.status === 'PAID' || order.status === 'CLOSED'}
-                                                    className="appearance-none bg-[#252525] text-white text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-full border border-[#444] cursor-pointer hover:border-red-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed outline-none pr-8"
+                                                    className="appearance-none bg-[#252525] text-white text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-full border border-[#444] cursor-pointer hover:border-gray-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed outline-none pr-8"
                                                     style={{ backgroundColor: getStatusColor(order.status) }}
                                                 >
                                                     {(order.status === 'PAID' || order.status === 'CLOSED') ? (
@@ -330,9 +331,7 @@ const OrdersPage = ({ onNavigate }) => {
                                                     ) : (
                                                         <>
                                                             <option value="PLACED">PLACED</option>
-                                                            <option value="PREPARING">PREPARING</option>
-                                                            <option value="SERVED">SERVED</option>
-                                                            <option value="BILL_OPEN">BILL_OPEN</option>
+                                                            <option value="BILL_OPEN">BILL OPEN</option>
                                                             <option value="PAID">CLOSED / PAID</option>
                                                         </>
                                                     )}
