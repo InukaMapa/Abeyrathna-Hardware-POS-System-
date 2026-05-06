@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { ArrowLeft, Package, Clock, Calendar, Truck, Layers, Loader } from 'lucide-react';
 import DashboardLayout from '../../../components/layout/DashboardLayout';
+import { API_BASE_URL } from '../../../config/api';
 import '../../../styles/menu.css'; // Reusing styles
 
 const InventoryDetailPage = ({ inventoryId, onNavigate }) => {
@@ -17,7 +18,7 @@ const InventoryDetailPage = ({ inventoryId, onNavigate }) => {
         const fetchDetails = async () => {
             try {
                 const token = localStorage.getItem('token');
-                const response = await axios.get(`http://localhost:5000/api/inventory/${inventoryId}`, {
+                const response = await axios.get(`${API_BASE_URL}/inventory/${inventoryId}`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
                 setItem(response.data);

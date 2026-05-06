@@ -6,6 +6,7 @@ import EditInventoryModal from './EditInventoryModal';
 import CategoryManagerModal from './CategoryManagerModal';
 import ScanBillModal from './ScanBillModal';
 import DashboardLayout from '../../../components/layout/DashboardLayout';
+import { API_BASE_URL } from '../../../config/api';
 import '../../../styles/menu.css';
 
 const InventoryPage = ({ onNavigate }) => {
@@ -34,7 +35,7 @@ const InventoryPage = ({ onNavigate }) => {
     const fetchCategories = async () => {
         try {
             const token = localStorage.getItem('token');
-            const response = await axios.get('http://localhost:5000/api/inventory/categories', {
+            const response = await axios.get(`${API_BASE_URL}/inventory/categories`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setCategories(response.data);
@@ -52,7 +53,7 @@ const InventoryPage = ({ onNavigate }) => {
             if (filterCategory !== 'All') params.category = filterCategory;
             if (filterStatus !== 'All') params.status = filterStatus;
 
-            const response = await axios.get('http://localhost:5000/api/inventory', {
+            const response = await axios.get(`${API_BASE_URL}/inventory`, {
                 headers: { Authorization: `Bearer ${token}` },
                 params
             });
@@ -68,7 +69,7 @@ const InventoryPage = ({ onNavigate }) => {
         if (!window.confirm('Are you sure you want to delete this item?')) return;
         try {
             const token = localStorage.getItem('token');
-            await axios.delete(`http://localhost:5000/api/inventory/${id}`, {
+            await axios.delete(`${API_BASE_URL}/inventory/${id}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             fetchInventory();

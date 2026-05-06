@@ -69,12 +69,7 @@ export const getDashboardStats = async (req, res) => {
         const onlineCashiersCount = activeShifts.length;
         const activeCashierNames = [...new Set(activeShifts.map(s => s.cashier_name))];
 
-        // 4. Low Inventory
-        const { data: lowStock, error: inventoryError } = await supabase
-            .from('inventory')
-            .select('ingredient_name, quantity, unit, reorder_level')
-            .lte('quantity', 'reorder_level'); // This might need a custom filter or JS filter
-
+        // 4. Low Inventory - Fetch all and filter in JS
         const { data: allInventory, error: allError } = await supabase
             .from('inventory')
             .select('*');

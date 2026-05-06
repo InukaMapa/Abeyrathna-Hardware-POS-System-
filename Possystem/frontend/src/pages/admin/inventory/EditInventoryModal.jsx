@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Save, RefreshCw } from 'lucide-react';
 import axios from 'axios';
+import { API_BASE_URL } from '../../../config/api';
 import '../../../styles/menu.css';
 import { getSuppliers } from '../../../services/supplierService';
 
@@ -78,7 +79,7 @@ const EditInventoryModal = ({ onClose, onSuccess, categories = [], initialData }
                 storage_location: formData.storage_location
             };
 
-            await axios.put(`http://localhost:5000/api/inventory/${initialData.id}`, payload, {
+            await axios.put(`${API_BASE_URL}/inventory/${initialData.id}`, payload, {
                 headers: { Authorization: `Bearer ${token}` }
             });
 

@@ -31,19 +31,10 @@ const LoginPage = ({ onNavigate }) => {
         e.preventDefault();
         if (validateForm()) {
             console.log('🔐 LoginPage: Submitting login...');
-<<<<<<< HEAD
-            
             const result = await login(usernameOrEmail, password);
-            
-            console.log('📊 LoginPage: Login result:', { 
-                success: result.success, 
-=======
-
-            const result = await login(email, password);
 
             console.log('📊 LoginPage: Login result:', {
                 success: result.success,
->>>>>>> origin/Pasindu_dev
                 hasUser: !!result.user,
                 role: result.user?.role
             });
@@ -59,13 +50,8 @@ const LoginPage = ({ onNavigate }) => {
                     console.log('✅ LoginPage: Redirecting ADMIN to dashboard');
                     onNavigate('dashboard');
                 } else if (userRole === 'CASHIER') {
-<<<<<<< HEAD
                     console.log('✅ LoginPage: Redirecting CASHIER to orders');
                     onNavigate('orders');
-=======
-                    console.log('✅ LoginPage: Redirecting CASHIER to dashboard');
-                    onNavigate('dashboard');
->>>>>>> origin/Pasindu_dev
                 } else {
                     // Role is undefined or invalid
                     console.error('❌ LoginPage: Invalid or missing role:', userRole);

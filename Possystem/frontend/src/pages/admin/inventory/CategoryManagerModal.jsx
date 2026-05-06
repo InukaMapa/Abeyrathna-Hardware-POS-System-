@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, Plus, Trash2, Tag } from 'lucide-react';
 import { Loader } from 'lucide-react';
 import axios from 'axios';
+import { API_BASE_URL } from '../../../config/api';
 import '../../../styles/menu.css'; // Reusing styles
 
 const CategoryManagerModal = ({ isOpen, onClose, categories, onCategoryChange }) => {
@@ -19,7 +20,7 @@ const CategoryManagerModal = ({ isOpen, onClose, categories, onCategoryChange })
         setError('');
         try {
             const token = localStorage.getItem('token');
-            await axios.post('http://localhost:5000/api/inventory/categories',
+            await axios.post(`${API_BASE_URL}/inventory/categories`,
                 { name: newCategory },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
@@ -39,7 +40,7 @@ const CategoryManagerModal = ({ isOpen, onClose, categories, onCategoryChange })
         // Optimistic update prevention usually requires checking usage, but for now simple delete
         try {
             const token = localStorage.getItem('token');
-            await axios.delete(`http://localhost:5000/api/inventory/categories/${id}`, {
+            await axios.delete(`${API_BASE_URL}/inventory/categories/${id}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             onCategoryChange();

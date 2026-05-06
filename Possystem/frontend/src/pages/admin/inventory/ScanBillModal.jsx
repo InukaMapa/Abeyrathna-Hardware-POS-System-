@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { X, UploadCloud, RefreshCw, CheckCircle, Save, AlertTriangle } from 'lucide-react';
 import axios from 'axios';
+import { API_BASE_URL } from '../../../config/api';
 import '../../../styles/menu.css'; // Reuse existing modal and styling classes
 
 const ScanBillModal = ({ onClose, onSuccess }) => {
@@ -35,7 +36,7 @@ const ScanBillModal = ({ onClose, onSuccess }) => {
         try {
             const token = localStorage.getItem('token');
             // Call the Node.js API Proxy which hits the FastAPI ML Service
-            const response = await axios.post('http://localhost:5000/api/ocr/upload-bill', formData, {
+            const response = await axios.post(`${API_BASE_URL}/ocr/upload-bill`, formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
                     'Authorization': `Bearer ${token}`
@@ -88,7 +89,7 @@ const ScanBillModal = ({ onClose, onSuccess }) => {
 
             // 1. Update Inventory for each verified item
             const updatePromises = extractedData.map(item => {
-                return axios.post('http://localhost:5000/api/inventory', {
+                return axios.post(`${API_BASE_URL}/inventory`, {
                     ingredient_name: item.name,
                     quantity: item.quantity,
                     unit: item.unit,
@@ -101,7 +102,7 @@ const ScanBillModal = ({ onClose, onSuccess }) => {
             await Promise.all(updatePromises);
 
             // 2. Log Scan History
-            await axios.post('http://localhost:5000/api/ocr/log-scan', {
+            await axios.post(`${API_BASE_URL}/ocr/log-scan`, {
                 image_url: "local_scan.jpg", // Placeholder until S3 is connected
                 ocr_text: rawText,
                 admin_id: admin_id
@@ -109,7 +110,7 @@ const ScanBillModal = ({ onClose, onSuccess }) => {
 
             // 3. AI Learning: Save Template for this seller from user corrections
             if (supplierName && supplierName !== "Unknown Seller") {
-                await axios.post('http://localhost:5000/api/ocr/save-template', {
+                await axios.post(`${API_BASE_URL}/ocr/save-template`, {
                     supplier_name: supplierName,
                     items: extractedData,
                     raw_text: rawText
