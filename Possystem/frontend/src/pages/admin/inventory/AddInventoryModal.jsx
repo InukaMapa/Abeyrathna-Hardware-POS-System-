@@ -104,13 +104,25 @@ const AddInventoryModal = ({ onClose, onSuccess, onScanBillClick, categories = [
                                 />
                             </div>
                             <div className="form-group">
-                                <label>Item Code (Barcode)</label>
+                                <div className="flex justify-between items-center mb-1">
+                                    <label className="mb-0">Item Code (Barcode)</label>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const generatedCode = 'HW' + Date.now().toString().slice(-6) + Math.floor(1000 + Math.random() * 9000);
+                                            setFormData(prev => ({ ...prev, item_code: generatedCode }));
+                                        }}
+                                        className="text-xs text-[#ffb74d] hover:text-[#ffa726] flex items-center gap-1 font-medium transition-colors cursor-pointer bg-none border-none p-0"
+                                    >
+                                        <RefreshCw className="w-3 h-3" /> Auto-Generate
+                                    </button>
+                                </div>
                                 <div className="relative">
                                     <input
                                         type="text" name="item_code"
                                         value={formData.item_code} onChange={handleChange}
-                                        className="font-mono"
-                                        placeholder="SCAN-12345"
+                                        className="font-mono pr-10"
+                                        placeholder="Auto-generated if empty"
                                     />
                                     <ScanLine className="absolute right-3 top-2.5 text-[#666] w-4 h-4 pointer-events-none" />
                                 </div>
