@@ -5,16 +5,16 @@ import { useAuth } from '../../context/AuthContext';
 
 const LoginPage = ({ onNavigate }) => {
     const { login, loading, error: authError } = useAuth();
-    const [email, setEmail] = useState('');
+    const [usernameOrEmail, setUsernameOrEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [errors, setErrors] = useState({ email: '', password: '' });
+    const [errors, setErrors] = useState({ usernameOrEmail: '', password: '' });
 
     const validateForm = () => {
         let isValid = true;
         const newErrors = { email: '', password: '' };
 
-        if (!email.trim()) {
-            newErrors.email = 'Username is required';
+        if (!usernameOrEmail.trim()) {
+            newErrors.usernameOrEmail = 'Username or Email is required';
             isValid = false;
         }
 
@@ -31,8 +31,7 @@ const LoginPage = ({ onNavigate }) => {
         e.preventDefault();
         if (validateForm()) {
             console.log('🔐 LoginPage: Submitting login...');
-
-            const result = await login(email, password);
+            const result = await login(usernameOrEmail, password);
 
             console.log('📊 LoginPage: Login result:', {
                 success: result.success,
@@ -51,8 +50,8 @@ const LoginPage = ({ onNavigate }) => {
                     console.log('✅ LoginPage: Redirecting ADMIN to dashboard');
                     onNavigate('dashboard');
                 } else if (userRole === 'CASHIER') {
-                    console.log('✅ LoginPage: Redirecting CASHIER to dashboard');
-                    onNavigate('dashboard');
+                    console.log('✅ LoginPage: Redirecting CASHIER to orders');
+                    onNavigate('orders');
                 } else {
                     // Role is undefined or invalid
                     console.error('❌ LoginPage: Invalid or missing role:', userRole);
@@ -88,10 +87,10 @@ const LoginPage = ({ onNavigate }) => {
                 <InputGroup
                     type="text"
                     placeholder="USERNAME"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    value={usernameOrEmail}
+                    onChange={(e) => setUsernameOrEmail(e.target.value)}
                     icon={userIcon}
-                    error={errors.email}
+                    error={errors.usernameOrEmail}
                 />
 
                 <InputGroup

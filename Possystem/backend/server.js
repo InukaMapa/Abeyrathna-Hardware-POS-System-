@@ -13,6 +13,7 @@ import cashRoutes from './src/routes/cashRoutes.js';
 import adminRoutes from './src/routes/adminRoutes.js';
 import supplierRoutes from './src/routes/supplierRoutes.js';
 import websiteRoutes from './src/website/routes/websiteRoutes.js';
+import ocrRoutes from './src/ocr/routes/ocrRoutes.js';
 
 // Initialize App
 const app = express();
@@ -42,7 +43,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/suppliers', supplierRoutes);
 app.use('/api/website', websiteRoutes);
 
-import ocrRoutes from './src/ocr/routes/ocrRoutes.js';
+// OCR Routes
 app.use('/api/ocr', ocrRoutes);
 
 // Health Check
@@ -70,9 +71,23 @@ app.use((err, req, res, next) => {
 
 // Start Server
 const PORT = config.port || 5000;
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
     console.log(`Server running in ${config.env} mode on port ${PORT}`);
 });
+
+// Handle server errors
+server.on('error', (err) => {
+    console.error('[SERVER ERROR]', err);
+    if (err.code === 'EADDRINUSE') {
+        console.error(`Port ${PORT} is already in use.`);
+        process.exit(1);
+    }
+});
+
+// Keep process alive
+setInterval(() => {
+    // This just keeps the event loop active if needed
+}, 1000 * 60 * 60);
 
 
 // TODO: Integrate NLP routes if needed.

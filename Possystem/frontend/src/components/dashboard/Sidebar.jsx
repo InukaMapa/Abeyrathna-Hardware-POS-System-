@@ -1,7 +1,8 @@
-import React from 'react';
+import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
 import '../../styles/dashboard.css';
 import logo from '../../assets/logo.jpeg';
+import { API_BASE_URL } from '../../config/api';
 
 const Sidebar = ({ onNavigate, activePage }) => {
     const { userRole } = useAuth();
@@ -54,10 +55,10 @@ const Sidebar = ({ onNavigate, activePage }) => {
                             if (userRole === 'CASHIER' && activePage === 'cash-counter' && item.id !== 'cash-counter') {
                                 try {
                                     const token = localStorage.getItem('token');
-                                    const response = await fetch(`${API_BASE_URL}/cash/admin/shifts`, {
-                                        headers: { 'Authorization': `Bearer ${token}` }
+                                    const response = await axios.get(`${API_BASE_URL}/cash/admin/shifts`, {
+                                        headers: { Authorization: `Bearer ${token}` }
                                     });
-                                    const data = await response.json();
+                                    const data = response.data;
                                     const activeShift = data.find(s => s.status === 'OPEN' || s.status === 'REPORT_SUBMITTED');
 
                                     if (activeShift) {

@@ -25,6 +25,25 @@ export const fetchInventoryList = async (req, res) => {
 
         if (error) throw error;
 
+        // Auto-generate barcodes for any existing items missing one
+        if (data && data.length > 0) {
+            for (let i = 0; i < data.length; i++) {
+                const item = data[i];
+                if (!item.item_code || item.item_code.trim() === '') {
+                    const generatedCode = 'HW' + Date.now().toString().slice(-6) + Math.floor(1000 + Math.random() * 9000);
+                    try {
+                        await supabase
+                            .from('inventory')
+                            .update({ item_code: generatedCode })
+                            .eq('id', item.id);
+                        item.item_code = generatedCode;
+                    } catch (dbErr) {
+                        console.error(`Failed to auto-generate item_code for item ${item.id}:`, dbErr);
+                    }
+                }
+            }
+        }
+
         // Client-side status filtering if needed, though better in DB if possible
         // For 'status' filter: 'low_stock', 'out_of_stock'
         let filteredData = data.map(item => {
@@ -69,6 +88,20 @@ export const fetchInventoryItemDetails = async (req, res) => {
             .single();
 
         if (itemError) throw itemError;
+
+        // Auto-generate barcode if missing
+        if (item && (!item.item_code || item.item_code.trim() === '')) {
+            const generatedCode = 'HW' + Date.now().toString().slice(-6) + Math.floor(1000 + Math.random() * 9000);
+            try {
+                await supabase
+                    .from('inventory')
+                    .update({ item_code: generatedCode })
+                    .eq('id', item.id);
+                item.item_code = generatedCode;
+            } catch (dbErr) {
+                console.error(`Failed to auto-generate item_code in details for item ${id}:`, dbErr);
+            }
+        }
 
         // 2. Get Batches (active only or all? Let's get all sorted by expiry)
         const { data: batches, error: batchError } = await supabase
@@ -163,11 +196,15 @@ export const addInventoryItem = async (req, res) => {
             if (updateError) throw updateError;
         } else {
             // Create new
+            const finalItemCode = item_code && item_code.trim() !== ''
+                ? item_code
+                : 'HW' + Date.now().toString().slice(-6) + Math.floor(1000 + Math.random() * 9000);
+
             const { data: newItem, error: createError } = await supabase
                 .from('inventory')
                 .insert([{
                     ingredient_name,
-                    item_code,
+                    item_code: finalItemCode,
                     category,
                     quantity,
                     unit,

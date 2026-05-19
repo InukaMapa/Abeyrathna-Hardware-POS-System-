@@ -29,6 +29,8 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
     const [submitError, setSubmitError] = useState(null);
     const [showCart, setShowCart] = useState(false);
     const [customerPhone, setCustomerPhone] = useState(editOrder?.customer_phone || '');
+    const [barcodeInput, setBarcodeInput] = useState('');
+    const [barcodeError, setBarcodeError] = useState(null);
 
     // Initialize cart from editOrder if present
     useEffect(() => {
@@ -66,7 +68,8 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
                     category: item.category,
                     image: item.image || null,
                     unit: item.unit,
-                    quantity: item.quantity
+                    quantity: item.quantity,
+                    item_code: item.item_code
                 }));
 
                 setInventoryItems(mappedItems);
@@ -142,6 +145,35 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
 
     const cartTotal = cartItems.reduce((s, c) => s + c.price * c.quantity, 0);
     const cartCount = cartItems.reduce((s, c) => s + c.quantity, 0);
+
+    /* ── barcode scanner handler ── */
+    const handleBarcodeSubmit = (e) => {
+        if (e) e.preventDefault();
+        setBarcodeError(null);
+
+        const input = barcodeInput.trim();
+        if (!input) return;
+
+        // Search in mapped inventory items locally
+        const foundItem = inventoryItems.find(
+            item => item.item_code && item.item_code.toLowerCase() === input.toLowerCase()
+        );
+
+        if (foundItem) {
+            if (foundItem.quantity <= 0) {
+                setBarcodeError('Item is out of stock!');
+                setTimeout(() => setBarcodeError(null), 3000);
+                return;
+            }
+
+            addToCart(foundItem);
+            setBarcodeInput('');
+            setShowCart(true); // Automatically show the cart on mobile
+        } else {
+            setBarcodeError('Barcode ID not found!');
+            setTimeout(() => setBarcodeError(null), 3000);
+        }
+    };
 
     /* ── submit order ── */
     const handleSubmit = async () => {
@@ -439,6 +471,39 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
                                         </svg>
                                     </button>
                                 </div>
+                            </div>
+
+                            {/* Barcode scanner input box */}
+                            <div className="mb-6 bg-[#161616] border border-[#2a2a2a] rounded-xl p-3.5 shadow-inner">
+                                <label className="block text-[10px] font-black uppercase tracking-widest text-[#ffb74d] mb-1.5 flex items-center gap-1.5">
+                                    <svg className="w-3.5 h-3.5 text-[#ffb74d]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                                    </svg>
+                                    Barcode Scanner / ID Input
+                                </label>
+                                <form onSubmit={handleBarcodeSubmit} className="flex gap-2 items-stretch">
+                                    <input
+                                        type="text"
+                                        value={barcodeInput}
+                                        onChange={(e) => setBarcodeInput(e.target.value)}
+                                        placeholder="Scan or type barcode..."
+                                        className="flex-1 bg-[#0d0d0d] border border-[#333] rounded-xl px-3 py-2 text-white text-xs font-mono focus:outline-none focus:border-[#ffb74d] focus:ring-1 focus:ring-[#ffb74d]/30 transition-all font-bold"
+                                    />
+                                    <button
+                                        type="submit"
+                                        className="px-3 bg-[#1a1a1a] border border-[#333] hover:border-[#ffb74d] text-gray-500 hover:text-[#ffb74d] rounded-xl transition-all cursor-pointer flex items-center justify-center hover:bg-[#252525] active:scale-95 shadow-md"
+                                        title="Add Item"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                        </svg>
+                                    </button>
+                                </form>
+                                {barcodeError && (
+                                    <span className="text-[10px] text-red-500 font-bold mt-1.5 block animate-pulse">
+                                        ⚠️ {barcodeError}
+                                    </span>
+                                )}
                             </div>
 
                             {/* Cart items */}

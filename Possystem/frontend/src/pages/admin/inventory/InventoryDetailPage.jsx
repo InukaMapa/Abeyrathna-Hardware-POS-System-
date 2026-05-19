@@ -1,12 +1,91 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { ArrowLeft, Package, Clock, Calendar, Truck, Layers, Loader } from 'lucide-react';
+import { ArrowLeft, Package, Clock, Calendar, Truck, Layers, Loader, Info, X, Printer } from 'lucide-react';
+import JsBarcode from 'jsbarcode';
 import DashboardLayout from '../../../components/layout/DashboardLayout';
+import { API_BASE_URL } from '../../../config/api';
 import '../../../styles/menu.css'; // Reusing styles
 
 const InventoryDetailPage = ({ inventoryId, onNavigate }) => {
     const [item, setItem] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [showBarcodePopup, setShowBarcodePopup] = useState(false);
+    const barcodeRef = useRef(null);
+
+    useEffect(() => {
+        if (showBarcodePopup && barcodeRef.current && item && item.item_code) {
+            try {
+                JsBarcode(barcodeRef.current, item.item_code, {
+                    format: 'CODE128',
+                    lineColor: '#000000',
+                    background: '#FFFFFF',
+                    width: 2,
+                    height: 60,
+                    displayValue: true,
+                    fontSize: 14,
+                    margin: 10
+                });
+            } catch (err) {
+                console.error('Error rendering barcode:', err);
+            }
+        }
+    }, [showBarcodePopup, item]);
+
+    const handlePrintBarcode = () => {
+        const printWindow = window.open('', '_blank');
+        const svgHtml = barcodeRef.current ? barcodeRef.current.outerHTML : '';
+        printWindow.document.write(`
+            <html>
+            <head>
+                <title>Print Barcode - ${item.ingredient_name}</title>
+                <style>
+                    body {
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        justify-content: center;
+                        height: 100vh;
+                        margin: 0;
+                        font-family: system-ui, -apple-system, sans-serif;
+                    }
+                    .label {
+                        text-align: center;
+                        padding: 20px;
+                        border: 1px dashed #ccc;
+                        border-radius: 8px;
+                        background: white;
+                    }
+                    .title {
+                        font-size: 18px;
+                        font-weight: bold;
+                        margin-bottom: 5px;
+                        color: #000;
+                    }
+                    .subtitle {
+                        font-size: 13px;
+                        color: #555;
+                        margin-bottom: 15px;
+                        font-weight: 500;
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="label">
+                    <div class="title">${item.ingredient_name}</div>
+                    <div class="subtitle">Rs. ${parseFloat(item.selling_price || 0).toFixed(2)}</div>
+                    ${svgHtml}
+                </div>
+                <script>
+                    window.onload = function() {
+                        window.print();
+                        window.close();
+                    }
+                </script>
+            </body>
+            </html>
+        `);
+        printWindow.document.close();
+    };
 
     useEffect(() => {
         if (!inventoryId) {
@@ -17,7 +96,7 @@ const InventoryDetailPage = ({ inventoryId, onNavigate }) => {
         const fetchDetails = async () => {
             try {
                 const token = localStorage.getItem('token');
-                const response = await axios.get(`http://localhost:5000/api/inventory/${inventoryId}`, {
+                const response = await axios.get(`${API_BASE_URL}/inventory/${inventoryId}`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
                 setItem(response.data);
@@ -59,7 +138,19 @@ const InventoryDetailPage = ({ inventoryId, onNavigate }) => {
                             <div className="absolute top-0 right-0 p-4 opacity-5">
                                 <Package className="w-32 h-32 text-white" />
                             </div>
-                            <h1 className="text-3xl font-bold text-[#E0E0E0] mb-2">{item.ingredient_name}</h1>
+                            
+                            {/* Info Button in Right Top Corner */}
+                            <div className="absolute top-4 right-4 z-10">
+                                <button
+                                    onClick={() => setShowBarcodePopup(true)}
+                                    className="bg-[#2A2A2A] hover:bg-[#333] text-[#ffb74d] hover:text-[#ffa726] border border-[#ffb74d]/20 hover:border-[#ffb74d]/50 px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all text-xs font-semibold shadow-md active:scale-95 cursor-pointer"
+                                    title="View Barcode Info"
+                                >
+                                    <Info className="w-4 h-4" /> Info
+                                </button>
+                            </div>
+                            
+                            <h1 className="text-3xl font-bold text-[#E0E0E0] mb-2 pr-16">{item.ingredient_name}</h1>
 
                             <div className="flex flex-wrap gap-2 mb-6">
                                 <span className="px-2 py-1 bg-[#2A2A2A] text-[#E0E0E0] rounded-md text-xs font-medium border border-[#333]">
@@ -185,6 +276,59 @@ const InventoryDetailPage = ({ inventoryId, onNavigate }) => {
                     </div>
                 </div>
             </div>
+            
+            {/* Barcode / Info Modal */}
+            {showBarcodePopup && (
+                <div className="modal-overlay z-50">
+                    <div className="modal-content text-center animate-scale-up" style={{ width: '420px', maxWidth: '95%', background: '#1E1E1E', border: '1px solid #333' }}>
+                        <div className="modal-header border-b border-[#333] pb-3 flex justify-between items-center">
+                            <h3 className="text-lg font-bold text-[#E0E0E0] flex items-center gap-2">
+                                <Package className="w-5 h-5 text-[#ffb74d]" /> Item Barcode Info
+                            </h3>
+                            <button 
+                                onClick={() => setShowBarcodePopup(false)} 
+                                className="text-gray-400 hover:text-white transition-colors cursor-pointer"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        
+                        <div className="py-6 flex flex-col items-center justify-center space-y-4">
+                            <div className="text-left w-full px-2">
+                                <h4 className="text-xl font-bold text-white">{item.ingredient_name}</h4>
+                                <p className="text-xs text-[#A0A0A0] mt-0.5">Category: {item.category || 'Uncategorized'}</p>
+                            </div>
+                            
+                            {/* Barcode Rendered Here */}
+                            <div className="my-2 p-4 bg-white rounded-lg border border-[#333] flex justify-center items-center shadow-inner">
+                                <svg ref={barcodeRef}></svg>
+                            </div>
+                            
+                            <div className="w-full text-left">
+                                <label className="text-xs text-[#666] font-semibold uppercase tracking-wider block mb-1">Barcode / Item Code</label>
+                                <div className="text-center font-mono text-sm text-[#ffb74d] bg-[#111] px-3 py-2 rounded border border-[#333] w-full select-all font-bold">
+                                    {item.item_code}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div className="modal-actions border-t border-[#333] pt-3 flex gap-2 justify-end">
+                            <button
+                                onClick={handlePrintBarcode}
+                                className="bg-[#2A2A2A] hover:bg-[#333] text-[#E0E0E0] border border-[#333] hover:border-[#ffb74d]/50 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
+                            >
+                                <Printer className="w-4 h-4 text-[#ffb74d]" /> Print Label
+                            </button>
+                            <button
+                                onClick={() => setShowBarcodePopup(false)}
+                                className="btn-secondary px-4 py-2 cursor-pointer"
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </DashboardLayout>
     );
 };
