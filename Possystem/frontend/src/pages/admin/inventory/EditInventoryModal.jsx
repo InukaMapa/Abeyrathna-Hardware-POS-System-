@@ -5,7 +5,7 @@ import { API_BASE_URL } from '../../../config/api';
 import '../../../styles/menu.css';
 import { getSuppliers } from '../../../services/supplierService';
 
-const EditInventoryModal = ({ onClose, onSuccess, categories = [], initialData }) => {
+const EditInventoryModal = ({ onClose, onSuccess, categories = [], batches = [], initialData }) => {
     const [formData, setFormData] = useState({
         ingredient_name: '',
         item_code: '',
@@ -13,27 +13,15 @@ const EditInventoryModal = ({ onClose, onSuccess, categories = [], initialData }
         quantity: '',
         unit: 'kg',
         reorder_level: '10',
-        supplier_info: '',
-        supplier_id: '',
+        batch_id: '',
+        buying_price: '',
         selling_price: '',
         storage_location: '',
-        expiry_date: '',
-        batch_code: ''
+        expiry_date: ''
     });
-    const [suppliers, setSuppliers] = useState([]);
     const [loading, setLoading] = useState(false);
 
-    useEffect(() => {
-        const fetchSuppliers = async () => {
-            try {
-                const data = await getSuppliers();
-                setSuppliers(data);
-            } catch (error) {
-                console.error('Error fetching suppliers:', error);
-            }
-        };
-        fetchSuppliers();
-    }, []);
+
 
     const units = ['kg', 'g', 'pcs', 'liters', 'bottles', 'cans'];
 
@@ -46,12 +34,11 @@ const EditInventoryModal = ({ onClose, onSuccess, categories = [], initialData }
                 quantity: initialData.quantity || '',
                 unit: initialData.unit || 'kg',
                 reorder_level: initialData.reorder_level || '10',
-                supplier_info: initialData.supplier_info || '',
-                supplier_id: initialData.supplier_id || '',
+                batch_id: initialData.batch_id || '',
+                buying_price: initialData.buying_price || '',
                 selling_price: initialData.selling_price || '',
                 storage_location: initialData.storage_location || '',
-                expiry_date: initialData.expiry_date ? new Date(initialData.expiry_date).toISOString().split('T')[0] : '',
-                batch_code: initialData.batch_code || ''
+                expiry_date: initialData.expiry_date ? new Date(initialData.expiry_date).toISOString().split('T')[0] : ''
             });
         }
     }, [initialData, categories]);
@@ -73,8 +60,8 @@ const EditInventoryModal = ({ onClose, onSuccess, categories = [], initialData }
                 quantity: formData.quantity,
                 unit: formData.unit,
                 reorder_level: formData.reorder_level,
-                supplier_info: formData.supplier_info,
-                supplier_id: formData.supplier_id,
+                batch_id: formData.batch_id,
+                buying_price: formData.buying_price,
                 selling_price: formData.selling_price,
                 storage_location: formData.storage_location
             };
@@ -170,13 +157,23 @@ const EditInventoryModal = ({ onClose, onSuccess, categories = [], initialData }
                                     value={formData.reorder_level} onChange={handleChange}
                                 />
                             </div>
-                            <div className="form-group">
-                                <label>Selling Price (Rs.) *</label>
-                                <input
-                                    type="number" step="0.01" required name="selling_price"
-                                    value={formData.selling_price} onChange={handleChange}
-                                    placeholder="0.00"
-                                />
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="form-group">
+                                    <label>Buying Price (Rs.) *</label>
+                                    <input
+                                        type="number" step="0.01" required name="buying_price"
+                                        value={formData.buying_price} onChange={handleChange}
+                                        placeholder="Cost Price"
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label>Selling Price (Rs.) *</label>
+                                    <input
+                                        type="number" step="0.01" required name="selling_price"
+                                        value={formData.selling_price} onChange={handleChange}
+                                        placeholder="Retail Price"
+                                    />
+                                </div>
                             </div>
                             <div className="form-group">
                                 <label>Storage Location</label>
@@ -186,46 +183,23 @@ const EditInventoryModal = ({ onClose, onSuccess, categories = [], initialData }
                                     placeholder="e.g. Shelf A-1"
                                 />
                             </div>
-                            <div className="md:col-span-2 grid grid-cols-2 gap-4 border-t border-[#333] pt-4 mt-2">
-                                <div className="form-group">
-                                    <label>Batch Code (Optional)</label>
-                                    <input
-                                        type="text" name="batch_code"
-                                        value={formData.batch_code} onChange={handleChange}
-                                        placeholder="Auto-generated if empty"
-                                    />
-                                </div>
-                                <div className="form-group">
-                                    <label>Expiry Date (Optional)</label>
-                                    <input
-                                        type="date" name="expiry_date"
-                                        value={formData.expiry_date} onChange={handleChange}
-                                    />
-                                </div>
-                            </div>
-                            <div className="md:col-span-2 form-group">
-                                <label>Supplier (Optional)</label>
+                            <div className="md:col-span-2 form-group border-t border-[#333] pt-4 mt-2">
+                                <label>Select Inventory Batch *</label>
                                 <select
-                                    name="supplier_id"
-                                    value={formData.supplier_id}
+                                    name="batch_id"
+                                    required
+                                    value={formData.batch_id}
                                     onChange={handleChange}
+                                    className="font-bold border-[#D4AF37]/30"
                                 >
-                                    <option value="">Select Supplier</option>
-                                    {suppliers.map(s => (
-                                        <option key={s.id} value={s.id}>
-                                            {s.supplier_name} ({s.company_name || 'N/A'})
+                                    <option value="">-- Change Active Batch --</option>
+                                    {batches.map(b => (
+                                        <option key={b.id} value={b.id}>
+                                            {b.batch_number} | {b.supplier_name} ({b.date})
                                         </option>
                                     ))}
                                 </select>
-                            </div>
-                            <div className="md:col-span-2 form-group">
-                                <label>Additional Supplier Notes</label>
-                                <textarea
-                                    name="supplier_info"
-                                    value={formData.supplier_info} onChange={handleChange}
-                                    rows="1"
-                                    placeholder="Any additional details..."
-                                ></textarea>
+                                <p className="text-[10px] text-white/20 mt-1.5 ml-1 italic">Supplier identity is derived from the selected procurement batch.</p>
                             </div>
                         </div>
                     </form>

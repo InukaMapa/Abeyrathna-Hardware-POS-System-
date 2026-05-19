@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS public.orders (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Create Order Items Table
+-- Create Order Items Table 
 CREATE TABLE IF NOT EXISTS public.order_items (
     order_item_id SERIAL PRIMARY KEY,
     order_id INTEGER REFERENCES public.orders(order_id) ON DELETE CASCADE,

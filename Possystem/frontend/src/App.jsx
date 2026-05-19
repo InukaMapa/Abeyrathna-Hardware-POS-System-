@@ -20,7 +20,9 @@ import CashierNewOrderPage from './pages/orders/CashierNewOrderPage';
 import CashCounterPage from './pages/dashboard/CashCounterPage';
 import CashManagementPage from './pages/admin/CashManagementPage';
 import SupplierPage from './pages/admin/supplier/SupplierPage';
-import './styles/auth.css';
+import SupplierReturnsPage from './pages/admin/supplier/SupplierReturnsPage';
+import ReturnManagementPage from './pages/admin/supplier/ReturnManagementPage';
+import './styles/dashboard.css';
 
 function AppContent() {
   const [currentPage, setCurrentPage] = useState('login');
@@ -30,6 +32,9 @@ function AppContent() {
 
   // State to hold selected order ID for detail view
   const [selectedOrderId, setSelectedOrderId] = useState(null);
+
+  // State to hold selected return ID for management
+  const [selectedReturnId, setSelectedReturnId] = useState(null);
 
   // State to hold order object when editing from details
   const [editOrderData, setEditOrderData] = useState(null);
@@ -48,6 +53,9 @@ function AppContent() {
     }
     if (page === 'cashier-new-order') {
       setEditOrderData(params.editOrder || null);
+    }
+    if (page === 'return-management' && params.id) {
+      setSelectedReturnId(params.id);
     }
   };
 
@@ -91,6 +99,16 @@ function AppContent() {
       {currentPage === 'supplier' && (
         <ProtectedRoute allowedRoles={['ADMIN']} onNavigate={navigateTo}>
           <SupplierPage onNavigate={navigateTo} />
+        </ProtectedRoute>
+      )}
+      {currentPage === 'supplier-returns' && (
+        <ProtectedRoute allowedRoles={['ADMIN']} onNavigate={navigateTo}>
+          <SupplierReturnsPage onNavigate={navigateTo} />
+        </ProtectedRoute>
+      )}
+      {currentPage === 'return-management' && (
+        <ProtectedRoute allowedRoles={['ADMIN']} onNavigate={navigateTo}>
+          <ReturnManagementPage onNavigate={navigateTo} returnId={selectedReturnId} />
         </ProtectedRoute>
       )}
 
