@@ -34,12 +34,12 @@ const Sidebar = ({ onNavigate, activePage }) => {
 
     return (
         <div className="sidebar">
-            <div className="sidebar-header" style={{ flexDirection: 'column', gap: '10px' }}>
-                <div className="sidebar-logo">
-                    <img src={logo} alt="Abeyrathna Trade Center POS" style={{ maxWidth: '100%', height: 'auto', maxHeight: '80px' }} />
+            <div className="sidebar-header" style={{ flexDirection: 'column', gap: '10px', padding: '24px 16px' }}>
+                <div className="sidebar-logo" style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+                    <img src={logo} alt="Abeyrathna Trade Center POS" style={{ width: '90%', height: 'auto', objectFit: 'contain', borderRadius: '12px' }} />
                 </div>
-                <div style={{ color: '#C9C9C9', fontWeight: 'bold', textAlign: 'center' }}>Abeyrathna Trade Center</div>
-                <div style={{ color: '#9CA3AF', fontSize: '12px', textAlign: 'center', marginTop: '-5px' }}>
+                <div style={{ color: '#ffffff', fontWeight: '700', textAlign: 'center', fontSize: '14.5px', letterSpacing: '0.5px' }}>Abeyrathna Trade Center</div>
+                <div style={{ color: 'rgba(255, 255, 255, 0.75)', fontSize: '12px', textAlign: 'center', marginTop: '-5px', fontWeight: '600' }}>
                     {userRole === 'ADMIN' ? 'Admin Panel' : userRole === 'CASHIER' ? 'Cashier Panel' : ''}
                 </div>
             </div>

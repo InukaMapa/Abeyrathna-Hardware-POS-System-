@@ -165,28 +165,30 @@ const ShiftReportModal = ({ isOpen, onClose, shift, onApproved, selectedCount = 
                 .modal-overlay {
                     position: fixed;
                     top: 0; left: 0; right: 0; bottom: 0;
-                    background: rgba(0,0,0,0.8);
+                    background: rgba(22, 101, 52, 0.25);
                     display: flex; align-items: center; justify-content: center;
-                    z-index: 2100; backdrop-filter: blur(5px);
+                    z-index: 2100; backdrop-filter: blur(8px);
                 }
                 .shift-report-modal {
                     width: 95%; max-width: 800px; max-height: 90vh;
-                    background: #121212; border: 1px solid #333; border-radius: 12px;
+                    background: var(--bg-secondary); border: 1px solid var(--border-color); 
+                    border-top: 4px solid var(--primary-green); border-radius: 20px;
                     display: flex; flex-direction: column; overflow: hidden;
+                    box-shadow: 0 15px 40px rgba(22, 101, 52, 0.15);
                 }
-                .modal-header { padding: 20px; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; }
-                .modal-header h2 { margin: 0; font-size: 1.2rem; color: #fff; }
-                .modal-body { padding: 20px; overflow-y: auto; flex: 1; }
+                .modal-header { padding: 20px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
+                .modal-header h2 { margin: 0; font-size: 1.25rem; color: var(--text-primary); font-family: 'Poppins', sans-serif; font-weight: 700; }
+                .modal-body { padding: 24px; overflow-y: auto; flex: 1; }
                 .report-section { margin-bottom: 25px; }
-                .report-subtitle { color: var(--accent-color); margin-bottom: 10px; border-bottom: 1px solid #222; padding-bottom: 5px; text-transform: uppercase; font-size: 0.8rem; letter-spacing: 1px; }
-                .report-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; color: #888; font-size: 0.9rem; }
-                .summary-grid-compact { background: #1a1a1a; padding: 15px; border-radius: 8px; border: 1px solid #222; }
-                .summary-row { display: flex; justify-content: space-between; padding: 6px 0; color: #ccc; }
-                .summary-row.success { color: var(--success-color); }
-                .summary-row.danger { color: #e74c3c; }
-                .summary-row.highlight { color: #fff; font-weight: bold; }
-                .summary-row.large { font-size: 1.2rem; font-weight: 800; margin-top: 10px; padding-top: 10px; border-top: 2px solid #333; }
-                .modal-footer { padding: 15px 20px; border-top: 1px solid #333; display: flex; justify-content: flex-end; gap: 10px; }
+                .report-subtitle { color: var(--primary-green); margin-bottom: 12px; border-bottom: 1.5px solid var(--border-color); padding-bottom: 6px; text-transform: uppercase; font-size: 0.8rem; letter-spacing: 1px; font-weight: 700; }
+                .report-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; color: var(--text-secondary); font-size: 0.9rem; font-weight: 500; }
+                .summary-grid-compact { background: var(--bg-mint); padding: 18px; border-radius: 16px; border: 1.5px solid var(--border-color); }
+                .summary-row { display: flex; justify-content: space-between; padding: 7px 0; color: var(--text-primary); font-weight: 500; }
+                .summary-row.success { color: var(--primary-green); font-weight: 600; }
+                .summary-row.danger { color: #ef4444; font-weight: 600; }
+                .summary-row.highlight { color: var(--dark-green); font-weight: bold; }
+                .summary-row.large { font-size: 1.25rem; font-weight: 800; margin-top: 10px; padding-top: 12px; border-top: 2px solid var(--border-color); color: var(--text-primary); }
+                .modal-footer { padding: 15px 20px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 10px; }
             `}</style>
         </div>
     );
