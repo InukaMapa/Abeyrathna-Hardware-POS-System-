@@ -8,6 +8,8 @@ CREATE TABLE IF NOT EXISTS public.suppliers (
     supplier_name TEXT NOT NULL,
     company_name TEXT,
     phone_number TEXT NOT NULL,
+    email TEXT,
+    address TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

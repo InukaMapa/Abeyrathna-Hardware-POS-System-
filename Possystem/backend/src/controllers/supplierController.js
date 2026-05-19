@@ -25,7 +25,7 @@ export const fetchSuppliers = async (req, res) => {
  */
 export const addSupplier = async (req, res) => {
     try {
-        const { supplier_id, supplier_name, company_name, phone_number } = req.body;
+        const { supplier_id, supplier_name, company_name, phone_number, email, address } = req.body;
 
         if (!supplier_id || !supplier_name || !phone_number) {
             return res.status(400).json({ message: 'Supplier ID, Name, and Phone Number are required.' });
@@ -37,7 +37,9 @@ export const addSupplier = async (req, res) => {
                 supplier_id,
                 supplier_name,
                 company_name,
-                phone_number
+                phone_number,
+                email,
+                address
             }])
             .select()
             .single();
