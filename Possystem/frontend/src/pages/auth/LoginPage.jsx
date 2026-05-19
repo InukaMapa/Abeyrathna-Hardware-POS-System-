@@ -106,12 +106,14 @@ const LoginPage = ({ onNavigate }) => {
                     {loading ? 'LOGGING IN...' : 'LOGIN'}
                 </button>
 
-                <a onClick={() => onNavigate('register')} className="auth-link">
-                    Don't have an account? Sign Up
-                </a>
-                <a onClick={() => onNavigate('forgot-password')} className="auth-link" style={{ marginTop: '10px' }}>
-                    Forgot password?
-                </a>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '24px', gap: '10px' }}>
+                    <a onClick={() => onNavigate('register')} className="auth-link" style={{ margin: 0 }}>
+                        Don't have an account? Sign Up
+                    </a>
+                    <a onClick={() => onNavigate('forgot-password')} className="auth-link" style={{ margin: 0 }}>
+                        Forgot password?
+                    </a>
+                </div>
             </form>
         </AuthLayout>
     );
