@@ -152,27 +152,28 @@ const AddInventoryModal = ({ onClose, onSuccess, onScanBillClick, categories = [
                         </div>
                     </div>
                 ) : (
-                    <div className="overflow-y-auto max-h-[60vh] custom-scrollbar pr-2">
+                    <div className="overflow-y-auto max-h-[85vh] custom-scrollbar pr-2 pb-2">
                         <form id="inventoryForm" onSubmit={handleSubmit} className="space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="form-group">
-                                    <label>Item Name *</label>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div className="form-group flex flex-col justify-end">
+                                    <label className="text-[10px] font-black text-white/50 uppercase tracking-wider mb-0.5 ml-1 block leading-none">Item Name *</label>
                                     <input
                                         type="text" required name="ingredient_name"
                                         value={formData.ingredient_name} onChange={handleChange}
                                         placeholder="e.g. Tomatoes"
+                                        className="w-full bg-[#F4FBF7] border-2 border-[#A7F3D0] rounded-lg px-4 py-2 text-[13px] text-[#064E3B] font-bold focus:outline-none focus:border-[#16A34A] focus:ring-4 focus:ring-[#16A34A]/10 transition-all shadow-sm placeholder:text-[#166534]/40"
                                     />
                                 </div>
-                                <div className="form-group">
-                                    <div className="flex justify-between items-center mb-1">
-                                        <label className="mb-0">Item Code (Barcode)</label>
+                                <div className="form-group flex flex-col justify-end">
+                                    <div className="flex justify-between items-center mb-0.5 ml-1">
+                                        <label className="text-[10px] font-black text-white/50 uppercase tracking-wider mb-0 block leading-none">Item Code (Barcode)</label>
                                         <button
                                             type="button"
                                             onClick={() => {
                                                 const generatedCode = 'HW' + Date.now().toString().slice(-6) + Math.floor(1000 + Math.random() * 9000);
                                                 setFormData(prev => ({ ...prev, item_code: generatedCode }));
                                             }}
-                                            className="text-xs text-[#ffb74d] hover:text-[#ffa726] flex items-center gap-1 font-medium transition-colors cursor-pointer bg-none border-none p-0"
+                                            className="text-[10px] text-[#ffb74d] hover:text-[#ffa726] flex items-center gap-1 font-bold uppercase tracking-widest transition-colors cursor-pointer bg-none border-none p-0"
                                         >
                                             <RefreshCw className="w-3 h-3" /> Auto-Generate
                                         </button>
@@ -181,86 +182,93 @@ const AddInventoryModal = ({ onClose, onSuccess, onScanBillClick, categories = [
                                         <input
                                             type="text" name="item_code"
                                             value={formData.item_code} onChange={handleChange}
-                                            className="font-mono pr-10"
+                                            className="w-full bg-[#F4FBF7] border-2 border-[#A7F3D0] rounded-lg px-4 py-2 text-[13px] text-[#064E3B] font-bold focus:outline-none focus:border-[#16A34A] focus:ring-4 focus:ring-[#16A34A]/10 transition-all shadow-sm placeholder:text-[#166534]/40"
                                             placeholder="Auto-generated if empty"
                                         />
-                                        <ScanLine className="absolute right-3 top-2.5 text-[#666] w-4 h-4 pointer-events-none" />
+                                        <ScanLine className="absolute right-4 top-1/2 -translate-y-1/2 text-[#666] w-4 h-4 pointer-events-none" />
                                     </div>
                                 </div>
-                                <div className="form-group">
-                                    <label>Category</label>
+                                <div className="form-group flex flex-col justify-end">
+                                    <label className="text-[10px] font-black text-white/50 uppercase tracking-wider mb-0.5 ml-1 block leading-none">Category</label>
                                     <select
                                         name="category" value={formData.category} onChange={handleChange}
+                                        className="w-full bg-[#F4FBF7] border-2 border-[#A7F3D0] rounded-lg px-4 py-2 text-[13px] text-[#064E3B] font-bold focus:outline-none focus:border-[#16A34A] focus:ring-4 focus:ring-[#16A34A]/10 transition-all shadow-sm placeholder:text-[#166534]/40"
                                     >
-                                        <option value="" disabled>Select Category</option>
+                                        <option value="" disabled className="bg-[#121212]">Select Category</option>
                                         {categories.length > 0 ? (
-                                            categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)
+                                            categories.map(c => <option key={c.id} value={c.name} className="bg-[#121212]">{c.name}</option>)
                                         ) : (
-                                            <option value="Uncategorized">Uncategorized</option>
+                                            <option value="Uncategorized" className="bg-[#121212]">Uncategorized</option>
                                         )}
                                     </select>
                                 </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="form-group">
-                                        <label>Quantity *</label>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="form-group flex flex-col justify-end">
+                                        <label className="text-[10px] font-black text-white/50 uppercase tracking-wider mb-0.5 ml-1 block leading-none">Quantity *</label>
                                         <input
                                             type="number" step="0.01" required name="quantity"
                                             value={formData.quantity} onChange={handleChange}
                                             placeholder="0.00"
+                                            className="w-full bg-[#F4FBF7] border-2 border-[#A7F3D0] rounded-lg px-4 py-2 text-[13px] text-[#064E3B] font-bold focus:outline-none focus:border-[#16A34A] focus:ring-4 focus:ring-[#16A34A]/10 transition-all shadow-sm placeholder:text-[#166534]/40"
                                         />
                                     </div>
-                                    <div className="form-group">
-                                        <label>Unit</label>
+                                    <div className="form-group flex flex-col justify-end">
+                                        <label className="text-[10px] font-black text-white/50 uppercase tracking-wider mb-0.5 ml-1 block leading-none">Unit</label>
                                         <select
                                             name="unit" value={formData.unit} onChange={handleChange}
+                                            className="w-full bg-[#F4FBF7] border-2 border-[#A7F3D0] rounded-lg px-4 py-2 text-[13px] text-[#064E3B] font-bold focus:outline-none focus:border-[#16A34A] focus:ring-4 focus:ring-[#16A34A]/10 transition-all shadow-sm placeholder:text-[#166534]/40"
                                         >
-                                            {units.map(u => <option key={u} value={u}>{u}</option>)}
+                                            {units.map(u => <option key={u} value={u} className="bg-[#121212]">{u}</option>)}
                                         </select>
                                     </div>
                                 </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="form-group">
-                                        <label>Buying Price (Rs.) *</label>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="form-group flex flex-col justify-end">
+                                        <label className="text-[10px] font-black text-white/50 uppercase tracking-wider mb-0.5 ml-1 block leading-none">Buying Price (Rs.) *</label>
                                         <input
                                             type="number" step="0.01" required name="buying_price"
                                             value={formData.buying_price} onChange={handleChange}
                                             placeholder="Cost Price"
+                                            className="w-full bg-[#F4FBF7] border-2 border-[#A7F3D0] rounded-lg px-4 py-2 text-[13px] text-[#064E3B] font-bold focus:outline-none focus:border-[#16A34A] focus:ring-4 focus:ring-[#16A34A]/10 transition-all shadow-sm placeholder:text-[#166534]/40"
                                         />
                                     </div>
-                                    <div className="form-group">
-                                        <label>Selling Price (Rs.) *</label>
+                                    <div className="form-group flex flex-col justify-end">
+                                        <label className="text-[10px] font-black text-white/50 uppercase tracking-wider mb-0.5 ml-1 block leading-none">Selling Price (Rs.) *</label>
                                         <input
                                             type="number" step="0.01" required name="selling_price"
                                             value={formData.selling_price} onChange={handleChange}
                                             placeholder="Retail Price"
+                                            className="w-full bg-[#F4FBF7] border-2 border-[#A7F3D0] rounded-lg px-4 py-2 text-[13px] text-[#064E3B] font-bold focus:outline-none focus:border-[#16A34A] focus:ring-4 focus:ring-[#16A34A]/10 transition-all shadow-sm placeholder:text-[#166534]/40"
                                         />
                                     </div>
                                 </div>
-                                <div className="form-group">
-                                    <label>Storage Location</label>
+                                <div className="form-group flex flex-col justify-end">
+                                    <label className="text-[10px] font-black text-white/50 uppercase tracking-wider mb-0.5 ml-1 block leading-none">Storage Location</label>
                                     <input
                                         type="text" name="storage_location"
                                         value={formData.storage_location} onChange={handleChange}
                                         placeholder="e.g. Shelf A-1"
+                                        className="w-full bg-[#F4FBF7] border-2 border-[#A7F3D0] rounded-lg px-4 py-2 text-[13px] text-[#064E3B] font-bold focus:outline-none focus:border-[#16A34A] focus:ring-4 focus:ring-[#16A34A]/10 transition-all shadow-sm placeholder:text-[#166534]/40"
                                     />
                                 </div>
-                                <div className="md:col-span-2 border-t border-[#333] pt-4 mt-2">
-                                    <div className="form-group">
-                                        <label>Expiry Date (Optional)</label>
+                                <div className="md:col-span-2 border-t border-[#333]/10 pt-2 mt-1">
+                                    <div className="form-group flex flex-col justify-end">
+                                        <label className="text-[10px] font-black text-green-900/50 uppercase tracking-wider mb-0.5 ml-1 block leading-none">Expiry Date (Optional)</label>
                                         <input
                                             type="date" name="expiry_date"
                                             value={formData.expiry_date} onChange={handleChange}
+                                            className="w-full bg-[#F4FBF7] border-2 border-[#A7F3D0] rounded-lg px-4 py-2 text-[13px] text-[#064E3B] font-bold focus:outline-none focus:border-[#16A34A] focus:ring-4 focus:ring-[#16A34A]/10 transition-all shadow-sm"
                                         />
                                     </div>
                                 </div>
-                                <div className="md:col-span-2 form-group">
-                                    <label>Select Inventory Batch *</label>
+                                <div className="md:col-span-2 form-group flex flex-col justify-end">
+                                    <label className="text-[10px] font-black text-green-900/50 uppercase tracking-wider mb-0.5 ml-1 block leading-none">Select Inventory Batch *</label>
                                     <select
                                         name="batch_id"
                                         required
                                         value={formData.batch_id}
                                         onChange={handleChange}
-                                        className="font-bold border-[#D4AF37]/30"
+                                        className="w-full bg-[#F4FBF7] border-2 border-[#A7F3D0] rounded-lg px-4 py-2 text-[13px] text-[#064E3B] font-bold focus:outline-none focus:border-[#16A34A] focus:ring-4 focus:ring-[#16A34A]/10 transition-all shadow-sm"
                                     >
                                         <option value="">-- Select Active Batch --</option>
                                         {batches.map(b => (
@@ -269,7 +277,7 @@ const AddInventoryModal = ({ onClose, onSuccess, onScanBillClick, categories = [
                                             </option>
                                         ))}
                                     </select>
-                                    <p className="text-[10px] text-white/20 mt-1.5 ml-1 italic">Items must be linked to a created procurement batch.</p>
+                                    <p className="text-[10px] text-green-900/40 mt-0.5 ml-1 italic leading-none">Items must be linked to a created procurement batch.</p>
                                 </div>
                             </div>
                         </form>

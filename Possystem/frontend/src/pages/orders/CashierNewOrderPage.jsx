@@ -555,7 +555,7 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
                                                     </div>
                                                     <button
                                                         onClick={() => removeFromCart(item.id)}
-                                                        className="ml-auto text-gray-700 hover:text-red-500 transition-colors"
+                                                        className="ml-auto p-1.5 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white hover:shadow-lg hover:shadow-red-500/30 rounded-lg transition-all active:scale-95"
                                                         title="Remove"
                                                     >
                                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -623,7 +623,7 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
                                         </button>
                                         <button
                                             onClick={() => setCartItems([])}
-                                            className="w-full py-3 bg-transparent hover:bg-[#252525] text-gray-600 hover:text-gray-400 font-bold text-xs uppercase tracking-widest rounded-xl border border-[#333] transition-all"
+                                            className="w-full py-3 bg-red-500/5 hover:bg-red-500/10 text-red-500 hover:text-red-400 font-bold text-xs uppercase tracking-widest rounded-xl border border-red-500/20 hover:border-red-500/40 transition-all active:scale-95"
                                         >
                                             Clear Cart
                                         </button>

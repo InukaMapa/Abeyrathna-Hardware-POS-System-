@@ -15,6 +15,7 @@ const SupplierReturnsPage = ({ onNavigate }) => {
     const [suppliers, setSuppliers] = useState([]);
     const [batches, setBatches] = useState([]);
     const [inventoryItems, setInventoryItems] = useState([]);
+    const [errorMessage, setErrorMessage] = useState('');
 
     // Filters
     const [filterSupplier, setFilterSupplier] = useState('all');
@@ -43,6 +44,7 @@ const SupplierReturnsPage = ({ onNavigate }) => {
 
     const fetchInitialData = async () => {
         setLoading(true);
+        setErrorMessage('');
         try {
             const token = localStorage.getItem('token');
             const [returnsRes, suppliersRes, batchesRes, invRes] = await Promise.all([
@@ -55,7 +57,10 @@ const SupplierReturnsPage = ({ onNavigate }) => {
             setSuppliers(suppliersRes.data);
             setBatches(batchesRes.data);
             setInventoryItems(invRes.data);
-        } catch (err) { console.error('Error fetching data:', err); }
+        } catch (err) {
+            console.error('Error fetching data:', err);
+            setErrorMessage('Failed to load data. Please try again later.');
+        }
         setLoading(false);
     };
 
@@ -101,6 +106,12 @@ const SupplierReturnsPage = ({ onNavigate }) => {
     return (
         <DashboardLayout activePage="supplier-returns" onNavigate={onNavigate}>
             <div className="p-8 max-w-[1600px] mx-auto">
+                {errorMessage && (
+                    <div className="mb-4 p-4 bg-[#ff5252]/10 border border-[#ff5252]/20 text-[#ff5252] rounded-xl text-sm font-bold uppercase tracking-tight flex items-center gap-3">
+                        <AlertCircle className="w-4 h-4" />
+                        {errorMessage}
+                    </div>
+                )}
                 {/* Header Section */}
                 <div className="flex justify-between items-end mb-10">
                     <div>
@@ -114,7 +125,7 @@ const SupplierReturnsPage = ({ onNavigate }) => {
                     </div>
                     <button
                         onClick={() => setShowForm(true)}
-                        className="btn-primary flex items-center gap-2 px-6 py-3 rounded-xl bg-[#D4AF37] text-black font-bold hover:bg-[#E5C158] transition-all transform hover:scale-105"
+                        className="btn-premium-green shadow-lg"
                     >
                         <Plus className="w-5 h-5" />
                         Create Return Items
@@ -129,7 +140,8 @@ const SupplierReturnsPage = ({ onNavigate }) => {
                         { label: 'Pending Supplier Approvals', val: stats.pending, icon: <Clock className="text-yellow-500" />, desc: 'Awaiting response' },
                         { label: 'Replacement Pending', val: stats.replacements, icon: <ShieldCheck className="text-green-500" />, desc: 'Warranty track' }
                     ].map((stat, i) => (
-                        <div key={i} className="p-6 bg-white/[0.02] border border-white/5 rounded-3xl hover:border-white/10 transition-all group">
+                        <div key={i} className="p-6 bg-[#111] border border-[#333] rounded-[20px] shadow-lg hover:-translate-y-1 hover:shadow-xl hover:border-[#16A34A]/50 transition-all duration-300 group relative overflow-hidden">
+                            <div className="absolute -right-6 -top-6 w-24 h-24 bg-gradient-to-br from-transparent to-[#16A34A]/10 rounded-full blur-xl group-hover:bg-[#16A34A]/20 transition-all"></div>
                             <div className="flex justify-between items-start mb-4">
                                 <div className="p-3 bg-white/5 rounded-2xl group-hover:bg-white/10 transition-all">{stat.icon}</div>
                                 <ArrowUpRight className="w-4 h-4 text-white/10 group-hover:text-white/40" />
@@ -142,34 +154,34 @@ const SupplierReturnsPage = ({ onNavigate }) => {
                 </div>
 
                 {/* Filters */}
-                <div className="bg-white/[0.01] border border-white/5 p-4 rounded-3xl flex flex-wrap gap-4 items-center mb-6">
+                <div className="flex flex-wrap gap-4 items-center mb-6">
                     <div className="relative flex-1 min-w-[300px]">
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
                         <input
                             type="text"
                             placeholder="Search return items by name or REF..."
-                            className="w-full bg-white/5 border border-white/5 rounded-2xl py-3 pl-12 pr-4 text-sm text-white focus:outline-none focus:border-[#D4AF37]/50"
+                            className="w-full bg-[#1E1E1E] rounded-2xl py-3 pl-12 pr-4 text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#16A34A]/50 transition-all font-bold placeholder:text-white/30 shadow-inner"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
                     </div>
                     <select
-                        className="bg-white/5 border border-white/5 rounded-2xl py-3 px-6 text-sm text-white focus:outline-none appearance-none cursor-pointer"
+                        className="bg-[#1E1E1E] rounded-2xl py-3 px-4 pr-10 text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-[#16A34A]/50 cursor-pointer transition-all shadow-inner"
                         value={filterSupplier}
                         onChange={(e) => setFilterSupplier(e.target.value)}
                     >
-                        <option value="all" className="bg-[#111] text-white">All Suppliers</option>
-                        {suppliers.map(s => <option key={s.id} value={s.id} className="bg-[#111] text-white">{s.supplier_name}</option>)}
+                        <option value="all" className="bg-[#1E1E1E] text-white">All Suppliers</option>
+                        {suppliers.map(s => <option key={s.id} value={s.id} className="bg-[#1E1E1E] text-white">{s.supplier_name}</option>)}
                     </select>
                     <select
-                        className="bg-white/5 border border-white/5 rounded-2xl py-3 px-6 text-sm text-white focus:outline-none appearance-none cursor-pointer"
+                        className="bg-[#1E1E1E] rounded-2xl py-3 px-4 pr-10 text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-[#16A34A]/50 cursor-pointer transition-all shadow-inner"
                         value={filterStatus}
                         onChange={(e) => setFilterStatus(e.target.value)}
                     >
-                        <option value="all" className="bg-[#111] text-white">All Status</option>
-                        <option value="PENDING" className="bg-[#111] text-white">Pending</option>
-                        <option value="APPROVED" className="bg-[#111] text-white">Approved</option>
-                        <option value="COMPLETED" className="bg-[#111] text-white">Completed</option>
+                        <option value="all" className="bg-[#1E1E1E] text-white">All Status</option>
+                        <option value="PENDING" className="bg-[#1E1E1E] text-white">Pending</option>
+                        <option value="APPROVED" className="bg-[#1E1E1E] text-white">Approved</option>
+                        <option value="COMPLETED" className="bg-[#1E1E1E] text-white">Completed</option>
                     </select>
                 </div>
 
@@ -229,9 +241,10 @@ const SupplierReturnsPage = ({ onNavigate }) => {
                                             <div className="flex justify-end gap-2 text-white">
                                                 <button
                                                     onClick={() => setSelectedReturnView(ret)}
-                                                    className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl text-[10px] font-bold text-white/40 hover:text-white transition-all uppercase tracking-widest"
+                                                    className="btn-premium-green-icon"
+                                                    title="View Return"
                                                 >
-                                                    View
+                                                    <RefreshCcw className="w-4 h-4" />
                                                 </button>
                                                 <button className="p-2 hover:bg-white/5 rounded-lg text-white/10 hover:text-white transition-all">
                                                     <MoreVertical className="w-4 h-4" />
@@ -252,9 +265,9 @@ const SupplierReturnsPage = ({ onNavigate }) => {
 
                 {/* Create Return Modal */}
                 {showForm && (
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
-                        <div className="bg-[#111] border border-white/10 w-full max-w-2xl rounded-[40px] shadow-2xl overflow-hidden animate-slide-up">
-                            <div className="p-8 border-b border-white/5 flex justify-between items-center bg-white/[0.02]">
+                    <div className="modal-overlay z-[2000] backdrop-blur-md bg-black/60 p-4 sm:p-0 flex items-center justify-center">
+                        <div className="bg-[#111] border border-white/10 w-full max-w-2xl max-h-[90vh] flex flex-col rounded-3xl shadow-2xl overflow-hidden animate-slide-up relative">
+                            <div className="p-8 border-b border-white/5 flex justify-between items-center bg-white/[0.02] shrink-0">
                                 <div>
                                     <h2 className="text-2xl font-black text-white uppercase tracking-tighter">Create Return Item</h2>
                                     <p className="text-white/20 text-[10px] font-bold uppercase mt-1 tracking-widest">Authorized Stock Reversal</p>
@@ -263,9 +276,9 @@ const SupplierReturnsPage = ({ onNavigate }) => {
                                     <X className="w-6 h-6" />
                                 </button>
                             </div>
-
-                            <form onSubmit={handleCreateReturn} className="p-8 space-y-6">
-                                <div className="grid grid-cols-2 gap-6">
+                            <div className="overflow-y-auto p-8 pt-6 space-y-6 custom-scrollbar">
+                                <form onSubmit={handleCreateReturn} className="space-y-6">
+                                    <div className="grid grid-cols-2 gap-6">
                                     <div className="form-group">
                                         <label className="text-[10px] font-bold text-white/20 uppercase tracking-widest mb-2 block">Search & Select Item</label>
                                         <select
@@ -356,17 +369,18 @@ const SupplierReturnsPage = ({ onNavigate }) => {
                                     className="w-full py-5 bg-[#D4AF37] text-white font-black uppercase tracking-widest rounded-2xl hover:bg-[#B8860B] transition-all shadow-[0_4px_20px_rgba(212,175,55,0.2)]"
                                 >
                                     Authorize & Create Return
-                                </button>
-                            </form>
+                                    </button>
+                                </form>
+                            </div>
                         </div>
                     </div>
                 )}
 
                 {/* View Return Detail Modal */}
                 {selectedReturnView && (
-                    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-fade-in">
-                        <div className="bg-[#0A0A0A] border border-white/10 w-full max-w-2xl rounded-[40px] shadow-2xl overflow-hidden animate-scale-up">
-                            <div className="p-10 border-b border-white/5 flex justify-between items-center bg-white/[0.01]">
+                    <div className="modal-overlay z-[2000] backdrop-blur-md bg-black/60 p-4 sm:p-0 flex items-center justify-center">
+                        <div className="bg-[#1E1E1E] border border-white/10 w-full max-w-2xl max-h-[90vh] flex flex-col rounded-3xl shadow-2xl overflow-hidden animate-scale-up relative">
+                            <div className="p-10 border-b border-white/5 flex justify-between items-center bg-white/[0.01] shrink-0">
                                 <div className="flex items-center gap-5">
                                     <div className="p-3 bg-[#D4AF37]/10 rounded-2xl">
                                         <RefreshCcw className="w-6 h-6 text-[#D4AF37]" />
@@ -386,8 +400,7 @@ const SupplierReturnsPage = ({ onNavigate }) => {
                                     <X className="w-6 h-6" />
                                 </button>
                             </div>
-
-                            <div className="p-10 space-y-8">
+                            <div className="overflow-y-auto p-10 pt-6 space-y-8 custom-scrollbar">
                                 <div className="grid grid-cols-2 gap-10">
                                     <div className="space-y-6">
                                         <div>

@@ -13,7 +13,7 @@ export default defineConfig({
     tailwindcss(),
   ],
   server: {
-    port: 5173, // Default Vite dev server port
+    port: 5173, // Updated dev server port
     proxy: {
       // Proxy /api requests to backend server
       // When frontend makes request to /api/*, Vite forwards to http://localhost:5000/api/*

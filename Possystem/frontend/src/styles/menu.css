@@ -361,18 +361,24 @@
 
 /* Modals Overlay (Glassmorphism & top green border highlight) */
 .modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: rgba(22, 101, 52, 0.25);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    background-color: rgba(22, 101, 52, 0.25) !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    z-index: 9999 !important;
+    overflow: hidden !important;
+    overscroll-behavior: none !important;
+    padding: 24px !important;
+    box-sizing: border-box !important;
 }
 
 .modal-content {
@@ -385,10 +391,27 @@
     max-width: 90%;
     max-height: 90vh;
     overflow-y: auto;
+    overflow-x: hidden;
     box-shadow: 0 20px 45px rgba(22, 101, 52, 0.08);
     border: 1px solid rgba(220, 252, 231, 0.7);
     border-top: 4px solid var(--primary-green) !important; /* Top Green highlight */
     color: var(--text-primary);
+}
+
+.modal-content::-webkit-scrollbar {
+    width: 8px;
+}
+.modal-content::-webkit-scrollbar-track {
+    background: transparent;
+    margin: 20px 0; /* Keeps track away from rounded corners */
+}
+.modal-content::-webkit-scrollbar-thumb {
+    background: var(--primary-green);
+    border-radius: 9999px;
+    border: 2px solid rgba(255, 255, 255, 0.9);
+}
+.modal-content::-webkit-scrollbar-thumb:hover {
+    background: #15803d;
 }
 
 .modal-header {
@@ -529,21 +552,27 @@
 }
 
 .btn-secondary {
-    background: transparent;
-    border: 1.5px solid var(--border-color);
+    background: linear-gradient(135deg, var(--primary-green), var(--dark-green)) !important;
+    color: white !important;
+    border: none !important;
     padding: 11px 22px;
-    border-radius: 20px; /* 20px Rounded */
+    border-radius: 9999px !important; /* 100% Pill-Rounded */
     cursor: pointer;
-    color: var(--text-secondary);
     font-weight: 600;
     font-family: 'Poppins', sans-serif;
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    box-shadow: 0 4px 14px rgba(22, 163, 74, 0.22) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
 }
 
 .btn-secondary:hover {
-    background-color: var(--bg-mint);
-    color: var(--primary-green);
-    border-color: var(--primary-green);
+    background: linear-gradient(135deg, var(--dark-green), #14532D) !important;
+    color: white !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 6px 20px rgba(22, 163, 74, 0.35) !important;
 }
 
 /* Variant layout inside card elements */

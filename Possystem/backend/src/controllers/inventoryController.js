@@ -103,15 +103,21 @@ export const fetchInventoryItemDetails = async (req, res) => {
             }
         }
 
-        // 2. Get Batches (active only or all? Let's get all sorted by expiry)
-        const { data: batches, error: batchError } = await supabase
-            .from('inventory_batches')
-            .select('*')
-            .eq('inventory_id', id)
-            .gt('quantity', 0) // Only active batches
-            .order('expiry_date', { ascending: true });
+        // 2. Get Batches (using the inventory_batch_items ledger)
+        const { data: batchItems, error: batchError } = await supabase
+            .from('inventory_batch_items')
+            .select('*, inventory_batches(batch_number, batch_date)')
+            .eq('inventory_id', id);
 
         if (batchError && batchError.code !== 'PGRST116') throw batchError;
+
+        const mappedBatches = (batchItems || []).map(bi => ({
+            id: bi.id,
+            batch_code: bi.inventory_batches?.batch_number || 'N/A',
+            quantity: bi.quantity_added,
+            received_date: bi.inventory_batches?.batch_date || bi.created_at,
+            expiry_date: null
+        }));
 
         // 3. Get History (last 50)
         const { data: history, error: historyError } = await supabase
@@ -125,7 +131,7 @@ export const fetchInventoryItemDetails = async (req, res) => {
 
         res.status(200).json({
             ...item,
-            batches: batches || [],
+            batches: mappedBatches,
             history: history || []
         });
 

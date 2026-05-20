@@ -41,13 +41,13 @@ const AddSupplierModal = ({ onClose, onSuccess, initialData }) => {
     };
 
     return (
-        <div className="modal-overlay z-[2000] backdrop-blur-md bg-black/60">
-            <div className="bg-[#1E1E1E] w-[600px] max-w-[95%] rounded-[30px] shadow-2xl border border-[#333] overflow-hidden animate-scale-up relative">
+        <div className="modal-overlay z-[2000] backdrop-blur-md bg-black/60 p-4 sm:p-0 flex items-center justify-center">
+            <div className="bg-[#1E1E1E] w-[800px] max-w-[95%] max-h-[90vh] flex flex-col rounded-3xl shadow-2xl border border-[#333] overflow-hidden animate-scale-up relative">
 
                 {/* Decorative Accent */}
                 <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-[#D4AF37] to-[#8c6f1d]"></div>
 
-                <div className="p-8 border-b border-[#333] flex justify-between items-center bg-[#252525]/30">
+                <div className="p-8 border-b border-[#333] flex justify-between items-center bg-emerald-800/30">
                     <div className="flex items-center gap-3">
                         <div className="bg-[#D4AF37]/10 p-2 rounded-lg">
                             <Bookmark className="w-5 h-5 text-[#D4AF37]" />

@@ -71,7 +71,7 @@ const CategoryManagerModal = ({ isOpen, onClose, categories, onCategoryChange })
                         <button
                             type="submit"
                             disabled={loading || !newCategory.trim()}
-                            className="bg-[#D32F2F] text-white px-4 py-2 rounded-lg hover:bg-[#B71C1C] disabled:opacity-50 transition-colors"
+                            className="btn-primary px-4 py-2 rounded-full disabled:opacity-50 transition-colors flex items-center justify-center"
                         >
                             {loading ? <Loader className="w-5 h-5 animate-spin" /> : <Plus className="w-5 h-5" />}
                         </button>
@@ -105,7 +105,7 @@ const CategoryManagerModal = ({ isOpen, onClose, categories, onCategoryChange })
                 </div>
 
                 <div className="modal-actions mt-6 pt-4 border-t border-[#333]">
-                    <button onClick={onClose} className="btn-secondary w-full">Close</button>
+                    <button onClick={onClose} className="btn-secondary w-full rounded-full">Close</button>
                 </div>
             </div>
         </div>
