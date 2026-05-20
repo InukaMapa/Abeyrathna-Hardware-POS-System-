@@ -443,10 +443,14 @@
     background-color: var(--bg-secondary) !important;
 }
 .bg-\[\#111\] {
-    background-color: var(--border-color) !important;
+    background-color: var(--bg-secondary) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+    border-radius: 20px !important;
+    box-shadow: var(--card-shadow) !important;
 }
 .bg-\[\#111111\] {
-    background-color: var(--border-color) !important;
+    background-color: var(--bg-secondary) !important;
 }
 .bg-\[\#2A2A2A\] {
     background-color: var(--border-color) !important;

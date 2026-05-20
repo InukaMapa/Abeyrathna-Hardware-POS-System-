@@ -265,111 +265,116 @@ const SupplierReturnsPage = ({ onNavigate }) => {
 
                 {/* Create Return Modal */}
                 {showForm && (
-                    <div className="modal-overlay z-[2000] backdrop-blur-md bg-black/60 p-4 sm:p-0 flex items-center justify-center">
-                        <div className="bg-[#111] border border-white/10 w-full max-w-2xl max-h-[90vh] flex flex-col rounded-3xl shadow-2xl overflow-hidden animate-slide-up relative">
-                            <div className="p-8 border-b border-white/5 flex justify-between items-center bg-white/[0.02] shrink-0">
-                                <div>
-                                    <h2 className="text-2xl font-black text-white uppercase tracking-tighter">Create Return Item</h2>
-                                    <p className="text-white/20 text-[10px] font-bold uppercase mt-1 tracking-widest">Authorized Stock Reversal</p>
+                    <div className="modal-overlay">
+                        <div className="bg-[#1E1E1E] w-full max-w-2xl max-h-[90vh] flex flex-col rounded-3xl shadow-2xl overflow-hidden animate-slide-up relative">
+                            {/* Gold accent top bar */}
+                            <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-[#D4AF37] to-[#8c6f1d]"></div>
+
+                            <div className="p-8 border-b border-[#DCFCE7] flex justify-between items-center bg-green-800/30 shrink-0">
+                                <div className="flex items-center gap-3">
+                                    <div className="bg-[#D4AF37]/10 p-2 rounded-lg">
+                                        <RefreshCcw className="w-5 h-5 text-[#D4AF37]" />
+                                    </div>
+                                    <h2 className="text-xl font-black text-white uppercase tracking-wider">Create Return Item</h2>
                                 </div>
-                                <button onClick={() => setShowForm(false)} className="p-2 hover:bg-white/5 rounded-full text-white/20 hover:text-white transition-all">
-                                    <X className="w-6 h-6" />
+                                <button onClick={() => setShowForm(false)} className="p-2 bg-[#121212] text-[#444] hover:text-white rounded-full border border-[#333] transition-all">
+                                    <X className="w-5 h-5" />
                                 </button>
                             </div>
+
                             <div className="overflow-y-auto p-8 pt-6 space-y-6 custom-scrollbar">
-                                <form onSubmit={handleCreateReturn} className="space-y-6">
-                                    <div className="grid grid-cols-2 gap-6">
-                                    <div className="form-group">
-                                        <label className="text-[10px] font-bold text-white/20 uppercase tracking-widest mb-2 block">Search & Select Item</label>
-                                        <select
-                                            className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm text-white focus:outline-none focus:border-[#D4AF37]/50 appearance-none"
-                                            value={formData.item_id}
-                                            onChange={(e) => handleItemSelect(e.target.value)}
-                                            required
-                                        >
-                                            <option value="" className="bg-[#111] text-white">-- Choose Item --</option>
-                                            {inventoryItems.map(i => (
-                                                <option key={i.id} value={i.id} className="bg-[#111] text-white">{i.ingredient_name} ({i.item_code}) - Avail: {i.quantity}</option>
-                                            ))}
-                                        </select>
+                                <form onSubmit={handleCreateReturn} className="space-y-5">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                        <div className="form-group">
+                                            <label>Search &amp; Select Item</label>
+                                            <select
+                                                value={formData.item_id}
+                                                onChange={(e) => handleItemSelect(e.target.value)}
+                                                required
+                                            >
+                                                <option value="">-- Choose Item --</option>
+                                                {inventoryItems.map(i => (
+                                                    <option key={i.id} value={i.id}>{i.ingredient_name} ({i.item_code}) - Avail: {i.quantity}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        <div className="form-group">
+                                            <label>Return Quantity</label>
+                                            <input
+                                                type="number"
+                                                placeholder="0.00"
+                                                value={formData.quantity}
+                                                max={selectedItemInfo?.quantity || 1000}
+                                                onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
+                                                required
+                                            />
+                                            {selectedItemInfo && (
+                                                <p style={{ fontSize: '10px', color: '#D4AF37', fontWeight: 700, marginTop: '6px', textTransform: 'uppercase' }}>Max Available: {selectedItemInfo.quantity}</p>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Batch Info Box */}
+                                    <div className="p-5 bg-green-50 border border-green-200 rounded-2xl grid grid-cols-2 gap-y-4">
+                                        <div>
+                                            <p className="text-[9px] font-bold text-green-700 uppercase tracking-widest">Supplier Source</p>
+                                            <p className="text-xs font-bold text-gray-800 mt-1">{selectedBatchInfo?.suppliers?.supplier_name || 'Select Item First'}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-[9px] font-bold text-green-700 uppercase tracking-widest">Invoice / Batch No</p>
+                                            <p className="text-xs font-bold text-gray-800 mt-1">{selectedBatchInfo?.batch_number || 'N/A'}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-[9px] font-bold text-green-700 uppercase tracking-widest">Purchase Date</p>
+                                            <p className="text-xs font-bold text-gray-800 mt-1">{selectedBatchInfo ? new Date(selectedBatchInfo.batch_date).toLocaleDateString() : 'N/A'}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-[9px] font-bold text-green-700 uppercase tracking-widest">Return Making Day</p>
+                                            <p className="text-xs font-bold mt-1" style={{ color: '#D4AF37' }}>{new Date().toLocaleDateString()}</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                        <div className="form-group">
+                                            <label>Return Type</label>
+                                            <select
+                                                value={formData.return_type}
+                                                onChange={(e) => setFormData({ ...formData, return_type: e.target.value })}
+                                            >
+                                                {['Damaged item return', 'Wrong item return', 'Expired item return', 'Warranty return', 'Overstock return', 'Other'].map(type => (
+                                                    <option key={type} value={type}>{type}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div className="form-group">
+                                            <label>Warehouse Location</label>
+                                            <input
+                                                type="text"
+                                                value={formData.warehouse_location}
+                                                onChange={(e) => setFormData({ ...formData, warehouse_location: e.target.value })}
+                                            />
+                                        </div>
                                     </div>
 
                                     <div className="form-group">
-                                        <label className="text-[10px] font-bold text-white/20 uppercase tracking-widest mb-2 block">Return Quantity</label>
-                                        <input
-                                            type="number"
-                                            className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm text-white focus:outline-none"
-                                            placeholder="0.00"
-                                            value={formData.quantity}
-                                            max={selectedItemInfo?.quantity || 1000}
-                                            onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
-                                            required
-                                        />
-                                        {selectedItemInfo && (
-                                            <p className="text-[9px] text-[#D4AF37] font-bold mt-2 uppercase tracking-tighter">Max Available: {selectedItemInfo.quantity}</p>
-                                        )}
+                                        <label>Return Reason &amp; Notes</label>
+                                        <textarea
+                                            placeholder="Detailed reason for return..."
+                                            value={formData.reason}
+                                            onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
+                                            style={{ minHeight: '90px', resize: 'none' }}
+                                        ></textarea>
                                     </div>
-                                </div>
 
-                                <div className="p-6 bg-white/[0.02] border border-dashed border-white/10 rounded-[24px] grid grid-cols-2 gap-y-4">
-                                    <div>
-                                        <p className="text-[9px] font-bold text-white/20 uppercase tracking-widest">Supplier Source</p>
-                                        <p className="text-xs font-bold text-white mt-1">{selectedBatchInfo?.suppliers?.supplier_name || 'Select Item First'}</p>
+                                    <div className="modal-actions">
+                                        <button type="button" onClick={() => setShowForm(false)} className="btn-secondary" style={{ background: 'transparent', color: 'var(--text-secondary)', border: '1.5px solid var(--border-color)', boxShadow: 'none' }}>
+                                            Cancel
+                                        </button>
+                                        <button type="submit" className="btn-secondary">
+                                            Authorize &amp; Create Return
+                                        </button>
                                     </div>
-                                    <div>
-                                        <p className="text-[9px] font-bold text-white/20 uppercase tracking-widest">Invoice / Batch No</p>
-                                        <p className="text-xs font-bold text-white mt-1">{selectedBatchInfo?.batch_number || 'N/A'}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-[9px] font-bold text-white/20 uppercase tracking-widest">Purchase Date</p>
-                                        <p className="text-xs font-bold text-white mt-1">{selectedBatchInfo ? new Date(selectedBatchInfo.batch_date).toLocaleDateString() : 'N/A'}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-[9px] font-bold text-white/20 uppercase tracking-widest">Return Making Day</p>
-                                        <p className="text-xs font-bold text-[#D4AF37] mt-1">{new Date().toLocaleDateString()}</p>
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-6">
-                                    <div className="form-group">
-                                        <label className="text-[10px] font-bold text-white/20 uppercase tracking-widest mb-2 block">Return Type</label>
-                                        <select
-                                            className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm text-white focus:outline-none appearance-none"
-                                            value={formData.return_type}
-                                            onChange={(e) => setFormData({ ...formData, return_type: e.target.value })}
-                                        >
-                                            {['Damaged item return', 'Wrong item return', 'Expired item return', 'Warranty return', 'Overstock return', 'Other'].map(type => (
-                                                <option key={type} value={type} className="bg-[#111] text-white">{type}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div className="form-group">
-                                        <label className="text-[10px] font-bold text-white/20 uppercase tracking-widest mb-2 block">Warehouse Location</label>
-                                        <input
-                                            type="text"
-                                            className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm text-white focus:outline-none"
-                                            value={formData.warehouse_location}
-                                            onChange={(e) => setFormData({ ...formData, warehouse_location: e.target.value })}
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="form-group">
-                                    <label className="text-[10px] font-bold text-white/20 uppercase tracking-widest mb-2 block">Return Reason & Notes</label>
-                                    <textarea
-                                        className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm text-white focus:outline-none h-24 resize-none"
-                                        placeholder="Detailed reason for return..."
-                                        value={formData.reason}
-                                        onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
-                                    ></textarea>
-                                </div>
-
-                                <button
-                                    type="submit"
-                                    className="w-full py-5 bg-[#D4AF37] text-white font-black uppercase tracking-widest rounded-2xl hover:bg-[#B8860B] transition-all shadow-[0_4px_20px_rgba(212,175,55,0.2)]"
-                                >
-                                    Authorize & Create Return
-                                    </button>
                                 </form>
                             </div>
                         </div>

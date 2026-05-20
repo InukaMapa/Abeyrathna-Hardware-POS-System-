@@ -363,12 +363,12 @@
 .modal-overlay {
     position: fixed !important;
     top: 0 !important;
-    left: 0 !important;
+    left: var(--sidebar-width) !important;
     right: 0 !important;
     bottom: 0 !important;
-    width: 100% !important;
+    width: calc(100% - var(--sidebar-width)) !important;
     height: 100% !important;
-    background-color: rgba(22, 101, 52, 0.25) !important;
+    background-color: rgba(0, 0, 0, 0.45) !important;
     backdrop-filter: blur(8px) !important;
     -webkit-backdrop-filter: blur(8px) !important;
     display: flex !important;
