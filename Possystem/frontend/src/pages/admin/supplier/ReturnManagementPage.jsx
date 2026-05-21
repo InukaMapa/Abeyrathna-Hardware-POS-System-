@@ -375,7 +375,7 @@ const ReplacementBatchModal = ({ returnData, onClose, onSuccess }) => {
     };
 
     return (
-        <div className="modal-overlay z-[5000] backdrop-blur-md bg-black/60 p-4 sm:p-0 flex items-center justify-center">
+        <div className="fixed inset-0 z-[5000] backdrop-blur-xl bg-black/70 p-4 sm:p-0 flex items-center justify-center">
             <div className="bg-[#1A1A1A] w-full max-w-lg max-h-[90vh] flex flex-col rounded-3xl shadow-2xl border border-white/5 overflow-hidden animate-scale-up relative">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-purple-500/5 rounded-full -mr-32 -mt-32 blur-3xl"></div>
                 <div className="overflow-y-auto p-12 w-full custom-scrollbar relative z-10">

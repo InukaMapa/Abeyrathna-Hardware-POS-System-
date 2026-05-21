@@ -275,7 +275,8 @@ const SupplierReturnsPage = ({ onNavigate }) => {
 
                 {/* Create Return Modal */}
                 {showForm && (
-                    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-md">
+                    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-xl">
+
                         <div className="bg-white w-full max-w-2xl max-h-[90vh] flex flex-col rounded-[24px] shadow-2xl overflow-hidden animate-slide-up relative">
                             {/* Header */}
                             <div className="p-6 flex justify-between items-center bg-[#C1DFCD] shrink-0 border-b-0">
@@ -393,7 +394,7 @@ const SupplierReturnsPage = ({ onNavigate }) => {
 
                 {/* View Return Detail Modal */}
                 {selectedReturnView && (
-                    <div className="modal-overlay z-[2000] backdrop-blur-md bg-black/60 p-4 sm:p-0 flex items-center justify-center">
+                    <div className="fixed inset-0 z-[2000] backdrop-blur-xl bg-black/70 p-4 sm:p-0 flex items-center justify-center">
                         <div className="bg-[#1E1E1E] border border-white/10 w-full max-w-2xl max-h-[90vh] flex flex-col rounded-3xl shadow-2xl overflow-hidden animate-scale-up relative">
                             <div className="p-10 border-b border-white/5 flex justify-between items-center bg-white/[0.01] shrink-0">
                                 <div className="flex items-center gap-5">
