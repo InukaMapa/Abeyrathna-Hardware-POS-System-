@@ -17,6 +17,16 @@ const SupplierReturnsPage = ({ onNavigate }) => {
     const [inventoryItems, setInventoryItems] = useState([]);
     const [errorMessage, setErrorMessage] = useState('');
 
+    useEffect(() => {
+        if (showForm) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
+        }
+        return () => {
+            document.body.style.overflow = 'unset';
+        };
+    }, [showForm]);
     // Filters
     const [filterSupplier, setFilterSupplier] = useState('all');
     const [filterStatus, setFilterStatus] = useState('all');
@@ -154,7 +164,7 @@ const SupplierReturnsPage = ({ onNavigate }) => {
                 </div>
 
                 {/* Filters */}
-                <div className="flex flex-wrap gap-4 items-center mb-6">
+                <div className="flex flex-wrap gap-4 items-center mb-4">
                     <div className="relative flex-1 min-w-[300px]">
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
                         <input
@@ -190,13 +200,13 @@ const SupplierReturnsPage = ({ onNavigate }) => {
                     <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className="border-b border-white/5 bg-white/[0.02]">
-                                <th className="px-8 py-6 text-[10px] font-bold text-white/20 uppercase tracking-[0.3em]">Return ID</th>
-                                <th className="px-8 py-6 text-[10px] font-bold text-white/20 uppercase tracking-[0.3em]">Item Details</th>
-                                <th className="px-8 py-6 text-[10px] font-bold text-white/20 uppercase tracking-[0.3em]">Type</th>
-                                <th className="px-8 py-6 text-[10px] font-bold text-white/20 uppercase tracking-[0.3em]">Qty</th>
-                                <th className="px-8 py-6 text-[10px] font-bold text-white/20 uppercase tracking-[0.3em]">Created</th>
-                                <th className="px-8 py-6 text-[10px] font-bold text-white/20 uppercase tracking-[0.3em] text-center">Status</th>
-                                <th className="px-8 py-6 text-[10px] font-bold text-white/20 uppercase tracking-[0.3em] text-right">Actions</th>
+                                <th className="px-4 py-3 text-[10px] font-bold text-white/20 uppercase tracking-[0.3em]">Return ID</th>
+                                <th className="px-4 py-3 text-[10px] font-bold text-white/20 uppercase tracking-[0.3em]">Item Details</th>
+                                <th className="px-4 py-3 text-[10px] font-bold text-white/20 uppercase tracking-[0.3em]">Type</th>
+                                <th className="px-4 py-3 text-[10px] font-bold text-white/20 uppercase tracking-[0.3em]">Qty</th>
+                                <th className="px-4 py-3 text-[10px] font-bold text-white/20 uppercase tracking-[0.3em]">Created</th>
+                                <th className="px-4 py-3 text-[10px] font-bold text-white/20 uppercase tracking-[0.3em] text-center">Status</th>
+                                <th className="px-4 py-3 text-[10px] font-bold text-white/20 uppercase tracking-[0.3em] text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-white/[0.03]">
@@ -206,28 +216,28 @@ const SupplierReturnsPage = ({ onNavigate }) => {
                                 .filter(r => r.return_number.toLowerCase().includes(searchQuery.toLowerCase()) || r.inventory?.ingredient_name.toLowerCase().includes(searchQuery.toLowerCase()))
                                 .map((ret) => (
                                     <tr key={ret.id} className="hover:bg-white/[0.02] transition-colors group">
-                                        <td className="px-8 py-6">
+                                        <td className="px-4 py-3">
                                             <div className="flex flex-col">
                                                 <span className="text-xs font-black text-white tracking-widest uppercase">{ret.return_number}</span>
                                                 <span className="text-[9px] text-white/20 font-bold mt-1">REF: {ret.inventory_batches?.batch_number || 'N/A'}</span>
                                             </div>
                                         </td>
-                                        <td className="px-8 py-6">
+                                        <td className="px-4 py-3">
                                             <div className="flex flex-col">
                                                 <span className="text-xs font-bold text-white/80">{ret.inventory?.ingredient_name}</span>
                                                 <span className="text-[10px] text-white/30 uppercase">{ret.suppliers?.supplier_name}</span>
                                             </div>
                                         </td>
-                                        <td className="px-8 py-6">
+                                        <td className="px-4 py-3">
                                             <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">{ret.return_type}</span>
                                         </td>
-                                        <td className="px-8 py-6">
+                                        <td className="px-4 py-3">
                                             <span className="text-sm font-black text-white">{ret.quantity}</span>
                                         </td>
-                                        <td className="px-8 py-6 text-white/40 text-xs">
+                                        <td className="px-4 py-3 text-white/40 text-xs">
                                             {new Date(ret.created_at).toLocaleDateString()}
                                         </td>
-                                        <td className="px-8 py-6">
+                                        <td className="px-4 py-3">
                                             <div className="flex justify-center">
                                                 <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border ${ret.status === 'PENDING' ? 'bg-yellow-500/10 text-yellow-500/80 border-yellow-500/20 animate-pulse' :
                                                     ret.status === 'APPROVED' ? 'bg-blue-500/10 text-blue-500/80 border-blue-500/20' :
@@ -237,7 +247,7 @@ const SupplierReturnsPage = ({ onNavigate }) => {
                                                 </span>
                                             </div>
                                         </td>
-                                        <td className="px-8 py-6 text-right">
+                                        <td className="px-4 py-3 text-right">
                                             <div className="flex justify-end gap-2 text-white">
                                                 <button
                                                     onClick={() => setSelectedReturnView(ret)}
@@ -265,19 +275,15 @@ const SupplierReturnsPage = ({ onNavigate }) => {
 
                 {/* Create Return Modal */}
                 {showForm && (
-                    <div className="modal-overlay">
-                        <div className="bg-[#1E1E1E] w-full max-w-2xl max-h-[90vh] flex flex-col rounded-3xl shadow-2xl overflow-hidden animate-slide-up relative">
-                            {/* Gold accent top bar */}
-                            <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-[#D4AF37] to-[#8c6f1d]"></div>
-
-                            <div className="p-8 border-b border-[#DCFCE7] flex justify-between items-center bg-green-800/30 shrink-0">
+                    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-md">
+                        <div className="bg-white w-full max-w-2xl max-h-[90vh] flex flex-col rounded-[24px] shadow-2xl overflow-hidden animate-slide-up relative">
+                            {/* Header */}
+                            <div className="p-6 flex justify-between items-center bg-[#C1DFCD] shrink-0 border-b-0">
                                 <div className="flex items-center gap-3">
-                                    <div className="bg-[#D4AF37]/10 p-2 rounded-lg">
-                                        <RefreshCcw className="w-5 h-5 text-[#D4AF37]" />
-                                    </div>
-                                    <h2 className="text-xl font-black text-white uppercase tracking-wider">Create Return Item</h2>
+                                    <RefreshCcw className="w-5 h-5 text-green-800" />
+                                    <h2 className="text-lg font-black text-gray-900 uppercase tracking-widest">Create Return Item</h2>
                                 </div>
-                                <button onClick={() => setShowForm(false)} className="p-2 bg-[#121212] text-[#444] hover:text-white rounded-full border border-[#333] transition-all">
+                                <button onClick={() => setShowForm(false)} className="p-2 bg-green-700 text-white hover:bg-green-800 rounded-xl transition-all">
                                     <X className="w-5 h-5" />
                                 </button>
                             </div>
@@ -285,12 +291,13 @@ const SupplierReturnsPage = ({ onNavigate }) => {
                             <div className="overflow-y-auto p-8 pt-6 space-y-6 custom-scrollbar">
                                 <form onSubmit={handleCreateReturn} className="space-y-5">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                        <div className="form-group">
-                                            <label>Search &amp; Select Item</label>
+                                        <div>
+                                            <label className="text-[11px] font-bold text-green-800 mb-2 block">Search & Select Item</label>
                                             <select
                                                 value={formData.item_id}
                                                 onChange={(e) => handleItemSelect(e.target.value)}
                                                 required
+                                                className="w-full bg-white border border-green-200 rounded-xl px-4 py-3 text-sm text-gray-800 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 transition-all"
                                             >
                                                 <option value="">-- Choose Item --</option>
                                                 {inventoryItems.map(i => (
@@ -299,8 +306,8 @@ const SupplierReturnsPage = ({ onNavigate }) => {
                                             </select>
                                         </div>
 
-                                        <div className="form-group">
-                                            <label>Return Quantity</label>
+                                        <div>
+                                            <label className="text-[11px] font-bold text-green-800 mb-2 block">Return Quantity</label>
                                             <input
                                                 type="number"
                                                 placeholder="0.00"
@@ -308,71 +315,74 @@ const SupplierReturnsPage = ({ onNavigate }) => {
                                                 max={selectedItemInfo?.quantity || 1000}
                                                 onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
                                                 required
+                                                className="w-full bg-white border border-green-200 rounded-xl px-4 py-3 text-sm text-gray-800 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 transition-all"
                                             />
                                             {selectedItemInfo && (
-                                                <p style={{ fontSize: '10px', color: '#D4AF37', fontWeight: 700, marginTop: '6px', textTransform: 'uppercase' }}>Max Available: {selectedItemInfo.quantity}</p>
+                                                <p className="text-[10px] text-green-700 font-bold mt-1.5 uppercase">Max Available: {selectedItemInfo.quantity}</p>
                                             )}
                                         </div>
                                     </div>
 
                                     {/* Batch Info Box */}
-                                    <div className="p-5 bg-green-50 border border-green-200 rounded-2xl grid grid-cols-2 gap-y-4">
+                                    <div className="p-5 bg-[#F3F9F5] border border-green-200 rounded-2xl grid grid-cols-2 gap-y-4">
                                         <div>
                                             <p className="text-[9px] font-bold text-green-700 uppercase tracking-widest">Supplier Source</p>
-                                            <p className="text-xs font-bold text-gray-800 mt-1">{selectedBatchInfo?.suppliers?.supplier_name || 'Select Item First'}</p>
+                                            <p className="text-xs font-bold text-gray-900 mt-1">{selectedBatchInfo?.suppliers?.supplier_name || 'Select Item First'}</p>
                                         </div>
                                         <div>
                                             <p className="text-[9px] font-bold text-green-700 uppercase tracking-widest">Invoice / Batch No</p>
-                                            <p className="text-xs font-bold text-gray-800 mt-1">{selectedBatchInfo?.batch_number || 'N/A'}</p>
+                                            <p className="text-xs font-bold text-gray-900 mt-1">{selectedBatchInfo?.batch_number || 'N/A'}</p>
                                         </div>
                                         <div>
                                             <p className="text-[9px] font-bold text-green-700 uppercase tracking-widest">Purchase Date</p>
-                                            <p className="text-xs font-bold text-gray-800 mt-1">{selectedBatchInfo ? new Date(selectedBatchInfo.batch_date).toLocaleDateString() : 'N/A'}</p>
+                                            <p className="text-xs font-bold text-gray-900 mt-1">{selectedBatchInfo ? new Date(selectedBatchInfo.batch_date).toLocaleDateString() : 'N/A'}</p>
                                         </div>
                                         <div>
                                             <p className="text-[9px] font-bold text-green-700 uppercase tracking-widest">Return Making Day</p>
-                                            <p className="text-xs font-bold mt-1" style={{ color: '#D4AF37' }}>{new Date().toLocaleDateString()}</p>
+                                            <p className="text-xs font-bold text-[#D4AF37] mt-1">{new Date().toLocaleDateString()}</p>
                                         </div>
                                     </div>
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                        <div className="form-group">
-                                            <label>Return Type</label>
+                                        <div>
+                                            <label className="text-[11px] font-bold text-green-800 mb-2 block">Return Type</label>
                                             <select
                                                 value={formData.return_type}
                                                 onChange={(e) => setFormData({ ...formData, return_type: e.target.value })}
+                                                className="w-full bg-white border border-green-200 rounded-xl px-4 py-3 text-sm text-gray-800 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 transition-all"
                                             >
                                                 {['Damaged item return', 'Wrong item return', 'Expired item return', 'Warranty return', 'Overstock return', 'Other'].map(type => (
                                                     <option key={type} value={type}>{type}</option>
                                                 ))}
                                             </select>
                                         </div>
-                                        <div className="form-group">
-                                            <label>Warehouse Location</label>
+                                        <div>
+                                            <label className="text-[11px] font-bold text-green-800 mb-2 block">Warehouse Location</label>
                                             <input
                                                 type="text"
                                                 value={formData.warehouse_location}
                                                 onChange={(e) => setFormData({ ...formData, warehouse_location: e.target.value })}
+                                                className="w-full bg-white border border-green-200 rounded-xl px-4 py-3 text-sm text-gray-800 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 transition-all"
                                             />
                                         </div>
                                     </div>
 
-                                    <div className="form-group">
-                                        <label>Return Reason &amp; Notes</label>
+                                    <div>
+                                        <label className="text-[11px] font-bold text-green-800 mb-2 block">Return Reason & Notes</label>
                                         <textarea
                                             placeholder="Detailed reason for return..."
                                             value={formData.reason}
                                             onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
-                                            style={{ minHeight: '90px', resize: 'none' }}
+                                            className="w-full bg-white border border-green-200 rounded-xl px-4 py-3 text-sm text-gray-800 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 transition-all resize-none min-h-[90px]"
                                         ></textarea>
                                     </div>
 
-                                    <div className="modal-actions">
-                                        <button type="button" onClick={() => setShowForm(false)} className="btn-secondary" style={{ background: 'transparent', color: 'var(--text-secondary)', border: '1.5px solid var(--border-color)', boxShadow: 'none' }}>
+                                    <div className="flex justify-end gap-4 pt-4">
+                                        <button type="button" onClick={() => setShowForm(false)} className="px-6 py-3 rounded-xl border border-gray-300 text-gray-600 font-bold text-sm hover:bg-gray-50 transition-all">
                                             Cancel
                                         </button>
-                                        <button type="submit" className="btn-secondary">
-                                            Authorize &amp; Create Return
+                                        <button type="submit" className="px-6 py-3 rounded-xl bg-green-700 text-white font-bold text-sm hover:bg-green-800 transition-all shadow-md">
+                                            Authorize & Create Return
                                         </button>
                                     </div>
                                 </form>

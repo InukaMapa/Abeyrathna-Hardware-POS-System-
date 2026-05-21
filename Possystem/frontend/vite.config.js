@@ -19,7 +19,7 @@ export default defineConfig({
       // When frontend makes request to /api/*, Vite forwards to http://localhost:5000/api/*
       // This solves CORS issues and allows relative URLs in fetch
       "/api": {
-        target: "http://localhost:5000",
+        target: "http://localhost:5001",
         changeOrigin: true,
         secure: false,
         // Optionally log proxy requests for debugging

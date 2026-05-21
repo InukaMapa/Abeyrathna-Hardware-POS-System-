@@ -11,6 +11,9 @@ import '../../../styles/menu.css';
 
 const InventoryPage = ({ onNavigate }) => {
     const [inventory, setInventory] = useState([]);
+
+    // Removed misplaced useEffect; will be added after showBatchModal declaration
+
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -22,6 +25,18 @@ const InventoryPage = ({ onNavigate }) => {
     const [showScanModal, setShowScanModal] = useState(false);
     const [showCategoryModal, setShowCategoryModal] = useState(false);
     const [showBatchModal, setShowBatchModal] = useState(false);
+
+    // Correctly placed effect to manage body scroll when batch modal is open
+    useEffect(() => {
+        if (showBatchModal) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
+        }
+        return () => {
+            document.body.style.overflow = 'unset';
+        };
+    }, [showBatchModal]);
     const [editingItem, setEditingItem] = useState(null);
     const [batches, setBatches] = useState([]);
 
@@ -297,12 +312,17 @@ const InventoryPage = ({ onNavigate }) => {
                 )}
 
                 {showBatchModal && (
-                    <div className="modal-overlay z-[3000] backdrop-blur-md bg-black/60">
-                        <div className="bg-[#1E1E1E] w-full max-w-lg rounded-[24px] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.8)] border border-[#333] p-8 animate-scale-up relative overflow-hidden">
-                            <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-[#16A34A] to-[#047857]"></div>
-                            <div className="flex justify-between items-center mb-6">
-                                <h2 className="text-xl font-bold text-white tracking-tight">Create Inventory Batch</h2>
-                                <button onClick={() => setShowBatchModal(false)} className="text-white/20 hover:text-white"><X className="w-5 h-5" /></button>
+                    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-md">
+                        <div className="bg-white w-full max-w-lg rounded-[24px] shadow-2xl overflow-hidden animate-slide-up relative flex flex-col">
+                            
+                            <div className="p-6 flex justify-between items-center bg-[#C1DFCD] shrink-0 border-b-0">
+                                <div className="flex items-center gap-3">
+                                    <Package className="w-5 h-5 text-green-800" />
+                                    <h2 className="text-lg font-black text-gray-900 uppercase tracking-widest">Create Inventory Batch</h2>
+                                </div>
+                                <button onClick={() => setShowBatchModal(false)} className="p-2 bg-green-700 text-white hover:bg-green-800 rounded-xl transition-all">
+                                    <X className="w-5 h-5" />
+                                </button>
                             </div>
                             <BatchCreationForm
                                 onCancel={() => setShowBatchModal(false)}
@@ -390,53 +410,53 @@ const BatchCreationForm = ({ onCancel, onSuccess }) => {
     };
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-8">
-            <div className="space-y-6">
-                <div className="form-group flex flex-col justify-end">
-                    <label className="text-[11px] font-black text-white/50 uppercase tracking-widest mb-1.5 ml-1 block leading-tight">Select Supplier *</label>
+        <form onSubmit={handleSubmit} className="flex flex-col h-full">
+            <div className="p-8 pt-6 space-y-6 flex-1 overflow-y-auto">
+                <div>
+                    <label className="text-[11px] font-bold text-green-800 mb-2 block">Select Supplier *</label>
                     <select
                         required
-                        className="w-full bg-[#F4FBF7] border-2 border-[#A7F3D0] rounded-xl px-5 py-3.5 text-sm text-[#064E3B] font-bold focus:outline-none focus:border-[#16A34A] focus:ring-4 focus:ring-[#16A34A]/10 transition-all shadow-sm placeholder:text-[#166534]/40"
+                        className="w-full bg-white border border-green-200 rounded-xl px-4 py-3 text-sm text-gray-800 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 transition-all font-medium"
                         value={batchData.supplier_id}
                         onChange={(e) => setBatchData({ ...batchData, supplier_id: e.target.value })}
                     >
-                        <option value="" className="bg-[#121212]">-- Choose Supplier --</option>
-                        {suppliers.map(s => <option key={s.id} value={s.id} className="bg-[#121212]">{s.supplier_name}</option>)}
+                        <option value="">-- Choose Supplier --</option>
+                        {suppliers.map(s => <option key={s.id} value={s.id}>{s.supplier_name}</option>)}
                     </select>
                 </div>
                 <div className="grid grid-cols-2 gap-6">
-                    <div className="form-group flex flex-col justify-end">
-                        <label className="text-[11px] font-black text-white/50 uppercase tracking-widest mb-1.5 ml-1 block leading-tight">Procurement Date *</label>
+                    <div>
+                        <label className="text-[11px] font-bold text-green-800 mb-2 block">Procurement Date *</label>
                         <input
                             type="date" required
-                            className="w-full bg-[#F4FBF7] border-2 border-[#A7F3D0] rounded-xl px-5 py-3.5 text-sm text-[#064E3B] font-bold focus:outline-none focus:border-[#16A34A] focus:ring-4 focus:ring-[#16A34A]/10 transition-all shadow-sm placeholder:text-[#166534]/40"
+                            className="w-full bg-white border border-green-200 rounded-xl px-4 py-3 text-sm text-gray-800 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 transition-all font-medium"
                             value={batchData.date}
                             onChange={(e) => setBatchData({ ...batchData, date: e.target.value })}
                         />
                     </div>
-                    <div className="form-group flex flex-col justify-end">
-                        <label className="text-[11px] font-black text-white/50 uppercase tracking-widest mb-1.5 ml-1 block leading-tight">Total Items (Line Items) *</label>
+                    <div>
+                        <label className="text-[11px] font-bold text-green-800 mb-2 block">Total Items (Line Items) *</label>
                         <input
                             type="number" required placeholder="e.g. 15"
-                            className="w-full bg-[#F4FBF7] border-2 border-[#A7F3D0] rounded-xl px-5 py-3.5 text-sm text-[#064E3B] font-bold focus:outline-none focus:border-[#16A34A] focus:ring-4 focus:ring-[#16A34A]/10 transition-all shadow-sm placeholder:text-[#166534]/40"
+                            className="w-full bg-white border border-green-200 rounded-xl px-4 py-3 text-sm text-gray-800 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 transition-all font-medium"
                             value={batchData.items}
                             onChange={(e) => setBatchData({ ...batchData, items: e.target.value })}
                         />
                     </div>
                 </div>
-                <div className="form-group flex flex-col justify-end">
-                    <label className="text-[11px] font-black text-white/50 uppercase tracking-widest mb-1.5 ml-1 block leading-tight">Net Transaction Value (Rs.) *</label>
+                <div>
+                    <label className="text-[11px] font-bold text-green-800 mb-2 block">Net Transaction Value (Rs.) *</label>
                     <input
                         type="number" step="0.01" required placeholder="0.00"
-                        className="w-full bg-[#F4FBF7] border-2 border-[#A7F3D0] rounded-xl px-5 py-3.5 text-sm text-[#064E3B] font-bold focus:outline-none focus:border-[#16A34A] focus:ring-4 focus:ring-[#16A34A]/10 transition-all shadow-sm placeholder:text-[#166534]/40"
+                        className="w-full bg-white border border-green-200 rounded-xl px-4 py-3 text-sm text-gray-800 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 transition-all font-medium"
                         value={batchData.net_value}
                         onChange={(e) => setBatchData({ ...batchData, net_value: e.target.value })}
                     />
                 </div>
             </div>
-            <div className="flex gap-4 pt-6 mt-2">
-                <button type="button" onClick={onCancel} className="btn-secondary flex-1 py-4 rounded-full text-xs font-bold uppercase transition-all">Cancel</button>
-                <button type="submit" disabled={loading} className="btn-primary flex-1 py-4 rounded-full text-xs font-black uppercase tracking-widest transition-all disabled:opacity-50">
+            <div className="p-6 bg-white flex justify-end gap-4 border-t border-gray-100 shrink-0">
+                <button type="button" onClick={onCancel} className="px-6 py-3 rounded-xl border border-gray-300 text-gray-600 font-bold text-sm hover:bg-gray-50 transition-all">Cancel</button>
+                <button type="submit" disabled={loading} className="px-6 py-3 rounded-xl bg-green-700 text-white font-bold text-sm hover:bg-green-800 transition-all shadow-md flex items-center justify-center gap-3 disabled:opacity-50">
                     {loading ? 'Processing...' : 'Create Batch'}
                 </button>
             </div>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect,  useState } from 'react';
 import { X, Save, User, Building, Phone, RefreshCw, Bookmark, AlertCircle, Mail, MapPin } from 'lucide-react';
 import '../../../styles/menu.css';
 import { createSupplier, updateSupplier } from '../../../services/supplierService';
@@ -14,6 +14,14 @@ const AddSupplierModal = ({ onClose, onSuccess, initialData }) => {
         address: ''
     });
     const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        document.body.style.overflow = 'hidden';
+        return () => {
+            document.body.style.overflow = 'unset';
+        };
+    }, []);
+
     const [error, setError] = useState(null);
 
     const handleChange = (e) => {
@@ -41,31 +49,26 @@ const AddSupplierModal = ({ onClose, onSuccess, initialData }) => {
     };
 
     return (
-        <div className="modal-overlay z-[2000] backdrop-blur-md bg-black/60 p-4 sm:p-0 flex items-center justify-center">
-            <div className="bg-[#1E1E1E] w-[800px] max-w-[95%] max-h-[90vh] flex flex-col rounded-3xl shadow-2xl border border-[#333] overflow-hidden animate-scale-up relative">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-md">
+            <div className="bg-white w-full max-w-2xl max-h-[90vh] flex flex-col rounded-[24px] shadow-2xl overflow-hidden animate-slide-up relative">
 
-                {/* Decorative Accent */}
-                <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-[#D4AF37] to-[#8c6f1d]"></div>
-
-                <div className="p-8 border-b border-[#333] flex justify-between items-center bg-emerald-800/30">
+                <div className="p-6 flex justify-between items-center bg-[#C1DFCD] shrink-0 border-b-0">
                     <div className="flex items-center gap-3">
-                        <div className="bg-[#D4AF37]/10 p-2 rounded-lg">
-                            <Bookmark className="w-5 h-5 text-[#D4AF37]" />
-                        </div>
-                        <h2 className="text-xl font-black text-white uppercase tracking-wider">
+                        <Bookmark className="w-5 h-5 text-green-800" />
+                        <h2 className="text-lg font-black text-gray-900 uppercase tracking-widest">
                             {isEditing ? 'Update Partner Profile' : 'New Supplier Registration'}
                         </h2>
                     </div>
                     <button
                         onClick={onClose}
-                        className="p-2 bg-[#121212] text-[#444] hover:text-white rounded-full border border-[#333] transition-all"
+                        className="p-2 bg-green-700 text-white hover:bg-green-800 rounded-xl transition-all"
                     >
                         <X className="w-5 h-5" />
                     </button>
                 </div>
 
                 {error && (
-                    <div className="mx-8 mt-6 bg-[#ff5252]/10 border border-[#ff5252]/20 text-[#ff5252] px-4 py-3 rounded-xl flex items-center gap-3 text-xs font-bold uppercase tracking-tight">
+                    <div className="mx-8 mt-6 bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl flex items-center gap-3 text-xs font-bold uppercase tracking-tight">
                         <AlertCircle className="w-4 h-4" />
                         {error}
                     </div>
@@ -76,19 +79,19 @@ const AddSupplierModal = ({ onClose, onSuccess, initialData }) => {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
                             {/* Registration ID */}
-                            <div className="bg-[#121212] p-4 rounded-2xl border border-[#333] flex justify-between items-center md:col-span-2">
+                            <div className="bg-[#F3F9F5] p-4 rounded-2xl border border-green-200 flex justify-between items-center md:col-span-2">
                                 <div>
-                                    <label className="text-[10px] font-black text-[#444] uppercase tracking-widest block mb-1">REGISTRATION ID</label>
-                                    <span className="text-sm font-mono text-[#D4AF37] font-bold">{formData.supplier_id}</span>
+                                    <label className="text-[9px] font-bold text-green-700 uppercase tracking-widest block mb-1">REGISTRATION ID</label>
+                                    <span className="text-sm font-mono text-gray-900 font-bold">{formData.supplier_id}</span>
                                 </div>
-                                <div className="text-[9px] font-black text-[#666] bg-[#333]/30 px-2 py-1 rounded border border-[#333] uppercase">Immutable Registry</div>
+                                <div className="text-[9px] font-black text-green-700 bg-green-100 px-2 py-1 rounded border border-green-200 uppercase">Immutable Registry</div>
                             </div>
 
                             {/* Supplier Name */}
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black text-[#666] uppercase tracking-[0.2em] ml-1">Representative Name *</label>
+                            <div>
+                                <label className="text-[11px] font-bold text-green-800 mb-2 block">Representative Name *</label>
                                 <div className="relative group">
-                                    <User className="absolute left-4 top-1/2 -translate-y-1/2 text-[#666] group-focus-within:text-[#D4AF37] transition-colors w-5 h-5" />
+                                    <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-green-600 transition-colors w-5 h-5" />
                                     <input
                                         type="text"
                                         required
@@ -96,32 +99,32 @@ const AddSupplierModal = ({ onClose, onSuccess, initialData }) => {
                                         value={formData.supplier_name}
                                         onChange={handleChange}
                                         placeholder="Full Name of Contact"
-                                        className="w-full bg-[#121212] text-white pl-12 pr-4 py-4 rounded-2xl border border-[#333] focus:border-[#D4AF37]/50 focus:outline-none transition-all text-sm font-bold placeholder:text-[#666]"
+                                        className="w-full bg-white border border-green-200 rounded-xl pl-12 pr-4 py-3 text-sm text-gray-800 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 transition-all font-medium"
                                     />
                                 </div>
                             </div>
 
                             {/* Organization Name */}
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black text-[#666] uppercase tracking-[0.2em] ml-1">Company / Brand</label>
+                            <div>
+                                <label className="text-[11px] font-bold text-green-800 mb-2 block">Company / Brand</label>
                                 <div className="relative group">
-                                    <Building className="absolute left-4 top-1/2 -translate-y-1/2 text-[#666] group-focus-within:text-[#D4AF37] transition-colors w-5 h-5" />
+                                    <Building className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-green-600 transition-colors w-5 h-5" />
                                     <input
                                         type="text"
                                         name="company_name"
                                         value={formData.company_name}
                                         onChange={handleChange}
                                         placeholder="Business Entity Name"
-                                        className="w-full bg-[#121212] text-white pl-12 pr-4 py-4 rounded-2xl border border-[#333] focus:border-[#D4AF37]/50 focus:outline-none transition-all text-sm font-bold placeholder:text-[#666]"
+                                        className="w-full bg-white border border-green-200 rounded-xl pl-12 pr-4 py-3 text-sm text-gray-800 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 transition-all font-medium"
                                     />
                                 </div>
                             </div>
 
                             {/* Phone Number */}
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black text-[#666] uppercase tracking-[0.2em] ml-1">Phone Number *</label>
+                            <div>
+                                <label className="text-[11px] font-bold text-green-800 mb-2 block">Phone Number *</label>
                                 <div className="relative group">
-                                    <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-[#666] group-focus-within:text-[#D4AF37] transition-colors w-5 h-5" />
+                                    <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-green-600 transition-colors w-5 h-5" />
                                     <input
                                         type="tel"
                                         required
@@ -129,39 +132,39 @@ const AddSupplierModal = ({ onClose, onSuccess, initialData }) => {
                                         value={formData.phone_number}
                                         onChange={handleChange}
                                         placeholder="+94 7X XXX XXXX"
-                                        className="w-full bg-[#121212] text-white pl-12 pr-4 py-4 rounded-2xl border border-[#333] focus:border-[#D4AF37]/50 focus:outline-none transition-all text-sm font-mono font-bold placeholder:text-[#666]"
+                                        className="w-full bg-white border border-green-200 rounded-xl pl-12 pr-4 py-3 text-sm text-gray-800 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 transition-all font-mono font-medium"
                                     />
                                 </div>
                             </div>
 
                             {/* Email Address */}
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black text-[#666] uppercase tracking-[0.2em] ml-1">Email Address</label>
+                            <div>
+                                <label className="text-[11px] font-bold text-green-800 mb-2 block">Email Address</label>
                                 <div className="relative group">
-                                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-[#666] group-focus-within:text-[#D4AF37] transition-colors w-5 h-5" />
+                                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-green-600 transition-colors w-5 h-5" />
                                     <input
                                         type="email"
                                         name="email"
                                         value={formData.email}
                                         onChange={handleChange}
                                         placeholder="partner@company.com"
-                                        className="w-full bg-[#121212] text-white pl-12 pr-4 py-4 rounded-2xl border border-[#333] focus:border-[#D4AF37]/50 focus:outline-none transition-all text-sm font-bold placeholder:text-[#666]"
+                                        className="w-full bg-white border border-green-200 rounded-xl pl-12 pr-4 py-3 text-sm text-gray-800 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 transition-all font-medium"
                                     />
                                 </div>
                             </div>
 
                             {/* Physical Address */}
-                            <div className="space-y-2 md:col-span-2">
-                                <label className="text-[10px] font-black text-[#666] uppercase tracking-[0.2em] ml-1">Warehouse / Office Address</label>
+                            <div className="md:col-span-2">
+                                <label className="text-[11px] font-bold text-green-800 mb-2 block">Warehouse / Office Address</label>
                                 <div className="relative group">
-                                    <MapPin className="absolute left-4 top-5 text-[#666] group-focus-within:text-[#D4AF37] transition-colors w-5 h-5" />
+                                    <MapPin className="absolute left-4 top-3.5 text-gray-400 group-focus-within:text-green-600 transition-colors w-5 h-5" />
                                     <textarea
                                         name="address"
                                         value={formData.address}
                                         onChange={handleChange}
                                         placeholder="Full Physical Location"
                                         rows="2"
-                                        className="w-full bg-[#121212] text-white pl-12 pr-4 py-4 rounded-2xl border border-[#333] focus:border-[#D4AF37]/50 focus:outline-none transition-all text-sm font-bold placeholder:text-[#666] resize-none"
+                                        className="w-full bg-white border border-green-200 rounded-xl pl-12 pr-4 py-3 text-sm text-gray-800 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 transition-all resize-none font-medium"
                                     ></textarea>
                                 </div>
                             </div>
@@ -169,10 +172,10 @@ const AddSupplierModal = ({ onClose, onSuccess, initialData }) => {
                     </form>
                 </div>
 
-                <div className="p-8 bg-[#121212] flex gap-4 border-t border-[#333]">
+                <div className="p-6 bg-white flex justify-end gap-4 border-t border-gray-100">
                     <button
                         onClick={onClose}
-                        className="flex-1 py-4 bg-[#1E1E1E] text-white hover:bg-[#333] rounded-2xl text-[10px] font-black uppercase tracking-widest border border-[#333] transition-all"
+                        className="px-6 py-3 rounded-xl border border-gray-300 text-gray-600 font-bold text-sm hover:bg-gray-50 transition-all"
                     >
                         Discard
                     </button>
@@ -180,9 +183,9 @@ const AddSupplierModal = ({ onClose, onSuccess, initialData }) => {
                         type="submit"
                         form="supplierForm"
                         disabled={loading}
-                        className="flex-[2] py-4 bg-[#D4AF37] hover:bg-[#E5C158] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-xl shadow-[#D4AF37]/10 flex items-center justify-center gap-3 disabled:opacity-50 active:scale-95"
+                        className="px-6 py-3 rounded-xl bg-green-700 text-white font-bold text-sm hover:bg-green-800 transition-all shadow-md flex items-center justify-center gap-3 disabled:opacity-50"
                     >
-                        {loading ? <RefreshCw className="w-4 h-4 animate-spin text-white" /> : <Save className="w-4 h-4 text-white" />}
+                        {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                         {isEditing ? 'COMMIT UPDATES' : 'FINALISE REGISTRATION'}
                     </button>
                 </div>

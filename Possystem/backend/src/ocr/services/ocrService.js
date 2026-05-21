@@ -1,7 +1,11 @@
-const path = require("path");
-const Tesseract = require("tesseract.js");
+import path from "path";
+import { fileURLToPath } from "url";
+import Tesseract from "tesseract.js";
 
-exports.extractText = async (imagePath) => {
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+export const extractText = async (imagePath) => {
   try {
     const result = await Tesseract.recognize(
       imagePath,
