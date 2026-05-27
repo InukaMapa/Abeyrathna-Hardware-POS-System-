@@ -13,7 +13,7 @@ const DashboardPage = ({ onNavigate }) => {
         onlineCashiers: { count: 0, names: [] },
         lowInventory: []
     });
-    const [loading, setLoading] = useState(true);
+    const [, setLoading] = useState(true);
 
     const fetchStats = async () => {
         try {
@@ -43,7 +43,7 @@ const DashboardPage = ({ onNavigate }) => {
                 <KPICard
                     title="Sales Today"
                     value={`Rs. ${parseFloat(stats.salesToday || 0).toLocaleString()}`}
-                    subtext="Incl. Orders & Cash In"
+                    subtext="Closed order income today"
                 />
                 <KPICard
                     title="Most Ordered Item"
