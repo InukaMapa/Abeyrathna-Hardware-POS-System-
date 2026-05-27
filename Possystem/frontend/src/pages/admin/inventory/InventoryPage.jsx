@@ -11,6 +11,9 @@ import '../../../styles/menu.css';
 
 const InventoryPage = ({ onNavigate }) => {
     const [inventory, setInventory] = useState([]);
+
+    // Removed misplaced useEffect; will be added after showBatchModal declaration
+
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -22,6 +25,18 @@ const InventoryPage = ({ onNavigate }) => {
     const [showScanModal, setShowScanModal] = useState(false);
     const [showCategoryModal, setShowCategoryModal] = useState(false);
     const [showBatchModal, setShowBatchModal] = useState(false);
+
+    // Correctly placed effect to manage body scroll when batch modal is open
+    useEffect(() => {
+        if (showBatchModal) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
+        }
+        return () => {
+            document.body.style.overflow = 'unset';
+        };
+    }, [showBatchModal]);
     const [editingItem, setEditingItem] = useState(null);
     const [batches, setBatches] = useState([]);
 
@@ -103,70 +118,74 @@ const InventoryPage = ({ onNavigate }) => {
         <DashboardLayout activePage="inventory" onNavigate={onNavigate}>
             <div className="menu-management-container animate-fade-in custom-scrollbar">
 
-                {/* Header */}
-                <div className="menu-header">
-                    <div>
-                        <h1 className="menu-title">Inventory Management</h1>
-                        <p className="text-gray-400 text-sm mt-1">Manage stock, track items, and handle reordering.</p>
-                    </div>
-                    <div className="flex gap-3">
-                        <button
-                            onClick={() => setShowBatchModal(true)}
-                            className="bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20 hover:bg-[#D4AF37]/20 px-4 py-2 rounded-lg flex items-center gap-2 transition-colors text-sm font-bold uppercase tracking-wider"
-                        >
-                            <Package className="w-4 h-4" /> Create Inventory Batch
-                        </button>
-                        <button
-                            onClick={() => setShowCategoryModal(true)}
-                            className="bg-[#2A2A2A] text-[#E0E0E0] border border-[#333] hover:bg-[#333] px-4 py-2 rounded-lg flex items-center gap-2 transition-colors text-sm font-medium"
-                        >
-                            <Settings className="w-4 h-4" /> Manage Categories
-                        </button>
-                        <button
-                            onClick={() => setShowAddModal(true)}
-                            className="btn-primary flex items-center gap-2"
-                        >
-                            <Plus className="w-4 h-4" /> Add Inventory
-                        </button>
-                    </div>
-                </div>
-
-                {/* Search & Filters */}
-                <div className="menu-filters-container">
-                    <div className="menu-top-bar">
-                        <div className="search-wrapper">
-                            <Search className="search-icon w-4 h-4" />
-                            <input
-                                type="text"
-                                placeholder="Search by name or code..."
-                                className="menu-search-input"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                            />
+                {/* STICKY HEADER & FILTERS */}
+                <div className="sticky top-[-28px] z-[50] bg-white/80 backdrop-blur-md pt-7 pb-4 -mx-7 px-7 mb-6 shadow-sm border-b border-[#16A34A]/10">
+                    {/* Header */}
+                    <div className="menu-header !mb-6">
+                        <div>
+                            <h1 className="menu-title text-[#166534]">Inventory Management</h1>
+                            <p className="text-gray-500 text-sm mt-1">Manage stock, track items, and handle reordering.</p>
                         </div>
-
                         <div className="flex gap-3">
-                            <select
-                                className="filter-select"
-                                value={filterCategory}
-                                onChange={(e) => setFilterCategory(e.target.value)}
+                            <button
+                                onClick={() => setShowBatchModal(true)}
+                                className="btn-primary flex items-center gap-2 rounded-full text-sm font-bold uppercase tracking-wider"
                             >
-                                <option value="All">All Categories</option>
-                                {categories.map(cat => (
-                                    <option key={cat.id} value={cat.name}>{cat.name}</option>
-                                ))}
-                            </select>
+                                <Package className="w-4 h-4" /> Create Inventory Batch
+                            </button>
+                            <button
+                                onClick={() => setShowCategoryModal(true)}
+                                className="btn-secondary rounded-full flex items-center gap-2 transition-colors text-sm font-medium"
+                            >
+                                <Settings className="w-4 h-4" /> Manage Categories
+                            </button>
+                            <button
+                                onClick={() => setShowAddModal(true)}
+                                className="btn-premium-green"
+                            >
+                                <Plus className="w-5 h-5" />
+                                Add Inventory
+                            </button>
+                        </div>
+                    </div>
 
-                            <select
-                                className="filter-select"
-                                value={filterStatus}
-                                onChange={(e) => setFilterStatus(e.target.value)}
-                            >
-                                <option value="All">All Status</option>
-                                <option value="In Stock">In Stock</option>
-                                <option value="Low Stock">Low Stock</option>
-                                <option value="Out of Stock">Out of Stock</option>
-                            </select>
+                    {/* Search & Filters */}
+                    <div className="menu-filters-container !mb-0">
+                        <div className="menu-top-bar">
+                            <div className="search-wrapper">
+                                <Search className="search-icon w-4 h-4" />
+                                <input
+                                    type="text"
+                                    placeholder="Search by name or code..."
+                                    className="menu-search-input"
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                />
+                            </div>
+
+                            <div className="flex gap-3">
+                                <select
+                                    className="filter-select"
+                                    value={filterCategory}
+                                    onChange={(e) => setFilterCategory(e.target.value)}
+                                >
+                                    <option value="All">All Categories</option>
+                                    {categories.map(cat => (
+                                        <option key={cat.id} value={cat.name}>{cat.name}</option>
+                                    ))}
+                                </select>
+
+                                <select
+                                    className="filter-select"
+                                    value={filterStatus}
+                                    onChange={(e) => setFilterStatus(e.target.value)}
+                                >
+                                    <option value="All">All Status</option>
+                                    <option value="In Stock">In Stock</option>
+                                    <option value="Low Stock">Low Stock</option>
+                                    <option value="Out of Stock">Out of Stock</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -236,24 +255,24 @@ const InventoryPage = ({ onNavigate }) => {
                                                 <div className="flex items-center justify-end gap-2">
                                                     <button
                                                         onClick={() => handleViewDetails(item.id)}
-                                                        className="p-1.5 text-[#A0A0A0] hover:text-white hover:bg-[#333] rounded-md transition-colors"
+                                                        className="btn-premium-green-icon"
                                                         title="View Details"
                                                     >
-                                                        <FileText className="w-4 h-4" />
+                                                        <FileText className="w-4.5 h-4.5" />
                                                     </button>
                                                     <button
                                                         onClick={() => handleEdit(item)}
-                                                        className="p-1.5 text-[#A0A0A0] hover:text-blue-400 hover:bg-[#333] rounded-md transition-colors"
+                                                        className="btn-premium-green-icon"
                                                         title="Edit"
                                                     >
-                                                        <Edit className="w-4 h-4" />
+                                                        <Edit className="w-4.5 h-4.5" />
                                                     </button>
                                                     <button
                                                         onClick={() => handleDelete(item.id)}
-                                                        className="p-1.5 text-[#A0A0A0] hover:text-[#ff5252] hover:bg-[#333] rounded-md transition-colors"
+                                                        className="btn-premium-green-icon"
                                                         title="Delete"
                                                     >
-                                                        <Trash2 className="w-4 h-4" />
+                                                        <Trash2 className="w-4.5 h-4.5" />
                                                     </button>
                                                 </div>
                                             </td>
@@ -293,11 +312,17 @@ const InventoryPage = ({ onNavigate }) => {
                 )}
 
                 {showBatchModal && (
-                    <div className="modal-overlay z-[3000]">
-                        <div className="bg-[#1A1A1A] w-full max-w-lg rounded-[24px] shadow-2xl border border-white/5 p-8 animate-scale-up">
-                            <div className="flex justify-between items-center mb-6">
-                                <h2 className="text-xl font-bold text-white tracking-tight">Create Inventory Batch</h2>
-                                <button onClick={() => setShowBatchModal(false)} className="text-white/20 hover:text-white"><X className="w-5 h-5" /></button>
+                    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-md">
+                        <div className="bg-white w-full max-w-lg rounded-[24px] shadow-2xl overflow-hidden animate-slide-up relative flex flex-col">
+                            
+                            <div className="p-6 flex justify-between items-center bg-[#C1DFCD] shrink-0 border-b-0">
+                                <div className="flex items-center gap-3">
+                                    <Package className="w-5 h-5 text-green-800" />
+                                    <h2 className="text-lg font-black text-gray-900 uppercase tracking-widest">Create Inventory Batch</h2>
+                                </div>
+                                <button onClick={() => setShowBatchModal(false)} className="p-2 bg-green-700 text-white hover:bg-green-800 rounded-xl transition-all">
+                                    <X className="w-5 h-5" />
+                                </button>
                             </div>
                             <BatchCreationForm
                                 onCancel={() => setShowBatchModal(false)}
@@ -385,13 +410,13 @@ const BatchCreationForm = ({ onCancel, onSuccess }) => {
     };
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="space-y-4">
-                <div className="form-group">
-                    <label className="text-[10px] font-bold text-white/30 uppercase tracking-widest mb-1.5 block">Select Supplier *</label>
+        <form onSubmit={handleSubmit} className="flex flex-col h-full">
+            <div className="p-8 pt-6 space-y-6 flex-1 overflow-y-auto">
+                <div>
+                    <label className="text-[11px] font-bold text-green-800 mb-2 block">Select Supplier *</label>
                     <select
                         required
-                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-[#D4AF37]/50 outline-none transition-all"
+                        className="w-full bg-white border border-green-200 rounded-xl px-4 py-3 text-sm text-gray-800 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 transition-all font-medium"
                         value={batchData.supplier_id}
                         onChange={(e) => setBatchData({ ...batchData, supplier_id: e.target.value })}
                     >
@@ -399,39 +424,39 @@ const BatchCreationForm = ({ onCancel, onSuccess }) => {
                         {suppliers.map(s => <option key={s.id} value={s.id}>{s.supplier_name}</option>)}
                     </select>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="form-group">
-                        <label className="text-[10px] font-bold text-white/30 uppercase tracking-widest mb-1.5 block">Procurement Date *</label>
+                <div className="grid grid-cols-2 gap-6">
+                    <div>
+                        <label className="text-[11px] font-bold text-green-800 mb-2 block">Procurement Date *</label>
                         <input
                             type="date" required
-                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none"
+                            className="w-full bg-white border border-green-200 rounded-xl px-4 py-3 text-sm text-gray-800 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 transition-all font-medium"
                             value={batchData.date}
                             onChange={(e) => setBatchData({ ...batchData, date: e.target.value })}
                         />
                     </div>
-                    <div className="form-group">
-                        <label className="text-[10px] font-bold text-white/30 uppercase tracking-widest mb-1.5 block">Total Items (Line Items) *</label>
+                    <div>
+                        <label className="text-[11px] font-bold text-green-800 mb-2 block">Total Items (Line Items) *</label>
                         <input
                             type="number" required placeholder="e.g. 15"
-                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none"
+                            className="w-full bg-white border border-green-200 rounded-xl px-4 py-3 text-sm text-gray-800 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 transition-all font-medium"
                             value={batchData.items}
                             onChange={(e) => setBatchData({ ...batchData, items: e.target.value })}
                         />
                     </div>
                 </div>
-                <div className="form-group">
-                    <label className="text-[10px] font-bold text-white/30 uppercase tracking-widest mb-1.5 block">Net Transaction Value (Rs.) *</label>
+                <div>
+                    <label className="text-[11px] font-bold text-green-800 mb-2 block">Net Transaction Value (Rs.) *</label>
                     <input
                         type="number" step="0.01" required placeholder="0.00"
-                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none font-bold text-[#D4AF37]"
+                        className="w-full bg-white border border-green-200 rounded-xl px-4 py-3 text-sm text-gray-800 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 transition-all font-medium"
                         value={batchData.net_value}
                         onChange={(e) => setBatchData({ ...batchData, net_value: e.target.value })}
                     />
                 </div>
             </div>
-            <div className="flex gap-3 pt-4">
-                <button type="button" onClick={onCancel} className="flex-1 px-6 py-3 bg-white/5 hover:bg-white/10 text-white/40 hover:text-white rounded-xl text-xs font-bold uppercase transition-all">Cancel</button>
-                <button type="submit" disabled={loading} className="flex-1 px-6 py-3 bg-[#D4AF37] hover:bg-[#E5C158] text-black font-black rounded-xl text-xs uppercase tracking-widest transition-all disabled:opacity-50">
+            <div className="p-6 bg-white flex justify-end gap-4 border-t border-gray-100 shrink-0">
+                <button type="button" onClick={onCancel} className="px-6 py-3 rounded-xl border border-gray-300 text-gray-600 font-bold text-sm hover:bg-gray-50 transition-all">Cancel</button>
+                <button type="submit" disabled={loading} className="px-6 py-3 rounded-xl bg-green-700 text-white font-bold text-sm hover:bg-green-800 transition-all shadow-md flex items-center justify-center gap-3 disabled:opacity-50">
                     {loading ? 'Processing...' : 'Create Batch'}
                 </button>
             </div>

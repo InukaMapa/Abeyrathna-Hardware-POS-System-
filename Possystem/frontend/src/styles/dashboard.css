@@ -386,6 +386,55 @@
     transform: translateY(0) !important;
 }
 
+/* Premium Green Pill Buttons (Overrides black/gray defaults) */
+.btn-premium-green {
+    background: linear-gradient(135deg, var(--primary-green), var(--dark-green)) !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 9999px !important; /* Pill shape */
+    padding: 10px 20px !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    box-shadow: 0 4px 14px rgba(22, 163, 74, 0.22) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+}
+
+.btn-premium-green:hover {
+    background: linear-gradient(135deg, var(--dark-green), #14532D) !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 6px 20px rgba(22, 163, 74, 0.35) !important;
+    color: white !important;
+}
+
+.btn-premium-green:active {
+    transform: translateY(0) !important;
+}
+
+/* For small action buttons (like View, Edit, Delete in tables) */
+.btn-premium-green-icon {
+    background: linear-gradient(135deg, var(--primary-green), var(--dark-green)) !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 9999px !important; /* Pill/Circle shape */
+    padding: 8px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    box-shadow: 0 4px 10px rgba(22, 163, 74, 0.2) !important;
+}
+
+.btn-premium-green-icon:hover {
+    background: linear-gradient(135deg, var(--dark-green), #14532D) !important;
+    transform: scale(1.1) !important;
+    box-shadow: 0 6px 15px rgba(22, 163, 74, 0.35) !important;
+    color: white !important;
+}
+
 /* 
   Tailwind CSS Class Overrides for Light Glassmorphism UI
   Ensures third-party tables, cards, inputs, and modals are 100% theme-synced
@@ -394,10 +443,14 @@
     background-color: var(--bg-secondary) !important;
 }
 .bg-\[\#111\] {
-    background-color: var(--border-color) !important;
+    background-color: var(--bg-secondary) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+    border-radius: 20px !important;
+    box-shadow: var(--card-shadow) !important;
 }
 .bg-\[\#111111\] {
-    background-color: var(--border-color) !important;
+    background-color: var(--bg-secondary) !important;
 }
 .bg-\[\#2A2A2A\] {
     background-color: var(--border-color) !important;
@@ -560,17 +613,23 @@ button svg,
 }
 
 /* Style all table body cell icons (User, Building, Phone, Edit, Trash2) */
-.orders-table td svg,
-table tbody td svg {
+.orders-table td svg:not(button[class*="btn-premium"] svg),
+table tbody td svg:not(button[class*="btn-premium"] svg) {
     stroke: var(--primary-green) !important;
     color: var(--primary-green) !important;
 }
 
 /* Make hover for edit action gold and trash red */
-.orders-table td button:hover svg,
-table tbody td button:hover svg {
+.orders-table td button:not([class*="btn-premium"]):hover svg,
+table tbody td button:not([class*="btn-premium"]):hover svg {
     stroke: var(--accent-color) !important;
     color: var(--accent-color) !important;
+}
+
+/* Guarantee white icons for premium buttons even inside tables */
+table tbody td button[class*="btn-premium"] svg {
+    stroke: currentColor !important;
+    color: inherit !important;
 }
 
 .orders-table td button.text-\[\#ff5252\]:hover svg,
@@ -765,8 +824,22 @@ input[type="tel"]:focus {
 }
 
 .modal-overlay {
-    background: rgba(22, 101, 52, 0.25) !important;
-    backdrop-filter: blur(8px) !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: var(--sidebar-width, 250px) !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    background: rgba(0, 0, 0, 0.6) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    z-index: 9999 !important;
+    overflow: hidden !important;
+    overscroll-behavior: none !important;
+    padding: 24px !important;
+    box-sizing: border-box !important;
 }
 
 .close-btn {
@@ -785,7 +858,7 @@ input[type="tel"]:focus {
 
     to {
         opacity: 1;
-        transform: translateY(0);
+        transform: none;
     }
 }
 
@@ -797,7 +870,7 @@ input[type="tel"]:focus {
 
     to {
         opacity: 1;
-        transform: scale(1);
+        transform: none;
     }
 }
 
@@ -816,16 +889,17 @@ input[type="tel"]:focus {
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
-    background: var(--bg-primary);
+    background: transparent;
+    border-radius: 9999px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: #333;
-    border-radius: 10px;
+    background: #16A34A; /* Premium Green */
+    border-radius: 9999px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: #444;
+    background: #15803d; /* Darker Green on Hover */
 }
 
 .no-scrollbar::-webkit-scrollbar {
@@ -835,4 +909,113 @@ input[type="tel"]:focus {
 .no-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;
+}
+
+/* ==========================================================================
+   Premium Pill Button Upgrades & Black Color Eradication (Theme Synced)
+   ========================================================================== */
+
+/* Enforce fully pill-rounded (9999px) shape on all standard buttons */
+.btn-primary,
+.btn-secondary,
+.auth-button,
+.dashboard-layout button:not(.icon-btn):not(.close-btn):not(.p-1):not(.p-1\.5):not(.p-2):not(.p-3):not(.remove-btn):not([title]),
+.modal-overlay button:not(.close-btn):not(.p-1):not(.p-1\.5):not(.p-2):not(.p-3):not(.remove-btn):not([title]) {
+    border-radius: 9999px !important; /* 100% Fully Pill-Rounded like screenshot */
+    font-family: 'Poppins', sans-serif !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.25px !important;
+}
+
+/* Enforce Emerald Green on Primary Buttons */
+.btn-primary, 
+.auth-button {
+    background: linear-gradient(135deg, var(--primary-green), var(--dark-green)) !important;
+    color: white !important;
+    border: none !important;
+    padding: 12px 26px !important;
+    box-shadow: 0 4px 14px rgba(22, 163, 74, 0.25) !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.btn-primary:hover,
+.auth-button:hover {
+    background: linear-gradient(135deg, var(--dark-green), #14532D) !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 6px 20px rgba(22, 163, 74, 0.4) !important;
+}
+
+/* Redefine Secondary Buttons to look exactly like the Add Inventory green pill button */
+.btn-secondary {
+    background: linear-gradient(135deg, var(--primary-green), var(--dark-green)) !important;
+    color: white !important;
+    border: none !important;
+    padding: 12px 26px !important;
+    box-shadow: 0 4px 14px rgba(22, 163, 74, 0.25) !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+}
+
+.btn-secondary:hover {
+    background: linear-gradient(135deg, var(--dark-green), #14532D) !important;
+    color: white !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 6px 20px rgba(22, 163, 74, 0.4) !important;
+}
+
+/* Kill all black/dark-gray/white buttons and style them all as premium deep green pill buttons */
+button[class*="bg-[#2A2A2A]"],
+button[class*="bg-[#1A1A1A]"],
+button[class*="bg-black"],
+button[class*="bg-gray-800"],
+button[class*="bg-gray-900"],
+button[class*="bg-zinc-900"],
+button[class*="bg-stone-900"],
+button[class*="bg-white/5"] {
+    background: linear-gradient(135deg, var(--primary-green), var(--dark-green)) !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 9999px !important;
+    box-shadow: 0 4px 14px rgba(22, 163, 74, 0.2) !important;
+    transition: all 0.25s ease !important;
+}
+
+button[class*="bg-[#2A2A2A]"]:hover,
+button[class*="bg-[#1A1A1A]"]:hover,
+button[class*="bg-black"]:hover,
+button[class*="bg-gray-800"]:hover,
+button[class*="bg-gray-900"]:hover,
+button[class*="bg-zinc-900"]:hover,
+button[class*="bg-stone-900"]:hover,
+button[class*="bg-white/5"]:hover {
+    background: linear-gradient(135deg, var(--dark-green), #14532D) !important;
+    color: white !important;
+    transform: translateY(-1.5px) !important;
+    box-shadow: 0 6px 20px rgba(22, 163, 74, 0.35) !important;
+}
+
+/* Special Overrides for specific Modal buttons / tabs (like manual entry red/dark/purple buttons) */
+button[class*="bg-[#D32F2F]"],
+button[class*="bg-[#2F4F4F]"],
+button[class*="bg-purple-600"],
+button[class*="bg-[#6A5ACD]"] {
+    border-radius: 9999px !important;
+}
+
+/* Ensure default base button in index.css is never dark black inside dashboard */
+.dashboard-layout button:not(.btn-primary):not(.btn-secondary):not(.auth-button):not(.icon-btn):not(.close-btn):not([title]) {
+    background: linear-gradient(135deg, var(--primary-green), var(--dark-green)) !important;
+    color: white !important;
+    border: none !important;
+    box-shadow: 0 4px 14px rgba(22, 163, 74, 0.2) !important;
+}
+
+.dashboard-layout button:not(.btn-primary):not(.btn-secondary):not(.auth-button):not(.icon-btn):not(.close-btn):not([title]):hover {
+    background: linear-gradient(135deg, var(--dark-green), #14532D) !important;
+    color: white !important;
+    transform: translateY(-1.5px) !important;
+    box-shadow: 0 6px 20px rgba(22, 163, 74, 0.35) !important;
 }

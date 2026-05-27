@@ -143,7 +143,7 @@ const InventoryDetailPage = ({ inventoryId, onNavigate }) => {
                             <div className="absolute top-4 right-4 z-10">
                                 <button
                                     onClick={() => setShowBarcodePopup(true)}
-                                    className="bg-[#2A2A2A] hover:bg-[#333] text-[#ffb74d] hover:text-[#ffa726] border border-[#ffb74d]/20 hover:border-[#ffb74d]/50 px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all text-xs font-semibold shadow-md active:scale-95 cursor-pointer"
+                                    className="btn-primary px-4 py-2 rounded-full flex items-center gap-1.5 text-xs font-bold shadow-md cursor-pointer"
                                     title="View Barcode Info"
                                 >
                                     <Info className="w-4 h-4" /> Info
@@ -315,13 +315,13 @@ const InventoryDetailPage = ({ inventoryId, onNavigate }) => {
                         <div className="modal-actions border-t border-[#333] pt-3 flex gap-2 justify-end">
                             <button
                                 onClick={handlePrintBarcode}
-                                className="bg-[#2A2A2A] hover:bg-[#333] text-[#E0E0E0] border border-[#333] hover:border-[#ffb74d]/50 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
+                                className="btn-primary px-5 py-2.5 rounded-full text-sm font-bold flex items-center gap-1.5 transition-all cursor-pointer"
                             >
-                                <Printer className="w-4 h-4 text-[#ffb74d]" /> Print Label
+                                <Printer className="w-4 h-4" /> Print Label
                             </button>
                             <button
                                 onClick={() => setShowBarcodePopup(false)}
-                                className="btn-secondary px-4 py-2 cursor-pointer"
+                                className="btn-secondary rounded-full px-5 py-2.5 text-sm font-bold cursor-pointer"
                             >
                                 Close
                             </button>

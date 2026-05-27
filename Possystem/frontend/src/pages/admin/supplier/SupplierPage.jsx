@@ -316,7 +316,7 @@ const SupplierPage = ({ onNavigate, focusSection }) => {
     return (
         <DashboardLayout onNavigate={onNavigate} activePage="supplier">
             {isGlobalPaymentsOpen ? (
-                <div className="supplier-dashboard animate-fade-in p-6 h-full overflow-y-auto custom-scrollbar bg-[#0A0A0A] flex flex-col relative text-white">
+                <div className="supplier-dashboard animate-fade-in p-6 h-full overflow-y-auto custom-scrollbar bg-[#1E1E1E] flex flex-col relative text-white">
                     <div className="flex items-center justify-between mb-8 pb-4 border-b border-white/5">
                         <div className="flex items-center gap-4">
                             <button onClick={() => {
@@ -338,20 +338,20 @@ const SupplierPage = ({ onNavigate, focusSection }) => {
                                 <h4 className="text-[10px] font-bold text-white/20 uppercase tracking-[0.3em]">Select Batch to Process</h4>
 
                                 <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
-                                    <div className="relative flex-1 md:w-64">
+                                    <div className="relative flex-1 md:min-w-[400px]">
                                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 w-4 h-4" />
                                         <input
                                             type="text"
                                             placeholder="Search batches..."
                                             value={supplierPagePaymentSearch}
                                             onChange={e => setSupplierPagePaymentSearch(e.target.value)}
-                                            className="w-full bg-[#1A1A1A] text-white pl-9 pr-3 py-2 rounded-lg border border-white/10 focus:border-[#D4AF37]/50 focus:outline-none text-xs"
+                                            className="w-full bg-[#1E1E1E] text-white pl-9 pr-3 py-2 rounded-lg border border-white/10 focus:border-[#D4AF37]/50 focus:outline-none text-xs"
                                         />
                                     </div>
                                     <select
                                         value={supplierPagePaymentStatus}
                                         onChange={e => setSupplierPagePaymentStatus(e.target.value)}
-                                        className="bg-[#1A1A1A] text-white/70 px-3 py-2 rounded-lg border border-white/10 focus:border-[#D4AF37]/50 focus:outline-none text-xs"
+                                        className="bg-[#1E1E1E] text-white/70 px-3 py-2 rounded-lg border border-white/10 focus:border-[#D4AF37]/50 focus:outline-none text-xs"
                                     >
                                         <option value="ALL">All Status</option>
                                         <option value="PENDING">Pending</option>
@@ -360,7 +360,7 @@ const SupplierPage = ({ onNavigate, focusSection }) => {
                                     <select
                                         value={supplierPagePaymentDate}
                                         onChange={e => setSupplierPagePaymentDate(e.target.value)}
-                                        className="bg-[#1A1A1A] text-white/70 px-3 py-2 rounded-lg border border-white/10 focus:border-[#D4AF37]/50 focus:outline-none text-xs"
+                                        className="bg-[#1E1E1E] text-white/70 px-3 py-2 rounded-lg border border-white/10 focus:border-[#D4AF37]/50 focus:outline-none text-xs"
                                     >
                                         <option value="NEWEST">Newest</option>
                                         <option value="OLDEST">Oldest</option>
@@ -371,7 +371,7 @@ const SupplierPage = ({ onNavigate, focusSection }) => {
                                     <select
                                         value={supplierPagePaymentSupplier}
                                         onChange={e => setSupplierPagePaymentSupplier(e.target.value)}
-                                        className="bg-[#1A1A1A] text-white/70 px-3 py-2 rounded-lg border border-white/10 focus:border-[#D4AF37]/50 focus:outline-none text-xs max-w-[150px]"
+                                        className="bg-[#1E1E1E] text-white/70 px-3 py-2 rounded-lg border border-white/10 focus:border-[#D4AF37]/50 focus:outline-none text-xs max-w-[150px]"
                                     >
                                         <option value="ALL">All Suppliers</option>
                                         {suppliers.map(s => (
@@ -609,7 +609,7 @@ const SupplierPage = ({ onNavigate, focusSection }) => {
                                                 readOnly={paymentForm.type === 'Full'}
                                                 value={paymentForm.amount}
                                                 onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })}
-                                                className={`w-full bg-[#0A0A0A] text-xl font-black text-white px-4 py-3 rounded-xl border focus:outline-none transition-all ${paymentForm.type === 'Full' ? 'border-white/5 opacity-50 cursor-not-allowed' : 'border-white/20 focus:border-[#4caf50]/50'}`}
+                                                className={`w-full bg-[#1E1E1E] text-xl font-black text-white px-4 py-3 rounded-xl border focus:outline-none transition-all ${paymentForm.type === 'Full' ? 'border-white/5 opacity-50 cursor-not-allowed' : 'border-white/20 focus:border-[#4caf50]/50'}`}
                                                 placeholder="Enter amount..."
                                             />
                                         </div>
@@ -769,35 +769,35 @@ const SupplierPage = ({ onNavigate, focusSection }) => {
                             </div>
 
                             {/* Supplier Table Container */}
-                            <div className="bg-[#1E1E1E] rounded-3xl border border-[#333] overflow-hidden shadow-2xl relative">
-                                <div className="p-6 border-b border-[#333] bg-[#222]/50 flex justify-between items-center">
+                            <div className="bg-white rounded-3xl border border-gray-100 overflow-hidden shadow-sm relative">
+                                <div className="p-6 bg-green-100 flex justify-between items-center">
                                     <div className="flex items-center gap-3">
-                                        <div className="w-2 h-6 bg-[#D4AF37] rounded-full"></div>
-                                        <h3 className="text-sm font-black text-white uppercase tracking-widest">Supplier Directory</h3>
+                                        <div className="w-2 h-6 bg-green-600 rounded-full"></div>
+                                        <h3 className="text-sm font-black text-green-900 uppercase tracking-widest">Supplier Directory</h3>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        <span className="text-[#888] text-[10px] font-bold uppercase">Sorted By: Recent</span>
-                                        <ArrowUpRight className="w-4 h-4 text-[#D4AF37]" />
+                                        <span className="text-green-800/80 text-[10px] font-bold uppercase">Sorted By: Recent</span>
+                                        <ArrowUpRight className="w-4 h-4 text-green-700" />
                                     </div>
                                 </div>
 
                                 <div className="overflow-hidden">
                                     <table className="w-full text-left table-fixed">
                                         <thead>
-                                            <tr className="bg-[#121212] text-[#444] text-[10px] uppercase font-black tracking-[0.2em]">
+                                            <tr className="bg-green-50 text-green-900 text-[10px] uppercase font-black tracking-[0.2em]">
                                                 <th className="px-6 py-5 w-[25%]">Partner / ID</th>
                                                 <th className="px-6 py-5 w-[20%]">Organization</th>
                                                 <th className="px-6 py-5 w-[30%]">Communication</th>
                                                 <th className="px-6 py-5 w-[25%] text-right">Actions</th>
                                             </tr>
                                         </thead>
-                                        <tbody className="divide-y divide-[#333]">
+                                        <tbody className="divide-y divide-gray-100">
                                             {filteredSuppliers.length > 0 ? (
                                                 filteredSuppliers.map((supplier) => (
-                                                    <tr key={supplier.supplier_id} className="hover:bg-[#252525] transition-all group">
+                                                    <tr key={supplier.supplier_id} className="hover:bg-green-50 transition-all group">
                                                         <td className="px-6 py-6 overflow-hidden">
                                                             <div className="flex flex-col">
-                                                                <span className="text-white font-black group-hover:text-[#D4AF37] transition-colors truncate">{supplier.supplier_name}</span>
+                                                                <span className="text-gray-900 font-black group-hover:text-green-700 transition-colors truncate">{supplier.supplier_name}</span>
                                                                 <span className="text-[#D4AF37] text-[9px] font-black mt-1 bg-[#D4AF37]/5 px-2 py-0.5 rounded border border-[#D4AF37]/10 w-max">{supplier.supplier_id}</span>
                                                             </div>
                                                         </td>
@@ -880,15 +880,23 @@ const SupplierPage = ({ onNavigate, focusSection }) => {
                                             }
                                         },
                                         { label: 'Return Items', sub: 'Inventory damage', icon: RefreshCcw, color: '#ff5252', onClick: () => onNavigate('supplier-returns') },
-                                        { label: 'Ledger Audit', sub: 'Account history', icon: LayoutDashboard, color: '#2196f3' }
+                                        { label: 'Ledger Audit', sub: 'Account history', icon: LayoutDashboard, color: '#2196f3', onClick: () => {
+                                            if (suppliers.length > 0) {
+                                                setSelectedSupplier(suppliers[0]);
+                                                setActiveProfileTab('Ledger');
+                                                setShowProfile(true);
+                                            } else {
+                                                alert('No suppliers available to view ledger.');
+                                            }
+                                        } }
                                     ].map((act, i) => (
                                         <button key={i} onClick={act.onClick} className="w-full text-left p-4 rounded-2xl bg-[#121212] hover:bg-[#222] border border-[#333] hover:border-[#444] transition-all group flex items-center gap-4">
-                                            <div style={{ backgroundColor: `${act.color}10`, color: act.color }} className="p-3 rounded-xl group-hover:bg-[#1E1E1E] transition-all">
+                                            <div style={{ backgroundColor: `rgba(255, 255, 255, 0.1)`, color: 'white' }} className="p-3 rounded-xl transition-all">
                                                 <act.icon className="w-5 h-5" />
                                             </div>
                                             <div>
                                                 <div className="text-xs font-black text-white uppercase tracking-wider">{act.label}</div>
-                                                <div className="text-[10px] text-[#888] font-bold uppercase tracking-tight">{act.sub}</div>
+                                                <div className="text-[10px] text-white/70 font-bold uppercase tracking-tight">{act.sub}</div>
                                             </div>
                                         </button>
                                     ))}
@@ -896,20 +904,22 @@ const SupplierPage = ({ onNavigate, focusSection }) => {
                             </div>
 
                             {/* Recent Activity: Purchase Orders */}
-                            <div className="bg-[#1E1E1E] rounded-3xl border border-[#333] overflow-hidden shadow-2xl">
-                                <div className="p-6 border-b border-[#333] flex justify-between items-center bg-[#252525]/30">
-                                    <h3 className="text-[10px] font-black text-white uppercase tracking-[0.2em] flex items-center gap-2">
-                                        <Package className="w-4 h-4 text-[#666]" /> Recent purchases
+                            <div className="bg-white rounded-3xl border border-gray-100 overflow-hidden shadow-sm">
+                                <div className="p-6 bg-green-100 flex justify-between items-center">
+                                    <h3 className="text-[10px] font-black text-green-900 uppercase tracking-[0.2em] flex items-center gap-2">
+                                        <Package className="w-4 h-4 text-green-700" /> Recent purchases
                                     </h3>
-                                    <div className="p-1 px-3 rounded-full bg-[#121212] text-[#D4AF37] text-[9px] font-black border border-[#333]">LIVE</div>
+                                    <button className="px-3 py-1 bg-white text-green-700 rounded text-[9px] font-bold uppercase tracking-widest hover:bg-green-50 transition-colors shadow-sm border border-green-200">
+                                        Live
+                                    </button>
                                 </div>
-                                <div className="divide-y divide-[#333]">
+                                <div className="divide-y divide-gray-100">
                                     {recentPOs.map(po => (
-                                        <div key={po.id} className="p-5 hover:bg-[#222] transition-all cursor-pointer group">
+                                        <div key={po.id} className="p-5 hover:bg-gray-50 transition-all cursor-pointer group">
                                             <div className="flex justify-between items-start mb-3">
                                                 <div>
                                                     <span className="text-[10px] font-black text-[#D4AF37] tracking-widest uppercase">{po.id}</span>
-                                                    <div className="text-[11px] font-black text-white mt-1 group-hover:translate-x-1 transition-transform">{po.supplier}</div>
+                                                    <div className="text-[11px] font-black text-gray-900 mt-1 group-hover:translate-x-1 transition-transform">{po.supplier}</div>
                                                 </div>
                                                 <span className={`text-[9px] font-black px-2 py-0.5 rounded-md border ${po.status === 'COMPLETED' ? 'bg-[#4caf50]/5 text-[#4caf50] border-[#4caf50]/20' :
                                                     po.status === 'PENDING' ? 'bg-[#ff9800]/5 text-[#ff9800] border-[#ff9800]/20' :
@@ -917,22 +927,22 @@ const SupplierPage = ({ onNavigate, focusSection }) => {
                                                     }`}>{po.status}</span>
                                             </div>
                                             <div className="flex justify-between items-center text-[10px] font-bold">
-                                                <div className="text-[#444] flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {po.date}</div>
-                                                <div className="text-white">Rs. {po.amount.toLocaleString()}</div>
+                                                <div className="text-gray-500 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {po.date}</div>
+                                                <div className="text-gray-900">Rs. {po.amount.toLocaleString()}</div>
                                             </div>
                                         </div>
                                     ))}
                                 </div>
-                                <button className="w-full py-4 bg-[#121212] text-[10px] font-black text-white hover:text-[#D4AF37] transition-all uppercase tracking-widest border-t border-[#333]">
+                                <button className="w-full py-4 bg-gray-50 text-[10px] font-black text-gray-600 hover:text-green-700 hover:bg-gray-100 transition-all uppercase tracking-widest border-t border-gray-100">
                                     Explore Full Warehouse Log
                                 </button>
                             </div>
 
                             {/* Financial Registry: Unpaid */}
-                            <div className="bg-[#1E1E1E] rounded-3xl border border-[#333] overflow-hidden shadow-2xl">
-                                <div className="p-6 border-b border-[#333] bg-[#ff5252]/5">
-                                    <h3 className="text-[10px] font-black text-white uppercase tracking-[0.2em] flex items-center gap-2">
-                                        <DollarSign className="w-4 h-4 text-[#ff5252]" /> Pending Settlements
+                            <div className="bg-white rounded-3xl border border-gray-100 overflow-hidden shadow-sm">
+                                <div className="p-6 bg-green-100 flex justify-between items-center">
+                                    <h3 className="text-[10px] font-black text-green-900 uppercase tracking-[0.2em] flex items-center gap-2">
+                                        <DollarSign className="w-4 h-4 text-green-700" /> Pending Settlements
                                     </h3>
                                 </div>
                                 <div className="p-6 space-y-4">
@@ -981,31 +991,31 @@ const SupplierPage = ({ onNavigate, focusSection }) => {
 
                         {/* Professional Enterprise Profile Modal */}
                         {selectedSupplier && (
-                            <div className="modal-overlay z-[2000] flex items-center justify-center p-6 backdrop-blur-md bg-black/70">
-                                <div className="bg-[#1A1A1A] w-full max-w-4xl max-h-[85vh] rounded-[32px] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.8)] border border-white/5 overflow-hidden animate-scale-up flex flex-col relative">
+                            <div className="modal-overlay z-[2000] flex items-center justify-center p-6 backdrop-blur-md bg-black/60">
+                                <div className="bg-white w-full max-w-4xl max-h-[85vh] rounded-[32px] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.8)] border border-gray-200 overflow-hidden animate-scale-up flex flex-col relative">
 
                                     {/* Compact Refined Header */}
-                                    <div className="px-8 py-5 border-b border-white/5 bg-[#1F1F1F]/50">
+                                    <div className="px-8 py-5 border-b border-gray-200 bg-gray-50/50">
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-5">
-                                                <div className="w-14 h-14 bg-gradient-to-tr from-[#252525] to-[#333] rounded-xl flex items-center justify-center border border-white/5 shadow-lg">
-                                                    <User className="w-6 h-6 text-[#D4AF37]" />
+                                                <div className="w-14 h-14 bg-gradient-to-tr from-green-50 to-green-100 rounded-xl flex items-center justify-center border border-gray-200 shadow-lg">
+                                                    <User className="w-6 h-6 text-green-700" />
                                                 </div>
                                                 <div>
                                                     <div className="flex items-center gap-2 mb-0.5">
-                                                        <span className="text-[9px] font-bold text-[#D4AF37] tracking-[0.2em] px-1.5 py-0.5 bg-[#D4AF37]/10 rounded border border-[#D4AF37]/20 uppercase">
+                                                        <span className="text-[9px] font-bold text-green-700 tracking-[0.2em] px-1.5 py-0.5 bg-green-100 rounded border border-green-200 uppercase">
                                                             {selectedSupplier.supplier_id}
                                                         </span>
-                                                        <span className="text-[9px] font-semibold text-white/30 uppercase tracking-widest">{selectedSupplier.company_name}</span>
+                                                        <span className="text-[9px] font-semibold text-gray-500 uppercase tracking-widest">{selectedSupplier.company_name}</span>
                                                     </div>
-                                                    <h2 className="text-xl font-bold text-white tracking-tight leading-tight">{selectedSupplier.supplier_name}</h2>
+                                                    <h2 className="text-xl font-bold text-gray-900 tracking-tight leading-tight">{selectedSupplier.supplier_name}</h2>
                                                     <div className="flex items-center gap-4 mt-2">
                                                         <div className="flex items-center gap-1.5">
-                                                            <Phone className="w-3 h-3 text-white/20" />
-                                                            <span className="text-[11px] font-medium text-white/50">{selectedSupplier.phone_number}</span>
+                                                            <Phone className="w-3 h-3 text-gray-400" />
+                                                            <span className="text-[11px] font-medium text-gray-500">{selectedSupplier.phone_number}</span>
                                                         </div>
-                                                        <div className="flex items-center gap-1.5 ml-2 border-l border-white/10 pl-4">
-                                                            <span className="text-[9px] font-bold text-white/20 uppercase tracking-[0.2em]">Active Inventory Batches:</span>
+                                                        <div className="flex items-center gap-1.5 ml-2 border-l border-gray-300 pl-4">
+                                                            <span className="text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em]">Active Inventory Batches:</span>
                                                             <div className="flex gap-2">
                                                                 {profileBatches
                                                                     .filter(b => b.supplier_id === selectedSupplier.id && b.calc_status !== 'COMPLETED')
@@ -1013,29 +1023,29 @@ const SupplierPage = ({ onNavigate, focusSection }) => {
                                                                     .map((batch, idx) => {
                                                                         const isMismatch = Math.abs(parseFloat(batch.net_value) - parseFloat(batch.actual_transaction_value)) > 1;
                                                                         return (
-                                                                            <span key={idx} className={`text-[9px] font-bold px-2.5 py-1 rounded border uppercase tracking-tighter flex items-center gap-1.5 ${isMismatch ? 'bg-red-500/10 text-red-500 border-red-500/20' : 'bg-[#D4AF37]/10 text-[#D4AF37] border-[#D4AF37]/20 animate-pulse'}`}>
+                                                                            <span key={idx} className={`text-[9px] font-bold px-2.5 py-1 rounded border uppercase tracking-tighter flex items-center gap-1.5 ${isMismatch ? 'bg-red-500/10 text-red-500 border-red-500/20' : 'bg-green-100 text-green-700 border-green-200 animate-pulse'}`}>
                                                                                 {batch.batch_number} {isMismatch && <AlertCircle className="w-2.5 h-2.5" />}
                                                                             </span>
                                                                         );
                                                                     })}
                                                                 {profileBatches.filter(b => b.supplier_id === selectedSupplier.id && b.calc_status !== 'COMPLETED').length === 0 && (
-                                                                    <span className="bg-white/5 text-white/20 text-[8px] font-bold px-2 py-1 rounded border border-white/5 uppercase tracking-tighter">No Active Batches</span>
+                                                                    <span className="bg-gray-100 text-gray-400 text-[8px] font-bold px-2 py-1 rounded border border-gray-200 uppercase tracking-tighter">No Active Batches</span>
                                                                 )}
                                                             </div>
                                                         </div>
-                                                        <div className="flex items-center gap-1.5 ml-2 border-l border-white/10 pl-4">
-                                                            <span className="text-[9px] font-bold text-white/20 uppercase tracking-[0.2em]">Available Cash Notes:</span>
+                                                        <div className="flex items-center gap-1.5 ml-2 border-l border-gray-300 pl-4">
+                                                            <span className="text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em]">Available Cash Notes:</span>
                                                             <div className="flex gap-2">
                                                                 {profileReturns
                                                                     .filter(r => r.resolution_type === 'CREDIT_NOTE')
                                                                     .slice(0, 2)
                                                                     .map((ret, idx) => (
-                                                                        <span key={idx} className="bg-blue-500/10 text-blue-500 text-[9px] font-bold px-2.5 py-1 rounded border border-blue-500/20 uppercase tracking-tighter flex items-center gap-1.5">
+                                                                        <span key={idx} className="bg-blue-100 text-blue-700 text-[9px] font-bold px-2.5 py-1 rounded border border-blue-200 uppercase tracking-tighter flex items-center gap-1.5">
                                                                             {ret.credit_note_number} (Rs. {parseFloat(ret.refund_amount || 0).toLocaleString()})
                                                                         </span>
                                                                     ))}
                                                                 {profileReturns.filter(r => r.resolution_type === 'CREDIT_NOTE').length === 0 && (
-                                                                    <span className="bg-white/5 text-white/20 text-[8px] font-bold px-2 py-1 rounded border border-white/5 uppercase tracking-tighter">No Active Notes</span>
+                                                                    <span className="bg-gray-100 text-gray-400 text-[8px] font-bold px-2 py-1 rounded border border-gray-200 uppercase tracking-tighter">No Active Notes</span>
                                                                 )}
                                                             </div>
                                                         </div>
@@ -1044,34 +1054,34 @@ const SupplierPage = ({ onNavigate, focusSection }) => {
                                             </div>
                                             <button
                                                 onClick={() => setSelectedSupplier(null)}
-                                                className="p-2 hover:bg-white/5 rounded-lg transition-all group"
+                                                className="p-2 hover:bg-gray-100 rounded-lg transition-all group"
                                             >
-                                                <X className="w-4 h-4 text-white/20 group-hover:text-white" />
+                                                <X className="w-4 h-4 text-gray-400 group-hover:text-gray-900" />
                                             </button>
                                         </div>
                                     </div>
 
                                     {/* Compact Financial Stats */}
-                                    <div className="px-8 py-5 grid grid-cols-2 gap-4 bg-[#1A1A1A]">
+                                    <div className="px-8 py-5 grid grid-cols-2 gap-4 bg-white">
                                         {[
                                             { label: 'Complete Purchases', value: calculateStats().complete, icon: Package },
                                             { label: 'Outstanding Balance', value: calculateStats().outstanding, icon: CreditCard, accent: true }
                                         ].map((s, i) => (
-                                            <div key={i} className="p-5 rounded-2xl bg-white/[0.02] border border-white/5 flex items-center justify-between group relative overflow-hidden">
+                                            <div key={i} className="p-5 rounded-2xl bg-gray-50 border border-gray-200 flex items-center justify-between group relative overflow-hidden">
                                                 <div className="relative z-10">
-                                                    <div className="flex items-center gap-2 mb-1 text-white/30 uppercase text-[8px] font-bold tracking-[0.2em]">
-                                                        <s.icon className={`w-3 h-3 ${s.accent ? 'text-[#D4AF37]' : 'text-white/20'}`} />
+                                                    <div className="flex items-center gap-2 mb-1 text-gray-500 uppercase text-[8px] font-bold tracking-[0.2em]">
+                                                        <s.icon className={`w-3 h-3 ${s.accent ? 'text-green-700' : 'text-gray-400'}`} />
                                                         {s.label}
                                                     </div>
-                                                    <div className={`text-xl font-bold tracking-tight ${s.accent ? 'text-[#D4AF37]' : 'text-white'}`}>{s.value}</div>
+                                                    <div className={`text-xl font-bold tracking-tight ${s.accent ? 'text-green-700' : 'text-gray-900'}`}>{s.value}</div>
                                                 </div>
-                                                <div className="absolute top-0 right-0 w-16 h-16 bg-white/[0.01] rounded-full -mr-8 -mt-8 group-hover:scale-110 transition-transform"></div>
+                                                <div className="absolute top-0 right-0 w-16 h-16 bg-gray-50 rounded-full -mr-8 -mt-8 group-hover:scale-110 transition-transform"></div>
                                             </div>
                                         ))}
                                     </div>
 
                                     {/* Minimalist Tabs */}
-                                    <div className="px-8 flex gap-8 border-b border-white/5">
+                                    <div className="px-8 flex gap-8 border-b border-gray-200">
                                         {['Overview', 'History', 'Ledger', 'Returns'].map((tab) => (
                                             <button
                                                 key={tab}
@@ -1079,7 +1089,7 @@ const SupplierPage = ({ onNavigate, focusSection }) => {
                                                     setActiveProfileTab(tab);
                                                     setSelectedTransaction(null);
                                                 }}
-                                                className={`pb-3 text-[10px] font-bold uppercase tracking-[0.2em] transition-all relative ${activeProfileTab === tab ? 'text-[#D4AF37]' : 'text-white/20 hover:text-white/40'}`}
+                                                className={`pb-3 text-[10px] font-bold uppercase tracking-[0.2em] transition-all relative ${activeProfileTab === tab ? 'text-green-700' : 'text-gray-400 hover:text-gray-500'}`}
                                             >
                                                 {tab}
                                                 {activeProfileTab === tab && <div className="absolute bottom-0 left-0 w-full h-[1.5px] bg-[#D4AF37] rounded-full"></div>}
@@ -1087,57 +1097,57 @@ const SupplierPage = ({ onNavigate, focusSection }) => {
                                         ))}
                                     </div>
 
-                                    <div className="flex-1 overflow-y-auto p-8 pt-6 custom-scrollbar bg-[#1A1A1A]">
+                                    <div className="flex-1 overflow-y-auto p-8 pt-6 custom-scrollbar bg-white">
                                         {activeProfileTab === 'Overview' && (
                                             <div className="grid grid-cols-3 gap-10 animate-fade-in">
                                                 <div className="col-span-2 space-y-10">
                                                     <div className="grid grid-cols-2 gap-10">
                                                         <div className="space-y-4">
-                                                            <h4 className="text-[9px] font-bold text-white/20 uppercase tracking-[0.3em] flex items-center gap-2">
+                                                            <h4 className="text-[9px] font-bold text-gray-400 uppercase tracking-[0.3em] flex items-center gap-2">
                                                                 Registry Overview
                                                             </h4>
                                                             <div className="space-y-3">
                                                                 <div className="flex justify-between items-center text-[11px]">
-                                                                    <span className="text-white/30">ID</span>
-                                                                    <span className="font-semibold text-white/70">{selectedSupplier.supplier_id}</span>
+                                                                    <span className="text-gray-500">ID</span>
+                                                                    <span className="font-semibold text-gray-700">{selectedSupplier.supplier_id}</span>
                                                                 </div>
                                                                 <div className="flex justify-between items-center text-[11px]">
-                                                                    <span className="text-white/30">License</span>
-                                                                    <span className="font-semibold text-white/70">Partner</span>
+                                                                    <span className="text-gray-500">License</span>
+                                                                    <span className="font-semibold text-gray-700">Partner</span>
                                                                 </div>
-                                                                <div className="flex justify-between items-center text-[11px] border-t border-white/5 pt-3">
-                                                                    <span className="text-white/30">Status</span>
-                                                                    <span className="text-[#4caf50] font-bold uppercase text-[8px] tracking-widest">Active</span>
+                                                                <div className="flex justify-between items-center text-[11px] border-t border-gray-200 pt-3">
+                                                                    <span className="text-gray-500">Status</span>
+                                                                    <span className="text-green-700 font-bold uppercase text-[8px] tracking-widest">Active</span>
                                                                 </div>
                                                             </div>
                                                         </div>
                                                         <div className="space-y-4">
-                                                            <h4 className="text-[9px] font-bold text-white/20 uppercase tracking-[0.3em] flex items-center gap-2">
+                                                            <h4 className="text-[9px] font-bold text-gray-400 uppercase tracking-[0.3em] flex items-center gap-2">
                                                                 Banking Details
                                                             </h4>
                                                             <div className="space-y-3">
                                                                 <div className="flex justify-between items-center text-[11px]">
-                                                                    <span className="text-white/30">Bank</span>
-                                                                    <span className="font-semibold text-white/70">BOC / SAMPATH</span>
+                                                                    <span className="text-gray-500">Bank</span>
+                                                                    <span className="font-semibold text-gray-700">BOC / SAMPATH</span>
                                                                 </div>
                                                                 <div className="flex justify-between items-center text-[11px]">
-                                                                    <span className="text-white/30">Account No</span>
-                                                                    <span className="font-semibold text-white/70 tracking-tighter">882910442302</span>
+                                                                    <span className="text-gray-500">Account No</span>
+                                                                    <span className="font-semibold text-gray-700 tracking-tighter">882910442302</span>
                                                                 </div>
-                                                                <div className="flex justify-between items-center text-[11px] border-t border-white/5 pt-3">
-                                                                    <span className="text-white/30">Branch</span>
-                                                                    <span className="font-semibold text-white/70 uppercase text-[9px]">Colombo Central</span>
+                                                                <div className="flex justify-between items-center text-[11px] border-t border-gray-200 pt-3">
+                                                                    <span className="text-gray-500">Branch</span>
+                                                                    <span className="font-semibold text-gray-700 uppercase text-[9px]">Colombo Central</span>
                                                                 </div>
                                                             </div>
                                                         </div>
                                                     </div>
                                                     <div className="grid grid-cols-2 gap-10">
-                                                        <div className="space-y-3 p-6 bg-white/[0.01] rounded-2xl border border-white/5">
-                                                            <h4 className="text-[9px] font-bold text-white/20 uppercase tracking-[0.3em]">Corporate Address</h4>
-                                                            <p className="text-xs text-white/50 leading-relaxed font-medium">{selectedSupplier.address || '228/1, Sudarshana Mawatha, Colombo, Sri Lanka'}</p>
+                                                        <div className="space-y-3 p-6 bg-gray-50 rounded-2xl border border-gray-200">
+                                                            <h4 className="text-[9px] font-bold text-gray-400 uppercase tracking-[0.3em]">Corporate Address</h4>
+                                                            <p className="text-xs text-gray-500 leading-relaxed font-medium">{selectedSupplier.address || '228/1, Sudarshana Mawatha, Colombo, Sri Lanka'}</p>
                                                         </div>
-                                                        <div className="space-y-3 p-6 bg-blue-500/[0.02] rounded-2xl border border-blue-500/10">
-                                                            <h4 className="text-[9px] font-bold text-blue-500/40 uppercase tracking-[0.3em] flex items-center gap-2">
+                                                        <div className="space-y-3 p-6 bg-blue-50 rounded-2xl border border-blue-100">
+                                                            <h4 className="text-[9px] font-bold text-blue-600 uppercase tracking-[0.3em] flex items-center gap-2">
                                                                 <FileText className="w-3 h-3" /> Financial Refund Notes
                                                             </h4>
                                                             <div className="space-y-2">
@@ -1145,50 +1155,50 @@ const SupplierPage = ({ onNavigate, focusSection }) => {
                                                                     .filter(r => r.resolution_type === 'CREDIT_NOTE')
                                                                     .map((ret, idx) => (
                                                                         <div key={idx} className="flex justify-between items-center text-[10px]">
-                                                                            <span className="text-white/30">{ret.credit_note_number}</span>
-                                                                            <span className="font-black text-blue-500/80">Rs. {parseFloat(ret.refund_amount || 0).toLocaleString()}</span>
+                                                                            <span className="text-gray-500">{ret.credit_note_number}</span>
+                                                                            <span className="font-black text-blue-700/80">Rs. {parseFloat(ret.refund_amount || 0).toLocaleString()}</span>
                                                                         </div>
                                                                     ))}
                                                                 {profileReturns.filter(r => r.resolution_type === 'CREDIT_NOTE').length === 0 && (
-                                                                    <p className="text-[10px] text-white/10 italic">No available credit notes (cash notes) recorded.</p>
+                                                                    <p className="text-[10px] text-gray-300 italic">No available credit notes (cash notes) recorded.</p>
                                                                 )}
                                                             </div>
                                                         </div>
                                                     </div>
                                                 </div>
                                                 <div className="space-y-4">
-                                                    <div className="p-6 bg-gradient-to-b from-white/[0.02] to-transparent rounded-2xl border border-white/5 h-full flex flex-col justify-between">
+                                                    <div className="p-6 bg-gradient-to-b from-white/[0.02] to-transparent rounded-2xl border border-gray-200 h-full flex flex-col justify-between">
                                                         <div>
-                                                            <h4 className="text-[9px] font-bold text-white/20 uppercase tracking-[0.3em] mb-4">Note about Seller</h4>
+                                                            <h4 className="text-[9px] font-bold text-gray-400 uppercase tracking-[0.3em] mb-4">Note about Seller</h4>
                                                             {isEditingNote ? (
                                                                 <textarea
                                                                     value={sellerNote}
                                                                     onChange={(e) => setSellerNote(e.target.value)}
-                                                                    className="w-full h-24 bg-white/5 border border-white/10 rounded-xl p-3 text-[10px] text-white/60 focus:outline-none focus:border-[#D4AF37]/50 custom-scrollbar resize-none font-medium italic"
+                                                                    className="w-full h-24 bg-gray-100 border border-gray-300 rounded-xl p-3 text-[10px] text-gray-600 focus:outline-none focus:border-[#D4AF37]/50 custom-scrollbar resize-none font-medium italic"
                                                                     placeholder="Add a temporary note..."
                                                                 />
                                                             ) : (
-                                                                <p className="text-[10px] text-white/30 leading-relaxed italic mb-6 font-medium">
+                                                                <p className="text-[10px] text-gray-500 leading-relaxed italic mb-6 font-medium">
                                                                     "{sellerNote}"
                                                                 </p>
                                                             )}
                                                         </div>
-                                                        <div className="flex items-center justify-between border-t border-white/5 pt-4 mt-4">
-                                                            <span className="text-[8px] font-semibold text-white/10 uppercase tracking-widest">{noteDate}</span>
+                                                        <div className="flex items-center justify-between border-t border-gray-200 pt-4 mt-4">
+                                                            <span className="text-[8px] font-semibold text-gray-300 uppercase tracking-widest">{noteDate}</span>
                                                             {isEditingNote ? (
                                                                 <button
                                                                     onClick={() => {
                                                                         setIsEditingNote(false);
                                                                         setNoteDate(new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' }));
                                                                     }}
-                                                                    className="text-[9px] font-bold text-[#4caf50] uppercase tracking-widest hover:text-[#66bb6a]"
+                                                                    className="text-[9px] font-bold text-green-700 uppercase tracking-widest hover:text-[#66bb6a]"
                                                                 >
                                                                     Save
                                                                 </button>
                                                             ) : (
                                                                 <button
                                                                     onClick={() => setIsEditingNote(true)}
-                                                                    className="text-[9px] font-bold text-[#D4AF37] uppercase tracking-widest hover:text-[#E5C158]"
+                                                                    className="text-[9px] font-bold text-green-700 uppercase tracking-widest hover:text-[#E5C158]"
                                                                 >
                                                                     Edit
                                                                 </button>
@@ -1203,8 +1213,8 @@ const SupplierPage = ({ onNavigate, focusSection }) => {
                                             <div className="space-y-4 animate-fade-in max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
 
 
-                                                <h4 className="text-[10px] font-bold text-white/20 uppercase tracking-[0.3em] flex items-center gap-2 mb-4">
-                                                    <span className="w-1 h-3 bg-white/10 rounded-full"></span>
+                                                <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.3em] flex items-center gap-2 mb-4">
+                                                    <span className="w-1 h-3 bg-gray-200 rounded-full"></span>
                                                     Procurement Registry
                                                 </h4>
                                                 {profileBatches
@@ -1245,33 +1255,33 @@ const SupplierPage = ({ onNavigate, focusSection }) => {
                                                                     lineItems: itemsInBatch
                                                                 });
                                                             }}
-                                                            className="group p-5 bg-white/[0.02] border border-white/5 rounded-2xl flex items-center justify-between hover:bg-white/[0.04] hover:border-[#D4AF37]/30 transition-all cursor-pointer"
+                                                            className="group p-5 bg-gray-50 border border-gray-200 rounded-2xl flex items-center justify-between hover:bg-gray-100 hover:border-green-600/30 transition-all cursor-pointer"
                                                         >
                                                             <div className="flex items-center gap-6">
-                                                                <div className="p-3 bg-white/5 rounded-xl text-[#4caf50]">
+                                                                <div className="p-3 bg-gray-100 rounded-xl text-green-700">
                                                                     <Package className="w-5 h-5" />
                                                                 </div>
                                                                 <div>
-                                                                    <p className="text-[11px] font-bold text-white tracking-tight">{trx.batch_number}</p>
-                                                                    <p className="text-[10px] text-white/30">{trx.date}</p>
+                                                                    <p className="text-[11px] font-bold text-gray-900 tracking-tight">{trx.batch_number}</p>
+                                                                    <p className="text-[10px] text-gray-500">{trx.date}</p>
                                                                 </div>
                                                             </div>
                                                             <div className="text-right flex items-center gap-8">
                                                                 <div className="text-right">
-                                                                    <p className="text-[11px] font-bold text-white">{trx.net_value}</p>
-                                                                    <p className="text-[10px] text-white/30">{batchItems[trx.batch_number]?.length || 0} Batched Items</p>
+                                                                    <p className="text-[11px] font-bold text-gray-900">{trx.net_value}</p>
+                                                                    <p className="text-[10px] text-gray-500">{batchItems[trx.batch_number]?.length || 0} Batched Items</p>
                                                                 </div>
-                                                                <span className={`text-[8px] font-bold px-2 py-1 rounded-md tracking-widest ${trx.payment_status === 'PAID' ? 'bg-[#4caf50]/10 text-[#4caf50] translate-x-2' : 'bg-yellow-500/10 text-yellow-500'}`}>
+                                                                <span className={`text-[8px] font-bold px-2 py-1 rounded-md tracking-widest ${trx.payment_status === 'PAID' ? 'bg-green-100 text-green-700 translate-x-2' : 'bg-yellow-500/10 text-yellow-500'}`}>
                                                                     {trx.payment_status === 'PAID' ? 'SETTLED' : 'UNPAID'}
                                                                 </span>
-                                                                <ArrowUpRight className="w-4 h-4 text-white/10 group-hover:text-[#D4AF37] transition-all" />
+                                                                <ArrowUpRight className="w-4 h-4 text-gray-300 group-hover:text-green-700 transition-all" />
                                                             </div>
                                                         </div>
                                                     ))}
                                                 {profileBatches.filter(b => b.supplier_id === selectedSupplier.id).length === 0 && (
-                                                    <div className="p-12 text-center border border-dashed border-white/5 rounded-3xl">
-                                                        <Package className="w-8 h-8 text-white/5 mx-auto mb-3" />
-                                                        <p className="text-xs text-white/20 font-medium">No procurement history recorded for this supplier.</p>
+                                                    <div className="p-12 text-center border border-dashed border-gray-200 rounded-3xl">
+                                                        <Package className="w-8 h-8 text-gray-900/5 mx-auto mb-3" />
+                                                        <p className="text-xs text-gray-400 font-medium">No procurement history recorded for this supplier.</p>
                                                     </div>
                                                 )}
                                             </div>
@@ -1282,35 +1292,35 @@ const SupplierPage = ({ onNavigate, focusSection }) => {
                                                 <div className="flex items-center gap-4 mb-8">
                                                     <button
                                                         onClick={() => setSelectedTransaction(null)}
-                                                        className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-white/40 hover:text-white transition-all"
+                                                        className="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-500 hover:text-gray-900 transition-all"
                                                     >
                                                         <X className="w-4 h-4" />
                                                     </button>
                                                     <div>
-                                                        <h4 className="text-[10px] font-bold text-[#D4AF37] uppercase tracking-[0.3em]">Transaction Drill-Down</h4>
-                                                        <p className="text-sm font-bold text-white">Details for {selectedTransaction.id}</p>
+                                                        <h4 className="text-[10px] font-bold text-green-700 uppercase tracking-[0.3em]">Transaction Drill-Down</h4>
+                                                        <p className="text-sm font-bold text-gray-900">Details for {selectedTransaction.id}</p>
                                                     </div>
                                                 </div>
 
                                                 <div className="grid grid-cols-2 gap-8 mb-8">
-                                                    <div className="p-6 bg-white/[0.02] border border-white/5 rounded-[24px]">
-                                                        <span className="text-[9px] font-bold text-white/20 uppercase tracking-widest mb-4 block">Order Summary</span>
+                                                    <div className="p-6 bg-gray-50 border border-gray-200 rounded-[24px]">
+                                                        <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-4 block">Order Summary</span>
                                                         <div className="space-y-4">
                                                             <div className="flex justify-between items-center text-xs">
-                                                                <span className="text-white/40">Placement Date</span>
-                                                                <span className="text-white font-medium">{selectedTransaction.date}</span>
+                                                                <span className="text-gray-500">Placement Date</span>
+                                                                <span className="text-gray-900 font-medium">{selectedTransaction.date}</span>
                                                             </div>
                                                             <div className="flex justify-between items-center text-xs">
-                                                                <span className="text-white/40">Total Items Added</span>
-                                                                <span className={`font-bold ${selectedTransaction.items >= selectedTransaction.target_items ? 'text-[#4caf50]' : 'text-yellow-500'}`}>
+                                                                <span className="text-gray-500">Total Items Added</span>
+                                                                <span className={`font-bold ${selectedTransaction.items >= selectedTransaction.target_items ? 'text-green-700' : 'text-yellow-500'}`}>
                                                                     {selectedTransaction.items} / {selectedTransaction.target_items}
                                                                 </span>
                                                             </div>
-                                                            <div className="flex flex-col gap-2 border-t border-white/5 pt-4">
+                                                            <div className="flex flex-col gap-2 border-t border-gray-200 pt-4">
                                                                 <div className="flex justify-between items-center text-xs">
-                                                                    <span className="text-white/40">Expected Net Value</span>
+                                                                    <span className="text-gray-500">Expected Net Value</span>
                                                                     <div className="flex items-center gap-2">
-                                                                        <span className="text-white font-bold">{selectedTransaction.amount}</span>
+                                                                        <span className="text-gray-900 font-bold">{selectedTransaction.amount}</span>
                                                                         <button
                                                                             onClick={async () => {
                                                                                 const newVal = prompt("Enter Correct Net Transaction Value", selectedTransaction.amount.replace('Rs. ', '').replace(/,/g, ''));
@@ -1325,15 +1335,15 @@ const SupplierPage = ({ onNavigate, focusSection }) => {
                                                                                     } catch (e) { alert("Failed to update"); }
                                                                                 }
                                                                             }}
-                                                                            className="p-1 hover:bg-white/10 rounded group"
+                                                                            className="p-1 hover:bg-gray-200 rounded group"
                                                                         >
-                                                                            <Edit className="w-3 h-3 text-[#D4AF37] group-hover:scale-110 transition-transform" />
+                                                                            <Edit className="w-3 h-3 text-green-700 group-hover:scale-110 transition-transform" />
                                                                         </button>
                                                                     </div>
                                                                 </div>
                                                                 <div className="flex justify-between items-center text-xs">
-                                                                    <span className="text-white/40">Actual Item Total</span>
-                                                                    <span className="text-white font-bold">Rs. {selectedTransaction.actual_amount.toLocaleString()}</span>
+                                                                    <span className="text-gray-500">Actual Item Total</span>
+                                                                    <span className="text-gray-900 font-bold">Rs. {selectedTransaction.actual_amount.toLocaleString()}</span>
                                                                 </div>
                                                                 {Math.abs(parseFloat(selectedTransaction.amount.replace('Rs. ', '').replace(/,/g, '')) - selectedTransaction.actual_amount) > 1 && (
                                                                     <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-2 mt-2 animate-pulse">
@@ -1344,56 +1354,56 @@ const SupplierPage = ({ onNavigate, focusSection }) => {
                                                             </div>
                                                         </div>
                                                     </div>
-                                                    <div className="p-6 bg-white/[0.02] border border-white/5 rounded-[24px]">
-                                                        <span className="text-[9px] font-bold text-white/20 uppercase tracking-widest mb-4 block">Fulfillment Details</span>
+                                                    <div className="p-6 bg-gray-50 border border-gray-200 rounded-[24px]">
+                                                        <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-4 block">Fulfillment Details</span>
                                                         <div className="space-y-4">
                                                             <div className="flex justify-between items-center text-xs">
-                                                                <span className="text-white/40">Warehouse Destination</span>
-                                                                <span className="text-white font-medium">Main Store / A1</span>
+                                                                <span className="text-gray-500">Warehouse Destination</span>
+                                                                <span className="text-gray-900 font-medium">Main Store / A1</span>
                                                             </div>
                                                             <div className="flex justify-between items-center text-xs">
-                                                                <span className="text-white/40">Payment Clearing</span>
+                                                                <span className="text-gray-500">Payment Clearing</span>
                                                                 <div className="flex items-center gap-3">
-                                                                    <span className={`${selectedTransaction.payment_status === 'PAID' ? 'text-[#4caf50]' : 'text-yellow-500'} font-bold tracking-widest text-[10px]`}>
+                                                                    <span className={`${selectedTransaction.payment_status === 'PAID' ? 'text-green-700' : 'text-yellow-500'} font-bold tracking-widest text-[10px]`}>
                                                                         {selectedTransaction.payment_status === 'PAID' ? 'SETTLED' : 'PENDING'}
                                                                     </span>
                                                                     {selectedTransaction.payment_status !== 'PAID' && (
                                                                         <button
                                                                             onClick={() => handleProcessPayment(selectedTransaction.db_id)}
-                                                                            className="px-3 py-1 bg-[#4caf50]/10 text-[#4caf50] text-[9px] font-bold rounded hover:bg-[#4caf50]/20 transition-all uppercase tracking-widest border border-[#4caf50]/20"
+                                                                            className="px-3 py-1 bg-green-100 text-green-700 text-[9px] font-bold rounded hover:bg-[#4caf50]/20 transition-all uppercase tracking-widest border border-green-200"
                                                                         >
                                                                             Pay Now
                                                                         </button>
                                                                     )}
                                                                 </div>
                                                             </div>
-                                                            <div className="flex justify-between items-center text-xs border-t border-white/5 pt-4">
-                                                                <span className="text-white/40">Payment Mode</span>
-                                                                <span className="text-white font-medium">Direct Bank Transfer</span>
+                                                            <div className="flex justify-between items-center text-xs border-t border-gray-200 pt-4">
+                                                                <span className="text-gray-500">Payment Mode</span>
+                                                                <span className="text-gray-900 font-medium">Direct Bank Transfer</span>
                                                             </div>
                                                         </div>
                                                     </div>
                                                 </div>
 
                                                 <div className="flex-1 space-y-4">
-                                                    <h4 className="text-[10px] font-bold text-white/20 uppercase tracking-[0.3em]">Itemized Order List</h4>
-                                                    <div className="bg-white/[0.01] border border-white/5 rounded-2xl overflow-hidden">
+                                                    <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.3em]">Itemized Order List</h4>
+                                                    <div className="bg-gray-50 border border-gray-200 rounded-2xl overflow-hidden">
                                                         <table className="w-full text-left">
                                                             <thead>
-                                                                <tr className="border-b border-white/5">
-                                                                    <th className="px-6 py-4 text-[9px] font-bold text-white/20 uppercase tracking-widest">Description</th>
-                                                                    <th className="px-6 py-4 text-[9px] font-bold text-white/20 uppercase tracking-widest text-center">Qty</th>
-                                                                    <th className="px-6 py-4 text-[9px] font-bold text-white/20 uppercase tracking-widest text-right">Unit Price</th>
-                                                                    <th className="px-6 py-4 text-[9px] font-bold text-white/20 uppercase tracking-widest text-right">Subtotal</th>
+                                                                <tr className="border-b border-gray-200">
+                                                                    <th className="px-6 py-4 text-[9px] font-bold text-gray-400 uppercase tracking-widest">Description</th>
+                                                                    <th className="px-6 py-4 text-[9px] font-bold text-gray-400 uppercase tracking-widest text-center">Qty</th>
+                                                                    <th className="px-6 py-4 text-[9px] font-bold text-gray-400 uppercase tracking-widest text-right">Unit Price</th>
+                                                                    <th className="px-6 py-4 text-[9px] font-bold text-gray-400 uppercase tracking-widest text-right">Subtotal</th>
                                                                 </tr>
                                                             </thead>
                                                             <tbody className="text-[11px]">
                                                                 {(selectedTransaction.lineItems || []).map((item, i) => (
-                                                                    <tr key={i} className="border-b border-white/5 last:border-0 hover:bg-white/[0.02]">
-                                                                        <td className="px-6 py-4 font-medium text-white/70">{item.name}</td>
-                                                                        <td className="px-6 py-4 text-center text-white/50">{item.qty}</td>
-                                                                        <td className="px-6 py-4 text-right text-white/50">Rs. {item.price}</td>
-                                                                        <td className="px-6 py-4 text-right font-bold text-white">Rs. {item.total}</td>
+                                                                    <tr key={i} className="border-b border-gray-200 last:border-0 hover:bg-gray-50">
+                                                                        <td className="px-6 py-4 font-medium text-gray-700">{item.name}</td>
+                                                                        <td className="px-6 py-4 text-center text-gray-500">{item.qty}</td>
+                                                                        <td className="px-6 py-4 text-right text-gray-500">Rs. {item.price}</td>
+                                                                        <td className="px-6 py-4 text-right font-bold text-gray-900">Rs. {item.total}</td>
                                                                     </tr>
                                                                 ))}
                                                             </tbody>
@@ -1408,25 +1418,25 @@ const SupplierPage = ({ onNavigate, focusSection }) => {
                                                 {/* Credit Notes Section */}
                                                 {profileReturns.filter(r => r.resolution_type === 'CREDIT_NOTE').length > 0 && (
                                                     <div className="mb-10 space-y-4">
-                                                        <h4 className="text-[10px] font-bold text-blue-400/60 uppercase tracking-[0.3em] flex items-center gap-2">
-                                                            <span className="w-1 h-3 bg-blue-500 rounded-full"></span>
+                                                        <h4 className="text-[11px] font-bold text-green-800 uppercase tracking-widest flex items-center gap-2">
+                                                            <span className="w-1.5 h-4 bg-green-500 rounded-full"></span>
                                                             Authorized Credit Balances
                                                         </h4>
                                                         <div className="grid grid-cols-2 gap-4">
                                                             {profileReturns.filter(r => r.resolution_type === 'CREDIT_NOTE').map(note => (
-                                                                <div key={note.id} className="p-5 bg-blue-500/5 border border-blue-500/10 rounded-[24px] flex items-center justify-between hover:bg-blue-500/10 transition-all group">
+                                                                <div key={note.id} className="p-5 bg-[#F3F9F5] border border-green-200 rounded-2xl flex items-center justify-between hover:bg-green-50 transition-all group shadow-sm">
                                                                     <div className="flex items-center gap-4">
-                                                                        <div className="p-3 bg-blue-500/10 rounded-xl text-blue-500 group-hover:scale-110 transition-transform">
+                                                                        <div className="p-3 bg-green-100 rounded-xl text-green-700 group-hover:scale-110 transition-transform">
                                                                             <FileText className="w-5 h-5" />
                                                                         </div>
                                                                         <div>
-                                                                            <p className="text-[11px] font-black text-white tracking-widest uppercase">{note.credit_note_number}</p>
-                                                                            <p className="text-[9px] text-white/20 font-bold uppercase tracking-tighter">Origin: {note.return_number}</p>
+                                                                            <p className="text-[12px] font-black text-gray-900 tracking-widest uppercase">{note.credit_note_number}</p>
+                                                                            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">Origin: {note.return_number}</p>
                                                                         </div>
                                                                     </div>
                                                                     <div className="text-right">
-                                                                        <p className="text-sm font-black text-blue-400">Rs. {(parseFloat(note.refund_amount) || 0).toLocaleString()}</p>
-                                                                        <p className="text-[8px] text-white/20 uppercase font-black tracking-tighter mt-1">Avail. Credit</p>
+                                                                        <p className="text-sm font-black text-green-700">Rs. {(parseFloat(note.refund_amount) || 0).toLocaleString()}</p>
+                                                                        <p className="text-[9px] text-gray-400 uppercase font-black tracking-widest mt-1">Avail. Credit</p>
                                                                     </div>
                                                                 </div>
                                                             ))}
@@ -1437,55 +1447,55 @@ const SupplierPage = ({ onNavigate, focusSection }) => {
                                                 <div className="space-y-4">
                                                     <div className="flex items-center justify-between mb-4">
                                                         <div>
-                                                            <h4 className="text-[11px] font-bold text-white uppercase tracking-[0.3em]">Supplier Ledger</h4>
-                                                            <p className="text-[9px] text-white/20 mt-1 uppercase">Statement of all financial dealings</p>
+                                                            <h4 className="text-[13px] font-bold text-green-900 uppercase tracking-[0.3em]">Supplier Ledger</h4>
+                                                            <p className="text-[10px] text-gray-500 mt-1 uppercase font-bold tracking-widest">Statement of all financial dealings</p>
                                                         </div>
                                                         <div className="flex gap-2">
-                                                            <button className="p-2 bg-white/5 border border-white/5 rounded-lg text-white/40 hover:text-white transition-all">
-                                                                <Download className="w-3.5 h-3.5" />
+                                                            <button className="p-2 bg-green-50 text-green-700 hover:bg-green-100 rounded-xl transition-all border border-green-200" title="Download Ledger">
+                                                                <Download className="w-4 h-4" />
                                                             </button>
                                                         </div>
                                                     </div>
 
-                                                    <div className="bg-white/[0.01] border border-white/5 rounded-3xl overflow-hidden">
+                                                    <div className="bg-white border border-green-200 rounded-[24px] overflow-hidden shadow-sm">
                                                         <table className="w-full text-left">
                                                             <thead>
-                                                                <tr className="border-b border-white/5 bg-white/[0.02]">
-                                                                    <th className="px-6 py-4 text-[9px] font-bold text-white/20 uppercase tracking-[0.2em]">Date</th>
-                                                                    <th className="px-6 py-4 text-[9px] font-bold text-white/20 uppercase tracking-[0.2em]">Reference No</th>
-                                                                    <th className="px-6 py-4 text-[9px] font-bold text-white/20 uppercase tracking-[0.2em]">Description</th>
-                                                                    <th className="px-6 py-4 text-[9px] font-bold text-white/20 uppercase tracking-[0.2em] text-right">Debit / Credit</th>
-                                                                    <th className="px-6 py-4 text-[9px] font-bold text-white/20 uppercase tracking-[0.2em] text-center">Status</th>
+                                                                <tr className="bg-[#C1DFCD] border-b border-green-200">
+                                                                    <th className="px-6 py-4 text-[10px] font-black text-green-900 uppercase tracking-widest">Date</th>
+                                                                    <th className="px-6 py-4 text-[10px] font-black text-green-900 uppercase tracking-widest">Reference No</th>
+                                                                    <th className="px-6 py-4 text-[10px] font-black text-green-900 uppercase tracking-widest">Description</th>
+                                                                    <th className="px-6 py-4 text-[10px] font-black text-green-900 uppercase tracking-widest text-right">Debit / Credit</th>
+                                                                    <th className="px-6 py-4 text-[10px] font-black text-green-900 uppercase tracking-widest text-center">Status</th>
                                                                 </tr>
                                                             </thead>
-                                                            <tbody className="divide-y divide-white/[0.03]">
+                                                            <tbody className="divide-y divide-gray-100">
                                                                 {getLedgerEntries().map((entry, idx) => (
-                                                                    <tr key={idx} className="hover:bg-white/[0.02] transition-colors group">
+                                                                    <tr key={idx} className="hover:bg-green-50/50 transition-colors group">
                                                                         <td className="px-6 py-5">
-                                                                            <span className="text-[10px] font-bold text-white/60 tracking-tighter">
+                                                                            <span className="text-[11px] font-bold text-gray-700 tracking-tight">
                                                                                 {new Date(entry.date).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                                                                             </span>
                                                                         </td>
                                                                         <td className="px-6 py-5">
-                                                                            <span className={`text-[10px] font-black tracking-tight ${entry.type === 'PAYMENT' ? 'text-green-500/80' : 'text-white/80'}`}>
+                                                                            <span className={`text-[11px] font-black tracking-widest ${entry.type === 'PAYMENT' ? 'text-green-600' : 'text-gray-900'}`}>
                                                                                 {entry.ref}
                                                                             </span>
                                                                         </td>
                                                                         <td className="px-6 py-5">
                                                                             <div className="flex items-center gap-3">
-                                                                                <div className={`p-2 rounded-lg ${entry.type === 'PAYMENT' ? 'bg-green-500/5 text-green-500/60' : 'bg-blue-500/5 text-blue-500/60'}`}>
-                                                                                    {entry.type === 'PAYMENT' ? <CreditCard className="w-3 h-3" /> : <FileText className="w-3 h-3" />}
+                                                                                <div className={`p-2 rounded-xl ${entry.type === 'PAYMENT' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                                                                                    {entry.type === 'PAYMENT' ? <CreditCard className="w-3.5 h-3.5" /> : <FileText className="w-3.5 h-3.5" />}
                                                                                 </div>
-                                                                                <span className="text-[10px] font-semibold text-white/40 uppercase tracking-widest">
+                                                                                <span className="text-[11px] font-bold text-gray-700 uppercase tracking-widest">
                                                                                     {entry.type === 'PAYMENT' ? `Settlement via ${entry.method}` : 'Stock Procurement'}
                                                                                 </span>
                                                                             </div>
                                                                         </td>
-                                                                        <td className={`px-6 py-5 text-right font-black text-sm ${entry.type === 'PAYMENT' ? 'text-green-500' : 'text-red-400'}`}>
+                                                                        <td className={`px-6 py-5 text-right font-black text-sm ${entry.type === 'PAYMENT' ? 'text-green-600' : 'text-gray-800'}`}>
                                                                             {entry.type === 'PAYMENT' ? '-' : '+'} Rs. {entry.amount.toLocaleString()}
                                                                         </td>
                                                                         <td className="px-6 py-5 text-center">
-                                                                            <span className={`text-[8px] font-black uppercase tracking-[0.1em] px-2 py-1 rounded border ${entry.status === 'ACCEPTED' || entry.status === 'SETTLED' ? 'bg-green-500/5 text-green-500/60 border-green-500/10' : 'bg-yellow-500/5 text-yellow-500/60 border-yellow-500/10'}`}>
+                                                                            <span className={`text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg border ${entry.status === 'ACCEPTED' || entry.status === 'SETTLED' ? 'bg-[#F3F9F5] text-green-700 border-green-200' : 'bg-orange-50 text-orange-600 border-orange-200'}`}>
                                                                                 {entry.status}
                                                                             </span>
                                                                         </td>
@@ -1495,8 +1505,8 @@ const SupplierPage = ({ onNavigate, focusSection }) => {
                                                         </table>
                                                         {getLedgerEntries().length === 0 && (
                                                             <div className="p-20 text-center">
-                                                                <Activity className="w-8 h-8 text-white/5 mx-auto mb-4" />
-                                                                <p className="text-xs text-white/20 font-medium">No ledger entries found for this supplier.</p>
+                                                                <Activity className="w-8 h-8 text-green-200 mx-auto mb-4" />
+                                                                <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">No ledger entries found for this supplier.</p>
                                                             </div>
                                                         )}
                                                     </div>
@@ -1508,39 +1518,39 @@ const SupplierPage = ({ onNavigate, focusSection }) => {
                                             <div className="space-y-4 animate-fade-in">
                                                 <div className="flex items-center justify-between mb-4">
                                                     <div>
-                                                        <h4 className="text-[11px] font-bold text-white uppercase tracking-[0.3em]">Stock Returns</h4>
-                                                        <p className="text-[9px] text-white/20 mt-1 uppercase">History of returned items</p>
+                                                        <h4 className="text-[11px] font-bold text-gray-900 uppercase tracking-[0.3em]">Stock Returns</h4>
+                                                        <p className="text-[9px] text-gray-400 mt-1 uppercase">History of returned items</p>
                                                     </div>
                                                 </div>
 
-                                                <div className="bg-white/[0.01] border border-white/5 rounded-3xl overflow-hidden">
+                                                <div className="bg-gray-50 border border-gray-200 rounded-3xl overflow-hidden">
                                                     <table className="w-full text-left">
                                                         <thead>
-                                                            <tr className="border-b border-white/5 bg-white/[0.02]">
-                                                                <th className="px-6 py-4 text-[9px] font-bold text-white/20 uppercase tracking-[0.2em]">Return No</th>
-                                                                <th className="px-6 py-4 text-[9px] font-bold text-white/20 uppercase tracking-[0.2em]">Item</th>
-                                                                <th className="px-6 py-4 text-[9px] font-bold text-white/20 uppercase tracking-[0.2em]">Qty</th>
-                                                                <th className="px-6 py-4 text-[9px] font-bold text-white/20 uppercase tracking-[0.2em]">Type</th>
-                                                                <th className="px-6 py-4 text-[9px] font-bold text-white/20 uppercase tracking-[0.2em] text-center">Status</th>
+                                                            <tr className="border-b border-gray-200 bg-gray-50">
+                                                                <th className="px-6 py-4 text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em]">Return No</th>
+                                                                <th className="px-6 py-4 text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em]">Item</th>
+                                                                <th className="px-6 py-4 text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em]">Qty</th>
+                                                                <th className="px-6 py-4 text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em]">Type</th>
+                                                                <th className="px-6 py-4 text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em] text-center">Status</th>
                                                             </tr>
                                                         </thead>
                                                         <tbody className="divide-y divide-white/[0.03]">
                                                             {profileReturns.map((ret, idx) => (
-                                                                <tr key={idx} className="hover:bg-white/[0.02] transition-colors group">
+                                                                <tr key={idx} className="hover:bg-gray-50 transition-colors group">
                                                                     <td className="px-6 py-5">
                                                                         <div className="flex flex-col">
-                                                                            <span className="text-[10px] font-black text-white tracking-widest uppercase">{ret.return_number}</span>
-                                                                            <span className="text-[8px] text-white/20 font-bold mt-1">{new Date(ret.created_at).toLocaleDateString()}</span>
+                                                                            <span className="text-[10px] font-black text-gray-900 tracking-widest uppercase">{ret.return_number}</span>
+                                                                            <span className="text-[8px] text-gray-400 font-bold mt-1">{new Date(ret.created_at).toLocaleDateString()}</span>
                                                                         </div>
                                                                     </td>
                                                                     <td className="px-6 py-5">
-                                                                        <span className="text-[10px] font-bold text-white/70">{ret.inventory?.ingredient_name}</span>
+                                                                        <span className="text-[10px] font-bold text-gray-700">{ret.inventory?.ingredient_name}</span>
                                                                     </td>
                                                                     <td className="px-6 py-5">
                                                                         <span className="text-xs font-black text-[#ff5252]">{ret.quantity}</span>
                                                                     </td>
                                                                     <td className="px-6 py-5">
-                                                                        <span className="text-[9px] font-bold text-white/30 uppercase tracking-widest">{ret.return_type}</span>
+                                                                        <span className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">{ret.return_type}</span>
                                                                     </td>
                                                                     <td className="px-6 py-5 text-center">
                                                                         <span className={`text-[8px] font-black uppercase tracking-[0.1em] px-2 py-1 rounded border ${ret.status === 'APPROVED' || ret.status === 'COMPLETED' ? 'bg-green-500/5 text-green-500/60 border-green-500/10' : 'bg-yellow-500/5 text-yellow-500/60 border-yellow-500/10'}`}>
@@ -1553,8 +1563,8 @@ const SupplierPage = ({ onNavigate, focusSection }) => {
                                                     </table>
                                                     {profileReturns.length === 0 && (
                                                         <div className="p-20 text-center">
-                                                            <Activity className="w-8 h-8 text-white/5 mx-auto mb-4" />
-                                                            <p className="text-xs text-white/20 font-medium">No returns recorded for this supplier.</p>
+                                                            <Activity className="w-8 h-8 text-gray-900/5 mx-auto mb-4" />
+                                                            <p className="text-xs text-gray-400 font-medium">No returns recorded for this supplier.</p>
                                                         </div>
                                                     )}
                                                 </div>

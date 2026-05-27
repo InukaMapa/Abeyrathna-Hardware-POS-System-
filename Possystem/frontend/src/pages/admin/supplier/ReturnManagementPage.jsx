@@ -375,15 +375,15 @@ const ReplacementBatchModal = ({ returnData, onClose, onSuccess }) => {
     };
 
     return (
-        <div className="modal-overlay z-[5000]">
-            <div className="bg-[#1A1A1A] w-full max-w-lg rounded-[40px] shadow-2xl border border-white/5 p-12 animate-scale-up relative overflow-hidden">
+        <div className="fixed inset-0 z-[5000] backdrop-blur-xl bg-black/70 p-4 sm:p-0 flex items-center justify-center">
+            <div className="bg-[#1A1A1A] w-full max-w-lg max-h-[90vh] flex flex-col rounded-3xl shadow-2xl border border-white/5 overflow-hidden animate-scale-up relative">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-purple-500/5 rounded-full -mr-32 -mt-32 blur-3xl"></div>
-
-                <div className="flex justify-between items-center mb-10 relative">
-                    <div>
-                        <h2 className="text-xl font-black text-white uppercase tracking-widest">Replacement Batch</h2>
-                        <p className="text-[10px] text-white/20 font-bold uppercase tracking-widest mt-1">Authorized Restocking Session</p>
-                    </div>
+                <div className="overflow-y-auto p-12 w-full custom-scrollbar relative z-10">
+                    <div className="flex justify-between items-center mb-10">
+                        <div>
+                            <h2 className="text-xl font-black text-white uppercase tracking-widest">Replacement Batch</h2>
+                            <p className="text-[10px] text-white/20 font-bold uppercase tracking-widest mt-1">Authorized Restocking Session</p>
+                        </div>
                     <button onClick={onClose} className="p-3 bg-white/5 hover:bg-white/10 rounded-2xl text-white/20 hover:text-white transition-all">
                         <ArrowLeft className="w-5 h-5" />
                     </button>
@@ -430,6 +430,7 @@ const ReplacementBatchModal = ({ returnData, onClose, onSuccess }) => {
                         </button>
                     </div>
                 </form>
+                </div>
             </div>
         </div>
     );

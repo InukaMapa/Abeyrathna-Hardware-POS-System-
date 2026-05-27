@@ -1,4 +1,4 @@
-const multer = require("multer");
+import multer from "multer";
 
 // Save uploaded images into /uploads/bills/
 const storage = multer.diskStorage({
@@ -8,4 +8,4 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-exports.uploadImage = upload.single("billImage");
+export const uploadImage = upload.single("billImage");

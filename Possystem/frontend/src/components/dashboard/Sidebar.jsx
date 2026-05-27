@@ -31,6 +31,10 @@ const Sidebar = ({ onNavigate, activePage }) => {
     } else if (userRole === 'CASHIER') {
         menuItems = cashierMenuItems;
     }
+    // Fallback: if no role detected or menuItems empty, default to admin menu (includes inventory and supplier)
+    if (!userRole || menuItems.length === 0) {
+        menuItems = adminMenuItems;
+    }
 
     return (
         <div className="sidebar">
