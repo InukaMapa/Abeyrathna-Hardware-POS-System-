@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import axios from 'axios';
 import DashboardLayout from '../../../components/layout/DashboardLayout';
 import AddSupplierModal from './AddSupplierModal';
@@ -14,13 +14,14 @@ import { API_BASE_URL, ENDPOINTS } from '../../../config/api';
 import '../../../styles/dashboard.css';
 import { deleteSupplier } from '../../../services/supplierService';
 
-const SupplierPage = ({ onNavigate }) => {
+const SupplierPage = ({ onNavigate, focusSection }) => {
     const [suppliers, setSuppliers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [filterStatus, setFilterStatus] = useState('ALL'); // ALL, ACTIVE, INACTIVE
     const [isAddModalOpen, setAddModalOpen] = useState(false);
     const [editingSupplier, setEditingSupplier] = useState(null);
+    const recentPurchasesRef = useRef(null);
     const [selectedSupplier, setSelectedSupplier] = useState(null); // For Profile Modal
     const [isEditingNote, setIsEditingNote] = useState(false);
     const [sellerNote, setSellerNote] = useState("");
@@ -262,6 +263,14 @@ const SupplierPage = ({ onNavigate }) => {
         fetchSuppliers();
         fetchGlobalReturns();
     }, []);
+
+    useEffect(() => {
+        if (focusSection === 'recent-purchases') {
+            setTimeout(() => {
+                recentPurchasesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 250);
+        }
+    }, [focusSection]);
 
     useEffect(() => {
         if (selectedSupplier) {
@@ -857,7 +866,7 @@ const SupplierPage = ({ onNavigate }) => {
                         <div className="lg:col-span-4 space-y-8">
 
                             {/* Operations Control Center */}
-                            <div className="bg-[#1E1E1E] rounded-3xl border border-[#333] overflow-hidden shadow-2xl">
+                            <div ref={recentPurchasesRef} id="recent-purchases" className="bg-[#1E1E1E] rounded-3xl border border-[#333] overflow-hidden shadow-2xl scroll-mt-8">
                                 <div className="p-6 bg-[#D4AF37]/5 border-b border-[#333]">
                                     <h3 className="text-xs font-black text-[#D4AF37] uppercase tracking-[0.2em] flex items-center gap-2">
                                         <TrendingUp className="w-4 h-4" /> Quick Actions
