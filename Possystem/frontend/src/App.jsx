@@ -22,6 +22,7 @@ import CashManagementPage from './pages/admin/CashManagementPage';
 import SupplierPage from './pages/admin/supplier/SupplierPage';
 import SupplierReturnsPage from './pages/admin/supplier/SupplierReturnsPage';
 import ReturnManagementPage from './pages/admin/supplier/ReturnManagementPage';
+import ReportsPage from './pages/admin/ReportsPage';
 import './styles/dashboard.css';
 
 function AppContent() {
@@ -38,6 +39,7 @@ function AppContent() {
 
   // State to hold order object when editing from details
   const [editOrderData, setEditOrderData] = useState(null);
+  const [supplierFocusSection, setSupplierFocusSection] = useState(null);
 
   const navigateTo = (page, params = {}) => {
     setCurrentPage(page);
@@ -56,6 +58,9 @@ function AppContent() {
     }
     if (page === 'return-management' && params.id) {
       setSelectedReturnId(params.id);
+    }
+    if (page === 'supplier') {
+      setSupplierFocusSection(params.focusSection || null);
     }
   };
 
@@ -88,7 +93,7 @@ function AppContent() {
       )}
       {currentPage === 'reports' && (
         <ProtectedRoute allowedRoles={['ADMIN']} onNavigate={navigateTo}>
-          <div>Reports Page (Coming Soon)</div>
+          <ReportsPage onNavigate={navigateTo} />
         </ProtectedRoute>
       )}
       {currentPage === 'cash-management' && (
@@ -98,7 +103,7 @@ function AppContent() {
       )}
       {currentPage === 'supplier' && (
         <ProtectedRoute allowedRoles={['ADMIN']} onNavigate={navigateTo}>
-          <SupplierPage onNavigate={navigateTo} />
+          <SupplierPage onNavigate={navigateTo} focusSection={supplierFocusSection} />
         </ProtectedRoute>
       )}
       {currentPage === 'supplier-returns' && (

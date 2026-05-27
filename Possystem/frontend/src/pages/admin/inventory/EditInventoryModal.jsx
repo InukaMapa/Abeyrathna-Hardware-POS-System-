@@ -80,16 +80,16 @@ const EditInventoryModal = ({ onClose, onSuccess, categories = [], batches = [],
     };
 
     return (
-        <div className="modal-overlay">
-            <div className="modal-content" style={{ width: '700px', maxWidth: '95%' }}>
-                <div className="modal-header">
+        <div className="edit-inventory-overlay">
+            <div className="edit-inventory-modal">
+                <div className="edit-inventory-header">
                     <h2>Edit Inventory Item</h2>
-                    <button onClick={onClose} className="close-btn"><X className="w-5 h-5" /></button>
+                    <button title="Close" onClick={onClose} className="edit-inventory-close"><X className="w-5 h-5" /></button>
                 </div>
 
-                <div className="overflow-y-auto max-h-[70vh] custom-scrollbar pr-2 mt-4">
-                    <form id="editInventoryForm" onSubmit={handleSubmit} className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="edit-inventory-body custom-scrollbar">
+                    <form id="editInventoryForm" onSubmit={handleSubmit} className="edit-inventory-form">
+                        <div className="edit-inventory-grid">
                             <div className="form-group">
                                 <label>Item Name *</label>
                                 <input
@@ -99,15 +99,16 @@ const EditInventoryModal = ({ onClose, onSuccess, categories = [], batches = [],
                                 />
                             </div>
                             <div className="form-group">
-                                <div className="flex justify-between items-center mb-1">
+                                <div className="edit-inventory-label-row">
                                     <label className="mb-0">Item Code (Barcode)</label>
                                     <button
+                                        title="Auto-generate item code"
                                         type="button"
                                         onClick={() => {
                                             const generatedCode = 'HW' + Date.now().toString().slice(-6) + Math.floor(1000 + Math.random() * 9000);
                                             setFormData(prev => ({ ...prev, item_code: generatedCode }));
                                         }}
-                                        className="text-xs text-[#ffb74d] hover:text-[#ffa726] flex items-center gap-1 font-medium transition-colors cursor-pointer bg-none border-none p-0"
+                                        className="edit-inventory-link-btn"
                                     >
                                         <RefreshCw className="w-3 h-3" /> Auto-Generate
                                     </button>
@@ -132,7 +133,7 @@ const EditInventoryModal = ({ onClose, onSuccess, categories = [], batches = [],
                                     )}
                                 </select>
                             </div>
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="edit-inventory-split">
                                 <div className="form-group">
                                     <label>Quantity *</label>
                                     <input
@@ -157,7 +158,7 @@ const EditInventoryModal = ({ onClose, onSuccess, categories = [], batches = [],
                                     value={formData.reorder_level} onChange={handleChange}
                                 />
                             </div>
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="edit-inventory-split">
                                 <div className="form-group">
                                     <label>Buying Price (Rs.) *</label>
                                     <input
@@ -183,14 +184,13 @@ const EditInventoryModal = ({ onClose, onSuccess, categories = [], batches = [],
                                     placeholder="e.g. Shelf A-1"
                                 />
                             </div>
-                            <div className="md:col-span-2 form-group border-t border-[#333] pt-4 mt-2">
+                            <div className="edit-inventory-full form-group edit-inventory-batch">
                                 <label>Select Inventory Batch *</label>
                                 <select
                                     name="batch_id"
                                     required
                                     value={formData.batch_id}
                                     onChange={handleChange}
-                                    className="font-bold border-[#D4AF37]/30"
                                 >
                                     <option value="">-- Change Active Batch --</option>
                                     {batches.map(b => (
@@ -199,20 +199,21 @@ const EditInventoryModal = ({ onClose, onSuccess, categories = [], batches = [],
                                         </option>
                                     ))}
                                 </select>
-                                <p className="text-[10px] text-white/20 mt-1.5 ml-1 italic">Supplier identity is derived from the selected procurement batch.</p>
+                                <p>Supplier identity is derived from the selected procurement batch.</p>
                             </div>
                         </div>
                     </form>
                 </div>
 
-                <div className="modal-actions mt-6">
-                    <button onClick={onClose} className="btn-secondary">
+                <div className="edit-inventory-actions">
+                    <button title="Cancel" onClick={onClose} className="edit-inventory-btn">
                         Cancel
                     </button>
                     <button
+                        title="Save Changes"
                         type="submit" form="editInventoryForm"
                         disabled={loading}
-                        className="btn-primary flex items-center gap-2 disabled:opacity-50"
+                        className="edit-inventory-btn"
                     >
                         {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                         Save Changes

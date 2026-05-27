@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import axios from 'axios';
 import DashboardLayout from '../../../components/layout/DashboardLayout';
 import AddSupplierModal from './AddSupplierModal';
@@ -14,13 +14,14 @@ import { API_BASE_URL, ENDPOINTS } from '../../../config/api';
 import '../../../styles/dashboard.css';
 import { deleteSupplier } from '../../../services/supplierService';
 
-const SupplierPage = ({ onNavigate }) => {
+const SupplierPage = ({ onNavigate, focusSection }) => {
     const [suppliers, setSuppliers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [filterStatus, setFilterStatus] = useState('ALL'); // ALL, ACTIVE, INACTIVE
     const [isAddModalOpen, setAddModalOpen] = useState(false);
     const [editingSupplier, setEditingSupplier] = useState(null);
+    const recentPurchasesRef = useRef(null);
     const [selectedSupplier, setSelectedSupplier] = useState(null); // For Profile Modal
     const [isEditingNote, setIsEditingNote] = useState(false);
     const [sellerNote, setSellerNote] = useState("");
@@ -273,6 +274,14 @@ const SupplierPage = ({ onNavigate }) => {
     }, []);
 
     useEffect(() => {
+        if (focusSection === 'recent-purchases') {
+            setTimeout(() => {
+                recentPurchasesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 250);
+        }
+    }, [focusSection]);
+
+    useEffect(() => {
         if (selectedSupplier) {
             setSellerNote("Key strategic partner for hardware and power tools. High reliability score with consistent inventory fulfillment.");
             setIsEditingNote(false);
@@ -316,14 +325,15 @@ const SupplierPage = ({ onNavigate }) => {
     return (
         <DashboardLayout onNavigate={onNavigate} activePage="supplier">
             {isGlobalPaymentsOpen ? (
-                <div className="supplier-dashboard animate-fade-in p-6 h-full overflow-y-auto custom-scrollbar bg-[#1E1E1E] flex flex-col relative text-white">
+                <div className="supplier-dashboard supplier-payments-page animate-fade-in p-6 h-full overflow-y-auto custom-scrollbar bg-[#1E1E1E] flex flex-col relative text-white">
                     <div className="flex items-center justify-between mb-8 pb-4 border-b border-white/5">
                         <div className="flex items-center gap-4">
                             <button onClick={() => {
                                 setGlobalPaymentsOpen(false);
                                 setSelectedPaymentProcessing(null);
-                            }} className="p-3 bg-white/5 hover:bg-white/10 rounded-xl transition-all">
+                            }} className="supplier-payments-back">
                                 <ArrowLeft className="w-5 h-5 text-white/50" />
+                                <span>Back to Suppliers</span>
                             </button>
                             <div>
                                 <h1 className="text-2xl font-black text-white uppercase tracking-widest">Supplier Payments</h1>
@@ -424,7 +434,7 @@ const SupplierPage = ({ onNavigate }) => {
                                 })().map((batch, idx) => {
                                     const s = suppliers.find(sup => sup.id === batch.supplier_id);
                                     return (
-                                        <div key={idx} onClick={() => handleSelectPayment(batch)} className="p-6 bg-[#121212] border border-white/5 rounded-[24px] cursor-pointer hover:border-green-500/30 hover:bg-white/[0.02] transition-all group overflow-hidden relative">
+                                        <div key={idx} onClick={() => handleSelectPayment(batch)} className="supplier-payment-batch-card p-6 bg-[#121212] border border-white/5 rounded-[24px] cursor-pointer hover:border-green-500/30 hover:bg-white/[0.02] transition-all group overflow-hidden relative">
                                             <div className="flex justify-between items-start mb-4">
                                                 <div className="flex items-center gap-2">
                                                     <span className="text-base font-black text-white">{batch.batch_number}</span>
@@ -479,7 +489,7 @@ const SupplierPage = ({ onNavigate }) => {
                                     });
                                     return filtered.length === 0;
                                 })() && (
-                                        <div className="col-span-full p-16 text-center border border-dashed border-white/5 rounded-[32px] bg-white/[0.01]">
+                                        <div className="supplier-payments-empty col-span-full p-16 text-center border border-dashed border-white/5 rounded-[32px] bg-white/[0.01]">
                                             <div className="w-16 h-16 bg-green-500/5 rounded-full flex items-center justify-center mx-auto mb-6">
                                                 <CheckCircle2 className="w-8 h-8 text-green-500/40" />
                                             </div>
@@ -492,7 +502,7 @@ const SupplierPage = ({ onNavigate }) => {
                     ) : (
                         <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-8 h-full min-h-0">
                             {/* LEFT: Details View */}
-                            <div className="bg-[#121212] border border-white/5 rounded-[32px] p-8 flex flex-col max-h-[70vh] overflow-hidden">
+                            <div className="supplier-payment-detail-panel bg-[#121212] border border-white/5 rounded-[32px] p-8 flex flex-col max-h-[70vh] overflow-hidden">
                                 <h3 className="text-xs font-black text-white/40 uppercase tracking-[0.2em] mb-6 border-b border-white/5 pb-4">Transaction Profile</h3>
 
                                 <div className="space-y-6 overflow-y-auto custom-scrollbar pr-4">
@@ -577,7 +587,7 @@ const SupplierPage = ({ onNavigate }) => {
                             </div>
 
                             {/* RIGHT: Payment Actions Form */}
-                            <div className="bg-[#121212] border border-white/5 rounded-[32px] p-8 flex flex-col h-full shadow-[0_0_40px_rgba(76,175,80,0.03)] border-t-[3px] border-t-[#4caf50]">
+                            <div className="supplier-payment-form-panel bg-[#121212] border border-white/5 rounded-[32px] p-8 flex flex-col h-full shadow-[0_0_40px_rgba(76,175,80,0.03)] border-t-[3px] border-t-[#4caf50]">
                                 <h3 className="text-xs font-black text-[#4caf50] uppercase tracking-[0.2em] mb-6 border-b border-white/5 pb-4 flex items-center gap-2">
                                     <CreditCard className="w-4 h-4" /> Settlement Processor
                                 </h3>
@@ -594,7 +604,7 @@ const SupplierPage = ({ onNavigate }) => {
                                                         amount: type === 'Full' ? selectedPaymentProcessing.remaining_balance : ''
                                                     });
                                                 }}
-                                                className={`py-3 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${paymentForm.type === type ? 'bg-green-500 text-white border-green-500 shadow-[0_0_20px_rgba(34,197,94,0.3)]' : 'bg-transparent text-white/40 border-white/10 hover:border-white/30 hover:text-white/60'}`}
+                                                className={`supplier-payment-type-btn ${paymentForm.type === type ? 'is-active' : ''}`}
                                             >
                                                 {type} Payment
                                             </button>
@@ -668,7 +678,7 @@ const SupplierPage = ({ onNavigate }) => {
                                     <button
                                         onClick={handleCompletePaymentForm}
                                         disabled={!paymentForm.amount}
-                                        className="w-full py-4 bg-green-600 hover:bg-green-500 disabled:bg-white/5 disabled:text-white/20 text-white text-xs font-black uppercase tracking-[0.2em] rounded-xl transition-all shadow-lg active:scale-95"
+                                        className="supplier-payment-authorize"
                                     >
                                         Authorize & Complete Payment
                                     </button>
@@ -678,7 +688,7 @@ const SupplierPage = ({ onNavigate }) => {
                     )}
                 </div>
             ) : (
-                <div className="supplier-dashboard animate-fade-in p-6 h-full overflow-y-auto custom-scrollbar bg-[#121212]">
+                <div className="supplier-dashboard supplier-page-shell animate-fade-in p-6 h-full overflow-y-auto custom-scrollbar bg-[#121212]">
 
                     {/* Top Header Section */}
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
@@ -693,12 +703,12 @@ const SupplierPage = ({ onNavigate }) => {
                         </div>
 
                         <div className="flex items-center gap-3 w-full md:w-auto">
-                            <button className="flex-1 md:flex-none px-4 py-2.5 bg-[#1E1E1E] text-[#A0A0A0] hover:text-[#D4AF37] border border-[#333] rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2">
+                            <button className="supplier-header-action">
                                 <Printer className="w-4 h-4" /> Print Ledger
                             </button>
                             <button
                                 onClick={() => setAddModalOpen(true)}
-                                className="flex-1 md:flex-none px-6 py-2.5 bg-[#D32F2F] text-white hover:bg-[#B71C1C] rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-lg flex items-center justify-center gap-2"
+                                className="supplier-header-action"
                             >
                                 <Plus className="w-4 h-4" /> Add New Supplier
                             </button>
@@ -760,7 +770,7 @@ const SupplierPage = ({ onNavigate }) => {
                                         <button
                                             key={status}
                                             onClick={() => setFilterStatus(status)}
-                                            className={`flex-1 md:flex-none px-6 py-2.5 rounded-lg text-[11px] font-black transition-all tracking-widest ${filterStatus === status ? 'bg-[#D4AF37] text-black shadow-[0_0_20px_rgba(212,175,55,0.2)] scale-[1.02]' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
+                                            className={`supplier-filter-btn ${filterStatus === status ? 'is-active' : ''}`}
                                         >
                                             {status}
                                         </button>
@@ -835,13 +845,6 @@ const SupplierPage = ({ onNavigate }) => {
                                                                 >
                                                                     <Edit className="w-4 h-4" />
                                                                 </button>
-                                                                <button
-                                                                    onClick={() => handleDeleteSupplier(supplier.id)}
-                                                                    className="p-3 bg-[#121212] text-[#A0A0A0] hover:text-[#ff5252] border border-[#333] rounded-xl transition-all group-hover:bg-[#1E1E1E]"
-                                                                    title="Delete Partner"
-                                                                >
-                                                                    <Trash2 className="w-4 h-4" />
-                                                                </button>
                                                             </div>
                                                         </td>
                                                     </tr>
@@ -866,7 +869,7 @@ const SupplierPage = ({ onNavigate }) => {
                         <div className="lg:col-span-4 space-y-8">
 
                             {/* Operations Control Center */}
-                            <div className="bg-[#1E1E1E] rounded-3xl border border-[#333] overflow-hidden shadow-2xl">
+                            <div ref={recentPurchasesRef} id="recent-purchases" className="bg-[#1E1E1E] rounded-3xl border border-[#333] overflow-hidden shadow-2xl scroll-mt-8">
                                 <div className="p-6 bg-[#D4AF37]/5 border-b border-[#333]">
                                     <h3 className="text-xs font-black text-[#D4AF37] uppercase tracking-[0.2em] flex items-center gap-2">
                                         <TrendingUp className="w-4 h-4" /> Quick Actions
@@ -890,7 +893,7 @@ const SupplierPage = ({ onNavigate }) => {
                                             }
                                         } }
                                     ].map((act, i) => (
-                                        <button key={i} onClick={act.onClick} className="w-full text-left p-4 rounded-2xl bg-[#121212] hover:bg-[#222] border border-[#333] hover:border-[#444] transition-all group flex items-center gap-4">
+                                        <button key={i} onClick={act.onClick} className="supplier-quick-action">
                                             <div style={{ backgroundColor: `rgba(255, 255, 255, 0.1)`, color: 'white' }} className="p-3 rounded-xl transition-all">
                                                 <act.icon className="w-5 h-5" />
                                             </div>
@@ -909,7 +912,7 @@ const SupplierPage = ({ onNavigate }) => {
                                     <h3 className="text-[10px] font-black text-green-900 uppercase tracking-[0.2em] flex items-center gap-2">
                                         <Package className="w-4 h-4 text-green-700" /> Recent purchases
                                     </h3>
-                                    <button className="px-3 py-1 bg-white text-green-700 rounded text-[9px] font-bold uppercase tracking-widest hover:bg-green-50 transition-colors shadow-sm border border-green-200">
+                                    <button className="supplier-small-action">
                                         Live
                                     </button>
                                 </div>
@@ -933,7 +936,7 @@ const SupplierPage = ({ onNavigate }) => {
                                         </div>
                                     ))}
                                 </div>
-                                <button className="w-full py-4 bg-gray-50 text-[10px] font-black text-gray-600 hover:text-green-700 hover:bg-gray-100 transition-all uppercase tracking-widest border-t border-gray-100">
+                                <button className="supplier-small-action supplier-log-action">
                                     Explore Full Warehouse Log
                                 </button>
                             </div>
@@ -942,12 +945,12 @@ const SupplierPage = ({ onNavigate }) => {
                             <div className="bg-white rounded-3xl border border-gray-100 overflow-hidden shadow-sm">
                                 <div className="p-6 bg-green-100 flex justify-between items-center">
                                     <h3 className="text-[10px] font-black text-green-900 uppercase tracking-[0.2em] flex items-center gap-2">
-                                        <DollarSign className="w-4 h-4 text-green-700" /> Pending Settlements
+                                        Pending Settlements
                                     </h3>
                                 </div>
                                 <div className="p-6 space-y-4">
                                     {pendingPayments.map(payment => (
-                                        <div key={payment.id} className="p-4 rounded-2xl bg-[#121212] border border-[#333] hover:border-[#ff5252]/30 transition-all relative group">
+                                        <div key={payment.id} className="supplier-payment-card p-4 rounded-2xl bg-[#121212] border border-[#333] hover:border-[#ff5252]/30 transition-all relative group">
                                             <div className="flex justify-between items-center mb-2">
                                                 <span className="text-[9px] font-black text-[#444] uppercase">{payment.id}</span>
                                                 <span className="text-[9px] font-black text-[#ff5252] animate-pulse uppercase">DUE</span>
@@ -959,7 +962,7 @@ const SupplierPage = ({ onNavigate }) => {
                                             </div>
                                         </div>
                                     ))}
-                                    <button className="w-full py-3.5 rounded-2xl bg-[#ff5252] hover:bg-[#d32f2f] text-white text-[10px] font-black uppercase tracking-widest transition-all shadow-lg active:scale-95">
+                                    <button className="supplier-settlement-action">
                                         Global Batch Settlement
                                     </button>
                                 </div>
@@ -989,16 +992,16 @@ const SupplierPage = ({ onNavigate }) => {
                             />
                         )}
 
-                        {/* Professional Enterprise Profile Modal */}
+                        {/* Supplier Profile Full Page */}
                         {selectedSupplier && (
-                            <div className="modal-overlay z-[2000] flex items-center justify-center p-6 backdrop-blur-md bg-black/60">
-                                <div className="bg-white w-full max-w-4xl max-h-[85vh] rounded-[32px] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.8)] border border-gray-200 overflow-hidden animate-scale-up flex flex-col relative">
+                            <div className="supplier-profile-overlay">
+                                <div className="supplier-profile-modal bg-white overflow-hidden flex flex-col relative">
 
                                     {/* Compact Refined Header */}
-                                    <div className="px-8 py-5 border-b border-gray-200 bg-gray-50/50">
+                                    <div className="supplier-profile-header px-8 py-5 border-b border-gray-200 bg-gray-50/50">
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-5">
-                                                <div className="w-14 h-14 bg-gradient-to-tr from-green-50 to-green-100 rounded-xl flex items-center justify-center border border-gray-200 shadow-lg">
+                                                <div className="supplier-profile-avatar w-14 h-14 bg-gradient-to-tr from-green-50 to-green-100 rounded-xl flex items-center justify-center border border-gray-200 shadow-lg">
                                                     <User className="w-6 h-6 text-green-700" />
                                                 </div>
                                                 <div>
@@ -1054,20 +1057,21 @@ const SupplierPage = ({ onNavigate }) => {
                                             </div>
                                             <button
                                                 onClick={() => setSelectedSupplier(null)}
-                                                className="p-2 hover:bg-gray-100 rounded-lg transition-all group"
+                                                className="supplier-profile-back supplier-profile-close p-2 hover:bg-gray-100 rounded-lg transition-all group"
                                             >
-                                                <X className="w-4 h-4 text-gray-400 group-hover:text-gray-900" />
+                                                <ArrowLeft className="w-4 h-4 text-gray-400 group-hover:text-gray-900" />
+                                                <span>Back to Suppliers</span>
                                             </button>
                                         </div>
                                     </div>
 
                                     {/* Compact Financial Stats */}
-                                    <div className="px-8 py-5 grid grid-cols-2 gap-4 bg-white">
+                                    <div className="supplier-profile-stats px-8 py-5 grid grid-cols-2 gap-4 bg-white">
                                         {[
                                             { label: 'Complete Purchases', value: calculateStats().complete, icon: Package },
                                             { label: 'Outstanding Balance', value: calculateStats().outstanding, icon: CreditCard, accent: true }
                                         ].map((s, i) => (
-                                            <div key={i} className="p-5 rounded-2xl bg-gray-50 border border-gray-200 flex items-center justify-between group relative overflow-hidden">
+                                            <div key={i} className="supplier-profile-stat-card p-5 rounded-2xl bg-gray-50 border border-gray-200 flex items-center justify-between group relative overflow-hidden">
                                                 <div className="relative z-10">
                                                     <div className="flex items-center gap-2 mb-1 text-gray-500 uppercase text-[8px] font-bold tracking-[0.2em]">
                                                         <s.icon className={`w-3 h-3 ${s.accent ? 'text-green-700' : 'text-gray-400'}`} />
@@ -1081,7 +1085,7 @@ const SupplierPage = ({ onNavigate }) => {
                                     </div>
 
                                     {/* Minimalist Tabs */}
-                                    <div className="px-8 flex gap-8 border-b border-gray-200">
+                                    <div className="supplier-profile-tabs px-8 flex gap-8 border-b border-gray-200">
                                         {['Overview', 'History', 'Ledger', 'Returns'].map((tab) => (
                                             <button
                                                 key={tab}
@@ -1089,7 +1093,7 @@ const SupplierPage = ({ onNavigate }) => {
                                                     setActiveProfileTab(tab);
                                                     setSelectedTransaction(null);
                                                 }}
-                                                className={`pb-3 text-[10px] font-bold uppercase tracking-[0.2em] transition-all relative ${activeProfileTab === tab ? 'text-green-700' : 'text-gray-400 hover:text-gray-500'}`}
+                                                className={`supplier-profile-tab pb-3 text-[10px] font-bold uppercase tracking-[0.2em] transition-all relative ${activeProfileTab === tab ? 'is-active text-green-700' : 'text-gray-400 hover:text-gray-500'}`}
                                             >
                                                 {tab}
                                                 {activeProfileTab === tab && <div className="absolute bottom-0 left-0 w-full h-[1.5px] bg-[#D4AF37] rounded-full"></div>}
@@ -1097,7 +1101,7 @@ const SupplierPage = ({ onNavigate }) => {
                                         ))}
                                     </div>
 
-                                    <div className="flex-1 overflow-y-auto p-8 pt-6 custom-scrollbar bg-white">
+                                    <div className="supplier-profile-content flex-1 overflow-y-auto p-8 pt-6 custom-scrollbar bg-white">
                                         {activeProfileTab === 'Overview' && (
                                             <div className="grid grid-cols-3 gap-10 animate-fade-in">
                                                 <div className="col-span-2 space-y-10">
@@ -1191,14 +1195,14 @@ const SupplierPage = ({ onNavigate }) => {
                                                                         setIsEditingNote(false);
                                                                         setNoteDate(new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' }));
                                                                     }}
-                                                                    className="text-[9px] font-bold text-green-700 uppercase tracking-widest hover:text-[#66bb6a]"
+                                                                    className="supplier-profile-note-action text-[9px] font-bold text-green-700 uppercase tracking-widest hover:text-[#66bb6a]"
                                                                 >
                                                                     Save
                                                                 </button>
                                                             ) : (
                                                                 <button
                                                                     onClick={() => setIsEditingNote(true)}
-                                                                    className="text-[9px] font-bold text-green-700 uppercase tracking-widest hover:text-[#E5C158]"
+                                                                    className="supplier-profile-note-action text-[9px] font-bold text-green-700 uppercase tracking-widest hover:text-[#E5C158]"
                                                                 >
                                                                     Edit
                                                                 </button>
@@ -1292,7 +1296,7 @@ const SupplierPage = ({ onNavigate }) => {
                                                 <div className="flex items-center gap-4 mb-8">
                                                     <button
                                                         onClick={() => setSelectedTransaction(null)}
-                                                        className="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-500 hover:text-gray-900 transition-all"
+                                                        className="supplier-profile-inline-btn p-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-500 hover:text-gray-900 transition-all"
                                                     >
                                                         <X className="w-4 h-4" />
                                                     </button>
@@ -1335,7 +1339,7 @@ const SupplierPage = ({ onNavigate }) => {
                                                                                     } catch (e) { alert("Failed to update"); }
                                                                                 }
                                                                             }}
-                                                                            className="p-1 hover:bg-gray-200 rounded group"
+                                                                            className="supplier-profile-inline-btn p-1 hover:bg-gray-200 rounded group"
                                                                         >
                                                                             <Edit className="w-3 h-3 text-green-700 group-hover:scale-110 transition-transform" />
                                                                         </button>
@@ -1369,8 +1373,21 @@ const SupplierPage = ({ onNavigate }) => {
                                                                     </span>
                                                                     {selectedTransaction.payment_status !== 'PAID' && (
                                                                         <button
-                                                                            onClick={() => handleProcessPayment(selectedTransaction.db_id)}
-                                                                            className="px-3 py-1 bg-green-100 text-green-700 text-[9px] font-bold rounded hover:bg-[#4caf50]/20 transition-all uppercase tracking-widest border border-green-200"
+                                                                            onClick={async () => {
+                                                                                const targetBatch = profileBatches.find(
+                                                                                    (batch) =>
+                                                                                        batch.id === selectedTransaction.db_id ||
+                                                                                        batch.batch_number === selectedTransaction.id
+                                                                                );
+
+                                                                                setGlobalPaymentsOpen(true);
+                                                                                setSelectedTransaction(null);
+
+                                                                                if (targetBatch) {
+                                                                                    await handleSelectPayment(targetBatch);
+                                                                                }
+                                                                            }}
+                                                                            className="supplier-profile-inline-btn supplier-profile-inline-pay px-3 py-1 bg-green-100 text-green-700 text-[9px] font-bold rounded hover:bg-[#4caf50]/20 transition-all uppercase tracking-widest border border-green-200"
                                                                         >
                                                                             Pay Now
                                                                         </button>
