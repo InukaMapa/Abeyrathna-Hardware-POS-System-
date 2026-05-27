@@ -49,42 +49,42 @@ const AddSupplierModal = ({ onClose, onSuccess, initialData }) => {
     };
 
     return (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-md">
-            <div className="bg-white w-full max-w-2xl max-h-[90vh] flex flex-col rounded-[24px] shadow-2xl overflow-hidden animate-slide-up relative">
+        <div className="supplier-form-overlay fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-md">
+            <div className="supplier-form-modal bg-white w-full max-w-2xl max-h-[90vh] flex flex-col rounded-[24px] shadow-2xl overflow-hidden animate-slide-up relative">
 
-                <div className="p-6 flex justify-between items-center bg-[#C1DFCD] shrink-0 border-b-0">
+                <div className="supplier-form-header p-6 flex justify-between items-center bg-[#C1DFCD] shrink-0 border-b-0">
                     <div className="flex items-center gap-3">
                         <Bookmark className="w-5 h-5 text-green-800" />
-                        <h2 className="text-lg font-black text-gray-900 uppercase tracking-widest">
+                        <h2 className="supplier-form-title text-lg font-black text-gray-900 uppercase tracking-widest">
                             {isEditing ? 'Update Partner Profile' : 'New Supplier Registration'}
                         </h2>
                     </div>
                     <button
                         onClick={onClose}
-                        className="p-2 bg-green-700 text-white hover:bg-green-800 rounded-xl transition-all"
+                        className="supplier-form-close p-2 bg-green-700 text-white hover:bg-green-800 rounded-xl transition-all"
                     >
                         <X className="w-5 h-5" />
                     </button>
                 </div>
 
                 {error && (
-                    <div className="mx-8 mt-6 bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl flex items-center gap-3 text-xs font-bold uppercase tracking-tight">
+                    <div className="supplier-form-error mx-8 mt-6 bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl flex items-center gap-3 text-xs font-bold uppercase tracking-tight">
                         <AlertCircle className="w-4 h-4" />
                         {error}
                     </div>
                 )}
 
-                <div className="max-h-[60vh] overflow-y-auto p-8 pt-6 space-y-6 custom-scrollbar">
-                    <form id="supplierForm" onSubmit={handleSubmit} className="space-y-6">
+                <div className="supplier-form-content max-h-[60vh] overflow-y-auto p-8 pt-6 space-y-6 custom-scrollbar">
+                    <form id="supplierForm" onSubmit={handleSubmit} className="supplier-form-body space-y-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
                             {/* Registration ID */}
-                            <div className="bg-[#F3F9F5] p-4 rounded-2xl border border-green-200 flex justify-between items-center md:col-span-2">
+                            <div className="supplier-form-registry bg-[#F3F9F5] p-4 rounded-2xl border border-green-200 flex justify-between items-center md:col-span-2">
                                 <div>
                                     <label className="text-[9px] font-bold text-green-700 uppercase tracking-widest block mb-1">REGISTRATION ID</label>
                                     <span className="text-sm font-mono text-gray-900 font-bold">{formData.supplier_id}</span>
                                 </div>
-                                <div className="text-[9px] font-black text-green-700 bg-green-100 px-2 py-1 rounded border border-green-200 uppercase">Immutable Registry</div>
+                                <div className="supplier-form-badge text-[9px] font-black text-green-700 bg-green-100 px-2 py-1 rounded border border-green-200 uppercase">Immutable Registry</div>
                             </div>
 
                             {/* Supplier Name */}
@@ -172,10 +172,10 @@ const AddSupplierModal = ({ onClose, onSuccess, initialData }) => {
                     </form>
                 </div>
 
-                <div className="p-6 bg-white flex justify-end gap-4 border-t border-gray-100">
+                <div className="supplier-form-actions p-6 bg-white flex justify-end gap-4 border-t border-gray-100">
                     <button
                         onClick={onClose}
-                        className="px-6 py-3 rounded-xl border border-gray-300 text-gray-600 font-bold text-sm hover:bg-gray-50 transition-all"
+                        className="supplier-form-btn supplier-form-btn-secondary px-6 py-3 rounded-xl border border-gray-300 text-gray-600 font-bold text-sm hover:bg-gray-50 transition-all"
                     >
                         Discard
                     </button>
@@ -183,7 +183,7 @@ const AddSupplierModal = ({ onClose, onSuccess, initialData }) => {
                         type="submit"
                         form="supplierForm"
                         disabled={loading}
-                        className="px-6 py-3 rounded-xl bg-green-700 text-white font-bold text-sm hover:bg-green-800 transition-all shadow-md flex items-center justify-center gap-3 disabled:opacity-50"
+                        className="supplier-form-btn supplier-form-btn-primary px-6 py-3 rounded-xl bg-green-700 text-white font-bold text-sm hover:bg-green-800 transition-all shadow-md flex items-center justify-center gap-3 disabled:opacity-50"
                     >
                         {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                         {isEditing ? 'COMMIT UPDATES' : 'FINALISE REGISTRATION'}

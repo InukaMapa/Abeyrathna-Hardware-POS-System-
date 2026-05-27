@@ -80,7 +80,7 @@ const ShiftReportModal = ({ isOpen, onClose, shift, onApproved, selectedCount = 
             <div className="modal-content shift-report-modal" onClick={e => e.stopPropagation()}>
                 <div className="modal-header">
                     <h2>Shift Report - {shift.cashier_name} (Counter {shift.counter_number})</h2>
-                    <button className="close-btn" onClick={onClose}>&times;</button>
+                    <button className="shift-report-close" onClick={onClose}>&times;</button>
                 </div>
 
                 <div className="modal-body">
@@ -148,10 +148,10 @@ const ShiftReportModal = ({ isOpen, onClose, shift, onApproved, selectedCount = 
                 </div>
 
                 <div className="modal-footer">
-                    <button className="btn btn-secondary" onClick={onClose}>Close</button>
+                    <button className="shift-report-action" onClick={onClose}>Close</button>
                     {userRole === 'ADMIN' && shift.status === 'PENDING_APPROVAL' && (
                         <button
-                            className="btn btn-primary"
+                            className="shift-report-action"
                             onClick={handleApprove}
                             disabled={approving}
                         >
@@ -165,30 +165,98 @@ const ShiftReportModal = ({ isOpen, onClose, shift, onApproved, selectedCount = 
                 .modal-overlay {
                     position: fixed;
                     top: 0; left: 0; right: 0; bottom: 0;
-                    background: rgba(22, 101, 52, 0.25);
+                    background: rgba(15, 23, 42, 0.45);
                     display: flex; align-items: center; justify-content: center;
                     z-index: 2100; backdrop-filter: blur(8px);
                 }
                 .shift-report-modal {
                     width: 95%; max-width: 800px; max-height: 90vh;
-                    background: var(--bg-secondary); border: 1px solid var(--border-color); 
-                    border-top: 4px solid var(--primary-green); border-radius: 20px;
+                    background: #FFFFFF; border: 1px solid #D7E7DC; 
+                    border-top: 1px solid #D7E7DC; border-radius: 18px;
                     display: flex; flex-direction: column; overflow: hidden;
-                    box-shadow: 0 15px 40px rgba(22, 101, 52, 0.15);
+                    box-shadow: 0 24px 48px rgba(15, 23, 42, 0.16);
                 }
-                .modal-header { padding: 20px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
-                .modal-header h2 { margin: 0; font-size: 1.25rem; color: var(--text-primary); font-family: 'Poppins', sans-serif; font-weight: 700; }
-                .modal-body { padding: 24px; overflow-y: auto; flex: 1; }
+                .modal-header { padding: 20px 22px; border-bottom: 1px solid #E2E8F0; display: flex; justify-content: space-between; align-items: center; background: #FFFFFF; }
+                .modal-header h2 { margin: 0; font-size: 1rem; color: #102033; font-family: inherit; font-weight: 600; line-height: 1.35; }
+                .shift-report-close {
+                    width: 36px;
+                    height: 36px;
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    border-radius: 8px;
+                    border: 1px solid #D7E7DC;
+                    background: #FFFFFF;
+                    color: #334155;
+                    font-size: 1.35rem;
+                    line-height: 1;
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                }
+                .shift-report-close:hover {
+                    background: #F8FCFA;
+                    border-color: rgba(22, 163, 74, 0.45);
+                    box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.07);
+                }
+                .modal-body { padding: 24px; overflow-y: auto; flex: 1; scrollbar-width: thin; scrollbar-color: #CBD5E1 #FFFFFF; }
+                .modal-body::-webkit-scrollbar {
+                    width: 10px;
+                }
+                .modal-body::-webkit-scrollbar-track {
+                    background: #FFFFFF;
+                    border-radius: 999px;
+                }
+                .modal-body::-webkit-scrollbar-thumb {
+                    background: #CBD5E1;
+                    border-radius: 999px;
+                    border: 2px solid #FFFFFF;
+                }
+                .modal-body::-webkit-scrollbar-thumb:hover {
+                    background: #B6C4D6;
+                }
                 .report-section { margin-bottom: 25px; }
-                .report-subtitle { color: var(--primary-green); margin-bottom: 12px; border-bottom: 1.5px solid var(--border-color); padding-bottom: 6px; text-transform: uppercase; font-size: 0.8rem; letter-spacing: 1px; font-weight: 700; }
-                .report-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; color: var(--text-secondary); font-size: 0.9rem; font-weight: 500; }
-                .summary-grid-compact { background: var(--bg-mint); padding: 18px; border-radius: 16px; border: 1.5px solid var(--border-color); }
-                .summary-row { display: flex; justify-content: space-between; padding: 7px 0; color: var(--text-primary); font-weight: 500; }
-                .summary-row.success { color: var(--primary-green); font-weight: 600; }
-                .summary-row.danger { color: #ef4444; font-weight: 600; }
-                .summary-row.highlight { color: var(--dark-green); font-weight: bold; }
-                .summary-row.large { font-size: 1.25rem; font-weight: 800; margin-top: 10px; padding-top: 12px; border-top: 2px solid var(--border-color); color: var(--text-primary); }
-                .modal-footer { padding: 15px 20px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 10px; }
+                .report-subtitle { color: #475569; margin-bottom: 12px; border-bottom: 1px solid #E2E8F0; padding-bottom: 8px; text-transform: uppercase; font-size: 0.73rem; letter-spacing: 0.16em; font-weight: 600; }
+                .report-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; color: #64748B; font-size: 0.88rem; font-weight: 400; }
+                .summary-grid-compact { background: #FFFFFF; padding: 18px; border-radius: 14px; border: 1px solid #D7E7DC; }
+                .summary-row { display: flex; justify-content: space-between; padding: 8px 0; color: #334155; font-size: 0.89rem; font-weight: 400; }
+                .summary-row.success { color: #334155; font-weight: 400; }
+                .summary-row.danger { color: #334155; font-weight: 400; }
+                .summary-row.highlight { color: #102033; font-weight: 500; }
+                .summary-row.large { font-size: 0.98rem; font-weight: 500; margin-top: 10px; padding-top: 12px; border-top: 1px solid #E2E8F0; color: #102033; }
+                .modal-footer { padding: 15px 20px; border-top: 1px solid #E2E8F0; display: flex; justify-content: flex-end; gap: 10px; background: #FFFFFF; }
+                .shift-report-action {
+                    min-height: 36px;
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 0 13px;
+                    color: #334155;
+                    background: #FFFFFF;
+                    border: 1px solid #D7E7DC;
+                    border-radius: 8px;
+                    box-shadow: none;
+                    font-size: 0.8rem;
+                    font-weight: 500;
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                }
+                .shift-report-action:hover {
+                    color: #14532D;
+                    background: #F8FCFA;
+                    border-color: rgba(22, 163, 74, 0.45);
+                    box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.07);
+                }
+                .shift-report-action:disabled {
+                    opacity: 0.6;
+                    cursor: not-allowed;
+                    box-shadow: none;
+                }
+                .shift-report-modal .loading-spinner,
+                .shift-report-modal .error-message {
+                    font-size: 0.9rem;
+                    font-weight: 400;
+                    color: #64748B;
+                }
             `}</style>
         </div>
     );

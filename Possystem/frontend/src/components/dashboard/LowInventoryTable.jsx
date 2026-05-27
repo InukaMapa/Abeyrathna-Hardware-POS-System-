@@ -4,9 +4,9 @@ import '../../styles/dashboard.css';
 const LowInventoryTable = ({ items }) => {
     return (
         <div className="recent-orders">
-            <div className="section-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                Low Inventory Alerts
-                <span className="status-badge status-leave" style={{ fontSize: '0.7rem' }}>
+            <div className="section-title section-title-row">
+                <span>Low Inventory Alerts</span>
+                <span className="status-badge status-leave">
                     {items.length} Items Low
                 </span>
             </div>
@@ -29,8 +29,8 @@ const LowInventoryTable = ({ items }) => {
                     ) : (
                         items.map((item, index) => (
                             <tr key={index}>
-                                <td style={{ fontWeight: 600 }}>{item.ingredient_name}</td>
-                                <td className="danger" style={{ fontWeight: 'bold' }}>
+                                <td className="product-cell">{item.ingredient_name}</td>
+                                <td className="stock-cell">
                                     {item.quantity} {item.unit}
                                 </td>
                                 <td>{item.reorder_level} {item.unit}</td>
