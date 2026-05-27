@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, Package, Trash2, Edit, FileText, AlertTriangle, AlertCircle, Loader, Settings, ScanLine, X } from 'lucide-react';
+import { Search, Plus, Package, Edit, FileText, AlertTriangle, AlertCircle, Loader, Settings, ScanLine, X } from 'lucide-react';
 import axios from 'axios';
 import AddInventoryModal from './AddInventoryModal';
 import EditInventoryModal from './EditInventoryModal';
@@ -116,43 +116,46 @@ const InventoryPage = ({ onNavigate }) => {
 
     return (
         <DashboardLayout activePage="inventory" onNavigate={onNavigate}>
-            <div className="menu-management-container animate-fade-in custom-scrollbar">
+            <div className="menu-management-container inventory-page animate-fade-in custom-scrollbar">
 
                 {/* STICKY HEADER & FILTERS */}
-                <div className="sticky top-[-28px] z-[50] bg-white/80 backdrop-blur-md pt-7 pb-4 -mx-7 px-7 mb-6 shadow-sm border-b border-[#16A34A]/10">
+                <div className="inventory-sticky-panel sticky top-[-28px] z-[50]">
                     {/* Header */}
-                    <div className="menu-header !mb-6">
+                    <div className="menu-header inventory-header !mb-6">
                         <div>
-                            <h1 className="menu-title text-[#166534]">Inventory Management</h1>
-                            <p className="text-gray-500 text-sm mt-1">Manage stock, track items, and handle reordering.</p>
+                            <h1 className="menu-title inventory-title">Inventory Management</h1>
+                            <p className="inventory-subtitle">Manage stock, track items, and handle reordering.</p>
                         </div>
-                        <div className="flex gap-3">
+                        <div className="inventory-toolbar">
                             <button
+                                title="Create Inventory Batch"
                                 onClick={() => setShowBatchModal(true)}
-                                className="btn-primary flex items-center gap-2 rounded-full text-sm font-bold uppercase tracking-wider"
+                                className="inventory-outline-btn"
                             >
-                                <Package className="w-4 h-4" /> Create Inventory Batch
+                                <Package size={15} /> Create Inventory Batch
                             </button>
                             <button
+                                title="Manage Categories"
                                 onClick={() => setShowCategoryModal(true)}
-                                className="btn-secondary rounded-full flex items-center gap-2 transition-colors text-sm font-medium"
+                                className="inventory-outline-btn"
                             >
-                                <Settings className="w-4 h-4" /> Manage Categories
+                                <Settings size={15} /> Manage Categories
                             </button>
                             <button
+                                title="Add Inventory"
                                 onClick={() => setShowAddModal(true)}
-                                className="btn-premium-green"
+                                className="inventory-outline-btn"
                             >
-                                <Plus className="w-5 h-5" />
+                                <Plus size={15} />
                                 Add Inventory
                             </button>
                         </div>
                     </div>
 
                     {/* Search & Filters */}
-                    <div className="menu-filters-container !mb-0">
+                    <div className="menu-filters-container inventory-filters !mb-0">
                         <div className="menu-top-bar">
-                            <div className="search-wrapper">
+                            <div className="search-wrapper inventory-search">
                                 <Search className="search-icon w-4 h-4" />
                                 <input
                                     type="text"
@@ -163,9 +166,9 @@ const InventoryPage = ({ onNavigate }) => {
                                 />
                             </div>
 
-                            <div className="flex gap-3">
+                            <div className="inventory-filter-group">
                                 <select
-                                    className="filter-select"
+                                    className="filter-select inventory-select"
                                     value={filterCategory}
                                     onChange={(e) => setFilterCategory(e.target.value)}
                                 >
@@ -176,7 +179,7 @@ const InventoryPage = ({ onNavigate }) => {
                                 </select>
 
                                 <select
-                                    className="filter-select"
+                                    className="filter-select inventory-select"
                                     value={filterStatus}
                                     onChange={(e) => setFilterStatus(e.target.value)}
                                 >
@@ -191,11 +194,11 @@ const InventoryPage = ({ onNavigate }) => {
                 </div>
 
                 {/* Inventory Table */}
-                <div className="bg-[#1E1E1E] rounded-xl shadow-lg overflow-hidden border border-[#333]">
+                <div className="inventory-table-card">
                     <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
+                        <table className="inventory-table w-full text-left border-collapse">
                             <thead>
-                                <tr className="bg-[#111] text-[#A0A0A0] text-xs uppercase tracking-wider border-b border-[#333]">
+                                <tr>
                                     <th className="p-4 font-semibold">Item Name</th>
                                     <th className="p-4 font-semibold">Code</th>
                                     <th className="p-4 font-semibold">Category</th>
@@ -206,26 +209,26 @@ const InventoryPage = ({ onNavigate }) => {
                                     <th className="p-4 font-semibold text-right">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-[#333]">
+                            <tbody>
                                 {loading ? (
                                     <tr><td colSpan="8" className="p-12 text-center text-[#A0A0A0]"><Loader className="w-6 h-6 animate-spin mx-auto mb-2" />Loading inventory...</td></tr>
                                 ) : inventory.length === 0 ? (
                                     <tr><td colSpan="8" className="p-12 text-center text-[#A0A0A0]"><Package className="w-8 h-8 mx-auto mb-2 opacity-50" />No items found.</td></tr>
                                 ) : (
                                     inventory.map((item) => (
-                                        <tr key={item.id} className="hover:bg-[#252525] transition-colors group">
+                                        <tr key={item.id}>
                                             <td className="p-4">
-                                                <div className="font-bold text-[#E0E0E0]">{item.ingredient_name}</div>
-                                                <div className="text-xs text-[#A0A0A0]">{item.unit}</div>
+                                                <div className="inventory-item-name">{item.ingredient_name}</div>
+                                                <div className="inventory-item-unit">{item.unit}</div>
                                             </td>
-                                            <td className="p-4 text-sm text-[#A0A0A0] font-mono">{item.item_code || '-'}</td>
+                                            <td className="p-4 inventory-code">{item.item_code || '-'}</td>
                                             <td className="p-4">
-                                                <span className="px-2 py-1 bg-[#2A2A2A] text-[#E0E0E0] text-xs rounded-md border border-[#333]">
+                                                <span className="inventory-category-pill">
                                                     {item.category || 'Uncategorized'}
                                                 </span>
                                             </td>
                                             <td className="p-4">
-                                                <div className="text-sm text-[#E0E0E0]">
+                                                <div className="inventory-cell-text">
                                                     {item.batch_id ? (
                                                         batches.find(b => b.id === item.batch_id)?.supplier_name || <span className="text-[#666] italic">Unknown (Batch {item.batch_id})</span>
                                                     ) : item.suppliers?.supplier_name || (
@@ -234,8 +237,8 @@ const InventoryPage = ({ onNavigate }) => {
                                                 </div>
                                             </td>
                                             <td className="p-4">
-                                                <div className="font-semibold text-[#E0E0E0]">
-                                                    {item.quantity} <span className="text-xs font-normal text-[#A0A0A0]">{item.unit}</span>
+                                                <div className="inventory-quantity">
+                                                    {item.quantity} <span>{item.unit}</span>
                                                 </div>
                                             </td>
                                             <td className="p-4">
@@ -248,31 +251,24 @@ const InventoryPage = ({ onNavigate }) => {
                                                     {item.status}
                                                 </span>
                                             </td>
-                                            <td className="p-4 text-right font-black text-red-500">
+                                            <td className="p-4 text-right inventory-price">
                                                 Rs. {parseFloat(item.selling_price || 0).toFixed(2)}
                                             </td>
                                             <td className="p-4 text-right">
                                                 <div className="flex items-center justify-end gap-2">
                                                     <button
                                                         onClick={() => handleViewDetails(item.id)}
-                                                        className="btn-premium-green-icon"
+                                                        className="inventory-action-btn"
                                                         title="View Details"
                                                     >
                                                         <FileText className="w-4.5 h-4.5" />
                                                     </button>
                                                     <button
                                                         onClick={() => handleEdit(item)}
-                                                        className="btn-premium-green-icon"
+                                                        className="inventory-action-btn"
                                                         title="Edit"
                                                     >
                                                         <Edit className="w-4.5 h-4.5" />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleDelete(item.id)}
-                                                        className="btn-premium-green-icon"
-                                                        title="Delete"
-                                                    >
-                                                        <Trash2 className="w-4.5 h-4.5" />
                                                     </button>
                                                 </div>
                                             </td>
@@ -312,16 +308,16 @@ const InventoryPage = ({ onNavigate }) => {
                 )}
 
                 {showBatchModal && (
-                    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-md">
-                        <div className="bg-white w-full max-w-lg rounded-[24px] shadow-2xl overflow-hidden animate-slide-up relative flex flex-col">
+                    <div className="inventory-batch-overlay">
+                        <div className="inventory-batch-modal animate-slide-up">
                             
-                            <div className="p-6 flex justify-between items-center bg-[#C1DFCD] shrink-0 border-b-0">
-                                <div className="flex items-center gap-3">
-                                    <Package className="w-5 h-5 text-green-800" />
-                                    <h2 className="text-lg font-black text-gray-900 uppercase tracking-widest">Create Inventory Batch</h2>
+                            <div className="inventory-batch-header">
+                                <div>
+                                    <Package size={17} />
+                                    <h2>Create Inventory Batch</h2>
                                 </div>
-                                <button onClick={() => setShowBatchModal(false)} className="p-2 bg-green-700 text-white hover:bg-green-800 rounded-xl transition-all">
-                                    <X className="w-5 h-5" />
+                                <button title="Close" onClick={() => setShowBatchModal(false)} className="inventory-batch-close">
+                                    <X size={16} />
                                 </button>
                             </div>
                             <BatchCreationForm
@@ -410,13 +406,12 @@ const BatchCreationForm = ({ onCancel, onSuccess }) => {
     };
 
     return (
-        <form onSubmit={handleSubmit} className="flex flex-col h-full">
-            <div className="p-8 pt-6 space-y-6 flex-1 overflow-y-auto">
+        <form onSubmit={handleSubmit} className="inventory-batch-form">
+            <div className="inventory-batch-body">
                 <div>
-                    <label className="text-[11px] font-bold text-green-800 mb-2 block">Select Supplier *</label>
+                    <label>Select Supplier *</label>
                     <select
                         required
-                        className="w-full bg-white border border-green-200 rounded-xl px-4 py-3 text-sm text-gray-800 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 transition-all font-medium"
                         value={batchData.supplier_id}
                         onChange={(e) => setBatchData({ ...batchData, supplier_id: e.target.value })}
                     >
@@ -424,39 +419,36 @@ const BatchCreationForm = ({ onCancel, onSuccess }) => {
                         {suppliers.map(s => <option key={s.id} value={s.id}>{s.supplier_name}</option>)}
                     </select>
                 </div>
-                <div className="grid grid-cols-2 gap-6">
+                <div className="inventory-batch-grid">
                     <div>
-                        <label className="text-[11px] font-bold text-green-800 mb-2 block">Procurement Date *</label>
+                        <label>Procurement Date *</label>
                         <input
                             type="date" required
-                            className="w-full bg-white border border-green-200 rounded-xl px-4 py-3 text-sm text-gray-800 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 transition-all font-medium"
                             value={batchData.date}
                             onChange={(e) => setBatchData({ ...batchData, date: e.target.value })}
                         />
                     </div>
                     <div>
-                        <label className="text-[11px] font-bold text-green-800 mb-2 block">Total Items (Line Items) *</label>
+                        <label>Total Items *</label>
                         <input
                             type="number" required placeholder="e.g. 15"
-                            className="w-full bg-white border border-green-200 rounded-xl px-4 py-3 text-sm text-gray-800 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 transition-all font-medium"
                             value={batchData.items}
                             onChange={(e) => setBatchData({ ...batchData, items: e.target.value })}
                         />
                     </div>
                 </div>
                 <div>
-                    <label className="text-[11px] font-bold text-green-800 mb-2 block">Net Transaction Value (Rs.) *</label>
+                    <label>Net Transaction Value (Rs.) *</label>
                     <input
                         type="number" step="0.01" required placeholder="0.00"
-                        className="w-full bg-white border border-green-200 rounded-xl px-4 py-3 text-sm text-gray-800 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 transition-all font-medium"
                         value={batchData.net_value}
                         onChange={(e) => setBatchData({ ...batchData, net_value: e.target.value })}
                     />
                 </div>
             </div>
-            <div className="p-6 bg-white flex justify-end gap-4 border-t border-gray-100 shrink-0">
-                <button type="button" onClick={onCancel} className="px-6 py-3 rounded-xl border border-gray-300 text-gray-600 font-bold text-sm hover:bg-gray-50 transition-all">Cancel</button>
-                <button type="submit" disabled={loading} className="px-6 py-3 rounded-xl bg-green-700 text-white font-bold text-sm hover:bg-green-800 transition-all shadow-md flex items-center justify-center gap-3 disabled:opacity-50">
+            <div className="inventory-batch-actions">
+                <button title="Cancel" type="button" onClick={onCancel} className="inventory-batch-btn">Cancel</button>
+                <button title="Create Batch" type="submit" disabled={loading} className="inventory-batch-btn">
                     {loading ? 'Processing...' : 'Create Batch'}
                 </button>
             </div>

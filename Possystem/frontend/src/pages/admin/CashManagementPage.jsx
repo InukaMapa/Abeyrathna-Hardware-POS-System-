@@ -37,35 +37,39 @@ const CashManagementPage = ({ onNavigate }) => {
 
     return (
         <DashboardLayout onNavigate={onNavigate} activePage="cash-management">
-            <div className="dashboard-page">
-                <div className="report-header">
-                    <h1 className="section-title">Cash Management & Shift History</h1>
-                    <button className="btn btn-primary" onClick={fetchShifts}>Refresh Data</button>
+            <div className="dashboard-page cash-management-page">
+                <div className="flex items-center justify-between gap-4 mb-6">
+                    <div>
+                        <h1 className="section-title mb-0">Cash Management & Shift History</h1>
+                    </div>
+                    <button className="inventory-outline-btn cash-management-btn" onClick={fetchShifts}>Refresh Data</button>
                 </div>
 
-                <div className="cash-card no-print" style={{ display: 'flex', gap: '20px', marginBottom: '20px' }}>
-                    <div className="form-group" style={{ flex: 1 }}>
-                        <label>Filter by Date</label>
+                <div className="bg-white rounded-2xl border border-[#D7E7DC] shadow-sm px-7 py-7 mb-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                        <label className="text-[0.9rem] font-medium text-slate-700">Filter by Date</label>
                         <input
                             type="date"
-                            className="form-control"
+                            className="w-full h-[42px] rounded-xl border border-[#D7E7DC] bg-white px-4 text-[0.9rem] font-normal text-slate-700 outline-none transition-all focus:border-emerald-400 focus:ring-4 focus:ring-emerald-500/10"
                             value={filter.date}
                             onChange={(e) => setFilter({ ...filter, date: e.target.value })}
                         />
                     </div>
-                    <div className="form-group" style={{ flex: 1 }}>
-                        <label>Filter by Cashier</label>
+                    <div className="space-y-2">
+                        <label className="text-[0.9rem] font-medium text-slate-700">Filter by Cashier</label>
                         <input
                             type="text"
-                            className="form-control"
+                            className="w-full h-[42px] rounded-xl border border-[#D7E7DC] bg-white px-4 text-[0.9rem] font-normal text-slate-700 outline-none transition-all focus:border-emerald-400 focus:ring-4 focus:ring-emerald-500/10"
                             placeholder="Type cashier name..."
                             value={filter.cashier}
                             onChange={(e) => setFilter({ ...filter, cashier: e.target.value })}
                         />
                     </div>
+                    </div>
                 </div>
 
-                <div className="recent-orders">
+                <div className="bg-white rounded-2xl border border-[#D7E7DC] shadow-sm p-7 overflow-hidden">
                     <table className="orders-table">
                         <thead>
                             <tr>
@@ -89,24 +93,20 @@ const CashManagementPage = ({ onNavigate }) => {
                                     <td>Rs. {parseFloat(shift.opening_cash).toLocaleString()}</td>
                                     <td>Rs. {shift.expected_cash ? parseFloat(shift.expected_cash).toLocaleString() : '-'}</td>
                                     <td>Rs. {shift.actual_cash ? parseFloat(shift.actual_cash).toLocaleString() : '-'}</td>
-                                    <td style={{
-                                        color: Math.abs(shift.difference) > 500 ? 'var(--accent-color)' : (shift.difference !== null ? 'var(--success-color)' : 'inherit'),
-                                        fontWeight: 'bold'
-                                    }}>
+                                    <td className="text-slate-700 font-medium">
                                         {shift.difference !== null ? `Rs. ${parseFloat(shift.difference).toLocaleString()}` : '-'}
                                     </td>
                                     <td>
-                                        <span className={`status-badge ${shift.status === 'OPEN' ? 'status-leave' :
+                                        <span className={`status-badge cash-management-status ${shift.status === 'OPEN' ? 'status-leave' :
                                                 shift.status === 'PENDING_APPROVAL' ? 'status-in-progress' :
                                                     'status-active'
-                                            }`} style={{ background: shift.status === 'PENDING_APPROVAL' ? 'var(--accent-color)' : '' }}>
+                                            }`} style={{ background: shift.status === 'PENDING_APPROVAL' ? '#FEF3C7' : '' }}>
                                             {shift.status.replace('_', ' ')}
                                         </span>
                                     </td>
                                     <td>
                                         <button
-                                            className="btn btn-secondary"
-                                            style={{ padding: '4px 8px', fontSize: '0.8rem' }}
+                                            className="inventory-outline-btn cash-management-btn"
                                             onClick={() => {
                                                 setSelectedShift(shift);
                                                 setIsReportModalOpen(true);

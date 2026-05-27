@@ -83,7 +83,7 @@ export const fetchInventoryItemDetails = async (req, res) => {
         // 1. Get Item
         const { data: item, error: itemError } = await supabase
             .from('inventory')
-            .select('*, suppliers(supplier_name)')
+            .select('*, suppliers(supplier_name, company_name, phone_number, email, address)')
             .eq('id', id)
             .single();
 
@@ -106,7 +106,7 @@ export const fetchInventoryItemDetails = async (req, res) => {
         // 2. Get Batches (using the inventory_batch_items ledger)
         const { data: batchItems, error: batchError } = await supabase
             .from('inventory_batch_items')
-            .select('*, inventory_batches(batch_number, batch_date)')
+            .select('*, inventory_batches(batch_number, batch_date, suppliers(supplier_name, company_name, phone_number, email, address))')
             .eq('inventory_id', id);
 
         if (batchError && batchError.code !== 'PGRST116') throw batchError;
@@ -116,8 +116,11 @@ export const fetchInventoryItemDetails = async (req, res) => {
             batch_code: bi.inventory_batches?.batch_number || 'N/A',
             quantity: bi.quantity_added,
             received_date: bi.inventory_batches?.batch_date || bi.created_at,
-            expiry_date: null
+            expiry_date: null,
+            supplier: bi.inventory_batches?.suppliers || null
         }));
+
+        const batchSupplier = mappedBatches.find(batch => batch.supplier)?.supplier || null;
 
         // 3. Get History (last 50)
         const { data: history, error: historyError } = await supabase
@@ -131,6 +134,7 @@ export const fetchInventoryItemDetails = async (req, res) => {
 
         res.status(200).json({
             ...item,
+            supplier_summary: item.suppliers || batchSupplier,
             batches: mappedBatches,
             history: history || []
         });

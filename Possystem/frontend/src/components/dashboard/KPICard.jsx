@@ -1,12 +1,21 @@
 import React from 'react';
 import '../../styles/dashboard.css';
 
-const KPICard = ({ title, value, subtext }) => {
+const KPICard = ({ title, value, subtext, icon: Icon, tone = 'green' }) => {
     return (
-        <div className="kpi-card">
-            <div className="kpi-label">{title}</div>
-            <div className="kpi-value">{value}</div>
-            {subtext && <div style={{ fontSize: '0.8rem', color: '#888' }}>{subtext}</div>}
+        <div className={`kpi-card kpi-card-${tone}`}>
+            <div className="kpi-card-top">
+                <div>
+                    <div className="kpi-label">{title}</div>
+                    <div className="kpi-value">{value}</div>
+                </div>
+                {Icon && (
+                    <div className="kpi-icon" aria-hidden="true">
+                        <Icon size={20} />
+                    </div>
+                )}
+            </div>
+            {subtext && <div className="kpi-subtext">{subtext}</div>}
         </div>
     );
 };

@@ -66,25 +66,24 @@ const DenominationCounter = ({ onTotalChange, initialCounts, shiftId = 'default'
     };
 
     return (
-        <div className="cash-card bg-[#1E1E1E] border border-[#333333] rounded-2xl p-8 shadow-2xl relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-32 h-32 bg-red-600/5 rounded-full -ml-16 -mt-16 blur-2xl"></div>
-            <h3 className="text-sm font-black uppercase tracking-[0.2em] text-gray-500 mb-8 relative z-10 flex items-center gap-2">
-                <span className="w-1.5 h-4 bg-red-600 rounded-full"></span>
+        <div className="cash-card bg-white border border-[#D7E7DC] rounded-2xl p-8 shadow-sm relative overflow-hidden">
+            <h3 className="text-[0.8rem] font-semibold uppercase tracking-[0.18em] text-slate-500 mb-6 relative z-10 flex items-center gap-3">
+                <span className="w-1.5 h-5 bg-emerald-600 rounded-full"></span>
                 Cash Denomination Counter
             </h3>
-            <div className="relative z-10 overflow-hidden rounded-xl border border-[#333333]">
+            <div className="relative z-10 overflow-hidden rounded-xl border border-[#D7E7DC]">
                 <table className="w-full border-collapse text-left">
                     <thead>
-                        <tr className="bg-gray-800/50 border-b border-[#333333]">
-                            <th className="p-4 font-bold uppercase tracking-widest text-[10px] text-gray-500">Denomination</th>
-                            <th className="p-4 font-bold uppercase tracking-widest text-[10px] text-gray-500 text-center">Quantity</th>
-                            <th className="p-4 font-bold uppercase tracking-widest text-[10px] text-gray-500 text-right">Line Total</th>
+                        <tr className="bg-[#F8FCFA] border-b border-[#D7E7DC]">
+                            <th className="p-4 font-semibold uppercase tracking-[0.18em] text-[10px] text-slate-500">Denomination</th>
+                            <th className="p-4 font-semibold uppercase tracking-[0.18em] text-[10px] text-slate-500 text-center">Quantity</th>
+                            <th className="p-4 font-semibold uppercase tracking-[0.18em] text-[10px] text-slate-500 text-right">Line Total</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-[#333333]">
+                    <tbody className="divide-y divide-[#EAF1EC]">
                         {denominations.map(den => (
-                            <tr key={den.key} className="hover:bg-white/[0.02] transition-colors">
-                                <td className="p-4 font-bold text-gray-300">{den.label}</td>
+                            <tr key={den.key} className="hover:bg-[#FCFEFD] transition-colors">
+                                <td className="p-4 font-medium text-slate-800">{den.label}</td>
                                 <td className="p-4 text-center">
                                     <input
                                         type="number"
@@ -93,10 +92,10 @@ const DenominationCounter = ({ onTotalChange, initialCounts, shiftId = 'default'
                                         onChange={(e) => handleCountChange(den.key, e.target.value)}
                                         disabled={readOnly}
                                         placeholder="0"
-                                        className="w-20 px-3 py-2 bg-gray-900/50 border border-[#444] rounded-lg text-white text-center font-bold focus:outline-none focus:ring-2 focus:ring-red-600/50 focus:border-red-600 transition-all placeholder-gray-700 disabled:opacity-50"
+                                        className="w-24 h-11 px-3 py-2 bg-white border border-[#E2E8F0] rounded-xl text-slate-700 text-center font-normal focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 transition-all placeholder-slate-300 disabled:opacity-70"
                                     />
                                 </td>
-                                <td className="p-4 text-right font-black text-white tabular-nums">
+                                <td className="p-4 text-right font-medium text-slate-800 tabular-nums">
                                     Rs. {totals[den.key]?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </td>
                             </tr>
@@ -105,9 +104,9 @@ const DenominationCounter = ({ onTotalChange, initialCounts, shiftId = 'default'
                 </table>
             </div>
 
-            <div className="mt-6 pt-6 border-t-2 border-dashed border-[#333333] flex justify-between items-center relative z-10">
-                <span className="text-gray-400 text-sm font-black uppercase tracking-widest">Grand Total</span>
-                <span className="text-xl font-black text-red-600 tracking-tighter truncate whitespace-nowrap">
+            <div className="mt-6 pt-6 border-t border-[#E2E8F0] flex justify-between items-center relative z-10">
+                <span className="text-slate-500 text-[0.78rem] font-semibold uppercase tracking-[0.18em]">Grand Total</span>
+                <span className="text-[1.05rem] font-semibold text-slate-900 truncate whitespace-nowrap">
                     Rs. {grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
             </div>

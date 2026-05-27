@@ -328,7 +328,7 @@ const ReportsPage = ({ onNavigate }) => {
 
     return (
         <DashboardLayout activePage="reports" onNavigate={onNavigate}>
-            <div className="dashboard-page custom-scrollbar">
+            <div className="dashboard-page custom-scrollbar reports-page">
 
                 {/* Page Header */}
                 <div className="flex justify-between items-center mb-6">
@@ -337,10 +337,10 @@ const ReportsPage = ({ onNavigate }) => {
                         <p className="text-secondary text-sm">Comprehensive insights and performance analytics for your hardware POS.</p>
                     </div>
                     <div className="flex gap-3">
-                        <button className="btn-secondary flex items-center gap-2 bg-white border border-gray-200 px-4 py-2 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-all shadow-sm">
+                        <button className="inventory-outline-btn report-page-btn flex items-center gap-2">
                             <Mail className="w-4 h-4" /> Email Report
                         </button>
-                        <button className="btn-primary flex items-center gap-2">
+                        <button className="inventory-outline-btn report-page-btn flex items-center gap-2">
                             <Printer className="w-4 h-4" /> Print View
                         </button>
                     </div>
@@ -383,7 +383,7 @@ const ReportsPage = ({ onNavigate }) => {
                             <div className="relative group">
                                 <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-600" />
                                 <select
-                                    className="pl-10 pr-8 py-2.5 bg-emerald-50/50 border border-emerald-100 rounded-xl text-sm font-medium text-emerald-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 appearance-none transition-all"
+                                    className="report-filter-select pl-10 pr-8 py-2.5 appearance-none transition-all"
                                     value={dateRange}
                                     onChange={(e) => setDateRange(e.target.value)}
                                 >
@@ -398,7 +398,7 @@ const ReportsPage = ({ onNavigate }) => {
 
                             <button
                                 onClick={() => setShowFilters(!showFilters)}
-                                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${showFilters ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-100'}`}
+                                className={`inventory-outline-btn report-page-btn flex items-center gap-2 ${showFilters ? 'report-page-btn-active' : ''}`}
                             >
                                 <Filter className="w-4 h-4" /> {showFilters ? 'Hide Filters' : 'Show Advanced Filters'}
                             </button>
@@ -409,7 +409,7 @@ const ReportsPage = ({ onNavigate }) => {
                             <input
                                 type="text"
                                 placeholder="Search by Invoice, Product, Barcode, Customer..."
-                                className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:bg-white transition-all"
+                                className="w-full pl-10 pr-4 py-2.5 bg-white border border-[#D7E7DC] rounded-xl text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-400 transition-all"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
@@ -421,7 +421,7 @@ const ReportsPage = ({ onNavigate }) => {
                             <div className="space-y-1.5">
                                 <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-1">Branch</label>
                                 <select
-                                    className="w-full bg-gray-50 border border-gray-100 rounded-xl px-3 py-2 text-sm focus:outline-none"
+                                    className="report-filter-select w-full px-3 py-2 text-sm focus:outline-none"
                                     value={selectedBranch}
                                     onChange={(e) => setSelectedBranch(e.target.value)}
                                 >
@@ -432,7 +432,7 @@ const ReportsPage = ({ onNavigate }) => {
                             <div className="space-y-1.5">
                                 <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-1">Cashier</label>
                                 <select
-                                    className="w-full bg-gray-50 border border-gray-100 rounded-xl px-3 py-2 text-sm focus:outline-none"
+                                    className="report-filter-select w-full px-3 py-2 text-sm focus:outline-none"
                                     value={selectedCashier}
                                     onChange={(e) => setSelectedCashier(e.target.value)}
                                 >
@@ -444,7 +444,7 @@ const ReportsPage = ({ onNavigate }) => {
                             <div className="flex items-end gap-2">
                                 <button
                                     onClick={() => setAppliedFilters({ branch: selectedBranch, cashier: selectedCashier })}
-                                    className="flex-1 bg-emerald-600 text-white py-2 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-emerald-700 transition-all"
+                                    className="inventory-outline-btn report-page-btn report-apply-btn flex-1"
                                 >
                                     Apply
                                 </button>
@@ -454,7 +454,7 @@ const ReportsPage = ({ onNavigate }) => {
                                         setSelectedCashier('All Cashiers');
                                         setAppliedFilters({ branch: 'Main Branch', cashier: 'All Cashiers' });
                                     }}
-                                    className="p-2 bg-gray-50 text-gray-400 hover:text-red-500 rounded-xl transition-all"
+                                    className="inventory-outline-btn report-page-icon-btn p-2"
                                 >
                                     <X className="w-4 h-4" />
                                 </button>
@@ -469,13 +469,13 @@ const ReportsPage = ({ onNavigate }) => {
                     {/* Left Navigation */}
                     <div className="w-full lg:w-72 space-y-2">
                         <div className="bg-white rounded-2xl p-4 shadow-sm border border-emerald-50 mb-6">
-                            <h3 className="text-xs font-black text-emerald-600 uppercase tracking-[2px] mb-4 px-2">Report Explorer</h3>
+                            <h3 className="text-[11px] font-semibold text-slate-600 uppercase tracking-[0.2em] mb-4 px-2">Report Explorer</h3>
                             <div className="space-y-1">
                                 {reportCategories.map((cat) => (
                                     <button
                                         key={cat.id}
                                         onClick={() => setActiveTab(cat.id)}
-                                        className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-semibold transition-all ${activeTab === cat.id ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200' : 'bg-transparent text-gray-600 hover:bg-emerald-50 hover:text-emerald-700'}`}
+                                        className={`inventory-outline-btn report-explorer-btn w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm transition-all ${activeTab === cat.id ? 'report-explorer-btn-active' : ''}`}
                                     >
                                         <div className="flex items-center gap-3">
                                             <cat.icon className="w-4 h-4" />
@@ -488,32 +488,32 @@ const ReportsPage = ({ onNavigate }) => {
                         </div>
 
                         {/* Export Menu */}
-                        <div className="bg-gray-800 rounded-2xl p-6 shadow-xl text-white">
-                            <h3 className="text-xs font-black text-emerald-400 uppercase tracking-[2px] mb-4">Export Options</h3>
+                        <div className="bg-white rounded-2xl p-5 shadow-sm border border-emerald-50 text-slate-700">
+                            <h3 className="text-[11px] font-semibold text-slate-600 uppercase tracking-[0.2em] mb-4">Export Options</h3>
                             <div className="grid grid-cols-2 gap-3">
-                                <button onClick={() => handleExport('pdf')} className="flex flex-col items-center justify-center p-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl transition-all group">
-                                    <div className="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                                <button onClick={() => handleExport('pdf')} className="inventory-outline-btn report-export-btn flex flex-col items-center justify-center p-4 rounded-2xl transition-all group">
+                                    <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
                                         <FileText className="w-5 h-5 text-red-500" />
                                     </div>
-                                    <span className="text-[10px] font-bold uppercase">PDF</span>
+                                    <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-600">PDF</span>
                                 </button>
-                                <button onClick={() => handleExport('excel')} className="flex flex-col items-center justify-center p-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl transition-all group">
-                                    <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                                <button onClick={() => handleExport('excel')} className="inventory-outline-btn report-export-btn flex flex-col items-center justify-center p-4 rounded-2xl transition-all group">
+                                    <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
                                         <BarChart2 className="w-5 h-5 text-green-500" />
                                     </div>
-                                    <span className="text-[10px] font-bold uppercase">Excel</span>
+                                    <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-600">Excel</span>
                                 </button>
-                                <button onClick={() => handleExport('csv')} className="flex flex-col items-center justify-center p-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl transition-all group">
-                                    <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                                <button onClick={() => handleExport('csv')} className="inventory-outline-btn report-export-btn flex flex-col items-center justify-center p-4 rounded-2xl transition-all group">
+                                    <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
                                         <FileText className="w-5 h-5 text-blue-500" />
                                     </div>
-                                    <span className="text-[10px] font-bold uppercase">CSV</span>
+                                    <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-600">CSV</span>
                                 </button>
-                                <button onClick={() => handleExport('image')} className="flex flex-col items-center justify-center p-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl transition-all group">
-                                    <div className="w-10 h-10 rounded-full bg-yellow-500/20 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                                <button onClick={() => handleExport('image')} className="inventory-outline-btn report-export-btn flex flex-col items-center justify-center p-4 rounded-2xl transition-all group">
+                                    <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
                                         <Download className="w-5 h-5 text-yellow-500" />
                                     </div>
-                                    <span className="text-[10px] font-bold uppercase">Image</span>
+                                    <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-600">Image</span>
                                 </button>
                             </div>
                         </div>
@@ -538,7 +538,7 @@ const ReportsPage = ({ onNavigate }) => {
                                             if (activeTab === 'inventory') fetchInventoryReport();
                                             if (activeTab === 'supplier') fetchSupplierReport();
                                         }}
-                                        className="p-2 bg-gray-50 text-gray-400 hover:text-emerald-600 rounded-lg transition-all"
+                                        className="inventory-outline-btn report-page-icon-btn p-2"
                                         title="Refresh Data"
                                     >
                                         <RefreshCw className="w-4 h-4" />
@@ -554,7 +554,7 @@ const ReportsPage = ({ onNavigate }) => {
                                             <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100">
                                                 <div className="flex justify-between items-center mb-6">
                                                     <h4 className="text-sm font-bold text-gray-700">Sales Revenue Trend</h4>
-                                                    <div className="flex items-center gap-1 text-xs text-green-600 font-bold bg-green-50 px-2 py-1 rounded-lg">
+                                                    <div className="flex items-center gap-1 text-xs text-slate-600 font-medium bg-slate-50 px-2 py-1 rounded-lg">
                                                         <TrendingUp className="w-3 h-3" /> Rs. {salesTrendTotal.toLocaleString()}
                                                     </div>
                                                 </div>
@@ -637,9 +637,9 @@ const ReportsPage = ({ onNavigate }) => {
                                                             <td className="px-6 py-4 text-sm font-bold text-gray-800">#INV-{row.order_id}</td>
                                                             <td className="px-6 py-4 text-sm text-gray-600">{row.customer_phone || 'Walk-in Customer'}</td>
                                                             <td className="px-6 py-4 text-sm text-gray-600">{row.cashier?.cashier_name || 'N/A'}</td>
-                                                            <td className="px-6 py-4 text-sm font-black text-emerald-600">{formatCurrency(row.total_amount)}</td>
+                                                            <td className="px-6 py-4 text-sm font-medium text-slate-800">{formatCurrency(row.total_amount)}</td>
                                                             <td className="px-6 py-4">
-                                                                <span className="px-2 py-1 bg-emerald-50 text-emerald-700 text-[10px] font-bold rounded-md uppercase">
+                                                                <span className="px-2 py-1 bg-slate-50 text-slate-600 text-[10px] font-medium rounded-md uppercase">
                                                                     {row.order_items?.length || 0} Items
                                                                 </span>
                                                             </td>
@@ -926,8 +926,8 @@ const ReportsPage = ({ onNavigate }) => {
                                                                 </td>
                                                                 <td className="px-6 py-4 text-sm text-gray-600">{product.category}</td>
                                                                 <td className="px-6 py-4 text-sm font-bold text-gray-800">{product.soldQty} {product.unit || ''}</td>
-                                                                <td className="px-6 py-4 text-sm font-black text-emerald-600">{formatCurrency(product.revenue)}</td>
-                                                                <td className={`px-6 py-4 text-sm font-black ${product.profit >= 0 ? 'text-amber-600' : 'text-red-600'}`}>{formatCurrency(product.profit)}</td>
+                                                                <td className="px-6 py-4 text-sm font-medium text-slate-800">{formatCurrency(product.revenue)}</td>
+                                                                <td className="px-6 py-4 text-sm font-medium text-slate-800">{formatCurrency(product.profit)}</td>
                                                                 <td className="px-6 py-4">
                                                                     <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase ${product.returnsQty > 0 ? 'bg-red-50 text-red-600' : 'bg-gray-50 text-gray-400'}`}>
                                                                         {product.returnsQty} returned
@@ -1003,8 +1003,8 @@ const ReportsPage = ({ onNavigate }) => {
                                                                     <p className="text-xs text-gray-400 mt-0.5">{supplier.email || 'No email'}</p>
                                                                 </td>
                                                                 <td className="px-6 py-4 text-sm font-bold text-gray-800">{supplier.metrics.products_count}</td>
-                                                                <td className="px-6 py-4 text-sm font-black text-emerald-600">{formatCurrency(supplier.metrics.total_purchases)}</td>
-                                                                <td className={`px-6 py-4 text-sm font-black ${supplier.metrics.due_payments > 0 ? 'text-red-600' : 'text-gray-500'}`}>{formatCurrency(supplier.metrics.due_payments)}</td>
+                                                                <td className="px-6 py-4 text-sm font-medium text-slate-800">{formatCurrency(supplier.metrics.total_purchases)}</td>
+                                                                <td className="px-6 py-4 text-sm font-medium text-slate-800">{formatCurrency(supplier.metrics.due_payments)}</td>
                                                                 <td className="px-6 py-4 text-sm text-gray-600">{supplier.metrics.last_purchase_date ? new Date(supplier.metrics.last_purchase_date).toLocaleDateString() : 'N/A'}</td>
                                                                 <td className="px-6 py-4">
                                                                     <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase ${supplier.metrics.status === 'Active' ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
@@ -1029,7 +1029,7 @@ const ReportsPage = ({ onNavigate }) => {
                                         <p className="text-gray-500 max-w-sm">To view purchase reports, open the supplier module and review the Recent Purchases section.</p>
                                         <button
                                             onClick={() => onNavigate('supplier', { focusSection: 'recent-purchases' })}
-                                            className="mt-6 px-6 py-2 bg-emerald-600 text-white text-sm font-bold rounded-xl shadow-lg shadow-emerald-200 hover:bg-emerald-700 transition-all"
+                                            className="inventory-outline-btn report-page-btn mt-6 px-6 py-2"
                                         >
                                             View Purchase Reports
                                         </button>
@@ -1045,7 +1045,7 @@ const ReportsPage = ({ onNavigate }) => {
                                         <p className="text-gray-500 max-w-sm">To view cashier reports, open the cash counter management page.</p>
                                         <button
                                             onClick={() => onNavigate('cash-management')}
-                                            className="mt-6 px-6 py-2 bg-emerald-600 text-white text-sm font-bold rounded-xl shadow-lg shadow-emerald-200 hover:bg-emerald-700 transition-all"
+                                            className="inventory-outline-btn report-page-btn mt-6 px-6 py-2"
                                         >
                                             View Cashier Reports
                                         </button>
@@ -1060,15 +1060,15 @@ const ReportsPage = ({ onNavigate }) => {
             {selectedSale && (
                 <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm px-4 py-6">
                     <div className="w-full max-w-5xl max-h-[90vh] overflow-hidden bg-white rounded-2xl shadow-2xl border border-gray-100 flex flex-col">
-                        <div className="px-6 py-5 border-b border-gray-100 flex items-start justify-between bg-gray-50">
+                        <div className="px-6 py-5 border-b border-gray-100 flex items-start justify-between bg-white">
                             <div>
-                                <p className="text-[10px] font-black uppercase tracking-[2px] text-emerald-600">Sales Invoice</p>
-                                <h2 className="text-2xl font-black text-gray-900 mt-1">#INV-{selectedSale.order_id}</h2>
+                                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-emerald-700">Sales Invoice</p>
+                                <h2 className="text-[2rem] font-semibold text-slate-900 mt-1">#INV-{selectedSale.order_id}</h2>
                                 <p className="text-sm text-gray-500 mt-1">{formatDateTime(selectedSale.closed_at || selectedSale.created_at)}</p>
                             </div>
                             <button
                                 onClick={() => setSelectedSale(null)}
-                                className="p-2 rounded-xl bg-white text-gray-500 hover:text-red-500 hover:bg-red-50 border border-gray-100 transition-all"
+                                className="inventory-outline-btn report-page-icon-btn p-2"
                                 title="Close"
                             >
                                 <X className="w-5 h-5" />
@@ -1078,67 +1078,67 @@ const ReportsPage = ({ onNavigate }) => {
                         <div className="overflow-y-auto p-6 custom-scrollbar">
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                                 <div className="border border-gray-100 rounded-xl p-4 bg-white">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Customer Details</p>
-                                    <p className="text-lg font-bold text-gray-900 mt-2">{selectedSale.customer_phone ? 'Registered Customer' : 'Walk-in Customer'}</p>
+                                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Customer Details</p>
+                                    <p className="text-[1.05rem] font-semibold text-slate-900 mt-2">{selectedSale.customer_phone ? 'Registered Customer' : 'Walk-in Customer'}</p>
                                     <p className="text-sm text-gray-500 mt-1">Phone: {selectedSale.customer_phone || 'N/A'}</p>
                                 </div>
                                 <div className="border border-gray-100 rounded-xl p-4 bg-white">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Cashier Details</p>
-                                    <p className="text-lg font-bold text-gray-900 mt-2">{selectedSale.cashier?.cashier_name || 'N/A'}</p>
+                                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Cashier Details</p>
+                                    <p className="text-[1.05rem] font-semibold text-slate-900 mt-2">{selectedSale.cashier?.cashier_name || 'N/A'}</p>
                                     <p className="text-sm text-gray-500 mt-1">Counter: {selectedSale.cashier?.counter_number || 'N/A'}</p>
                                 </div>
-                                <div className="border border-gray-100 rounded-xl p-4 bg-emerald-50">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700">Sale Summary</p>
-                                    <p className="text-2xl font-black text-emerald-700 mt-2">{formatCurrency(selectedSale.total_amount)}</p>
-                                    <p className="text-sm text-emerald-700/70 mt-1">Status: {selectedSale.status}</p>
+                                <div className="border border-[#D7E7DC] rounded-xl p-4 bg-white">
+                                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-700">Sale Summary</p>
+                                    <p className="text-[1.9rem] font-semibold text-slate-900 mt-2">{formatCurrency(selectedSale.total_amount)}</p>
+                                    <p className="text-sm text-slate-500 mt-1">Status: <span className="font-medium text-emerald-700">{selectedSale.status}</span></p>
                                 </div>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                                 <div className="rounded-xl border border-gray-100 p-4">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Order ID</p>
-                                    <p className="text-sm font-bold text-gray-800 mt-2">{selectedSale.order_id}</p>
+                                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Order ID</p>
+                                    <p className="text-sm font-semibold text-slate-800 mt-2">{selectedSale.order_id}</p>
                                 </div>
                                 <div className="rounded-xl border border-gray-100 p-4">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Table</p>
-                                    <p className="text-sm font-bold text-gray-800 mt-2">{selectedSale.table_id || 'Direct Sale'}</p>
+                                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Table</p>
+                                    <p className="text-sm font-semibold text-slate-800 mt-2">{selectedSale.table_id || 'Direct Sale'}</p>
                                 </div>
                                 <div className="rounded-xl border border-gray-100 p-4">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Created</p>
-                                    <p className="text-sm font-bold text-gray-800 mt-2">{formatDateTime(selectedSale.created_at)}</p>
+                                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Created</p>
+                                    <p className="text-sm font-semibold text-slate-800 mt-2">{formatDateTime(selectedSale.created_at)}</p>
                                 </div>
                                 <div className="rounded-xl border border-gray-100 p-4">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Closed</p>
-                                    <p className="text-sm font-bold text-gray-800 mt-2">{formatDateTime(selectedSale.closed_at)}</p>
+                                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Closed</p>
+                                    <p className="text-sm font-semibold text-slate-800 mt-2">{formatDateTime(selectedSale.closed_at)}</p>
                                 </div>
                             </div>
 
                             <div className="rounded-xl border border-gray-100 overflow-hidden">
                                 <div className="px-5 py-4 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
-                                    <h3 className="text-sm font-black text-gray-800">Items Details</h3>
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">{selectedSale.order_items?.length || 0} Items</span>
+                                    <h3 className="text-[1.05rem] font-semibold text-slate-800">Items Details</h3>
+                                    <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">{selectedSale.order_items?.length || 0} Items</span>
                                 </div>
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-left">
                                         <thead className="bg-white border-b border-gray-100">
                                             <tr>
-                                                <th className="px-5 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">Item</th>
-                                                <th className="px-5 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">Category</th>
-                                                <th className="px-5 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">Code</th>
-                                                <th className="px-5 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">Qty</th>
-                                                <th className="px-5 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">Unit Price</th>
-                                                <th className="px-5 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Subtotal</th>
+                                                <th className="px-5 py-3 text-[10px] font-semibold text-slate-500 uppercase tracking-[0.18em]">Item</th>
+                                                <th className="px-5 py-3 text-[10px] font-semibold text-slate-500 uppercase tracking-[0.18em]">Category</th>
+                                                <th className="px-5 py-3 text-[10px] font-semibold text-slate-500 uppercase tracking-[0.18em]">Code</th>
+                                                <th className="px-5 py-3 text-[10px] font-semibold text-slate-500 uppercase tracking-[0.18em]">Qty</th>
+                                                <th className="px-5 py-3 text-[10px] font-semibold text-slate-500 uppercase tracking-[0.18em]">Unit Price</th>
+                                                <th className="px-5 py-3 text-[10px] font-semibold text-slate-500 uppercase tracking-[0.18em] text-right">Subtotal</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-gray-50">
                                             {selectedSale.order_items?.map((item) => (
                                                 <tr key={item.order_item_id}>
-                                                    <td className="px-5 py-4 text-sm font-bold text-gray-800">{item.item_name}</td>
+                                                    <td className="px-5 py-4 text-sm font-semibold text-slate-800">{item.item_name}</td>
                                                     <td className="px-5 py-4 text-sm text-gray-600">{item.category || 'Uncategorized'}</td>
                                                     <td className="px-5 py-4 text-sm text-gray-500">{item.item_code || 'N/A'}</td>
                                                     <td className="px-5 py-4 text-sm text-gray-600">{item.quantity} {item.unit || ''}</td>
                                                     <td className="px-5 py-4 text-sm text-gray-600">{formatCurrency(item.item_price)}</td>
-                                                    <td className="px-5 py-4 text-sm font-black text-emerald-600 text-right">{formatCurrency(item.subtotal)}</td>
+                                                    <td className="px-5 py-4 text-sm font-semibold text-emerald-700 text-right">{formatCurrency(item.subtotal)}</td>
                                                 </tr>
                                             ))}
                                         </tbody>
@@ -1150,7 +1150,7 @@ const ReportsPage = ({ onNavigate }) => {
                         <div className="px-6 py-4 border-t border-gray-100 bg-white flex justify-end">
                             <button
                                 onClick={() => setSelectedSale(null)}
-                                className="px-5 py-2 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 transition-all"
+                                className="inventory-outline-btn report-page-btn px-5 py-2"
                             >
                                 Close
                             </button>
@@ -1185,15 +1185,15 @@ const ReportsPage = ({ onNavigate }) => {
                                     <p className="text-xs text-gray-500 mt-1">{selectedSupplierReport.email || 'No email'}</p>
                                     <p className="text-xs text-gray-500 mt-1">{selectedSupplierReport.address || 'No address'}</p>
                                 </div>
-                                <div className="border border-gray-100 rounded-xl p-4 bg-emerald-50">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700">Total Purchases</p>
-                                    <p className="text-xl font-black text-emerald-700 mt-2">{formatCurrency(selectedSupplierReport.metrics.total_purchases)}</p>
-                                    <p className="text-xs text-emerald-700/70 mt-1">{selectedSupplierReport.metrics.batch_count} purchase batches</p>
+                                <div className="border border-[#D7E7DC] rounded-xl p-4 bg-white">
+                                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Total Purchases</p>
+                                    <p className="text-xl font-semibold text-slate-900 mt-2">{formatCurrency(selectedSupplierReport.metrics.total_purchases)}</p>
+                                    <p className="text-xs text-slate-500 mt-1">{selectedSupplierReport.metrics.batch_count} purchase batches</p>
                                 </div>
-                                <div className="border border-gray-100 rounded-xl p-4 bg-red-50">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-red-700">Due Payments</p>
-                                    <p className="text-xl font-black text-red-700 mt-2">{formatCurrency(selectedSupplierReport.metrics.due_payments)}</p>
-                                    <p className="text-xs text-red-700/70 mt-1">{selectedSupplierReport.metrics.payment_completion}% settled</p>
+                                <div className="border border-[#D7E7DC] rounded-xl p-4 bg-white">
+                                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Due Payments</p>
+                                    <p className="text-xl font-semibold text-slate-900 mt-2">{formatCurrency(selectedSupplierReport.metrics.due_payments)}</p>
+                                    <p className="text-xs text-slate-500 mt-1">{selectedSupplierReport.metrics.payment_completion}% settled</p>
                                 </div>
                                 <div className="border border-gray-100 rounded-xl p-4">
                                     <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Supplier Status</p>
@@ -1267,9 +1267,9 @@ const ReportsPage = ({ onNavigate }) => {
                                                     <td className="px-5 py-4 text-sm font-bold text-gray-900">{batch.batch_number}</td>
                                                     <td className="px-5 py-4 text-sm text-gray-600">{formatDateTime(batch.batch_date)}</td>
                                                     <td className="px-5 py-4 text-sm text-gray-600">{batch.item_count}</td>
-                                                    <td className="px-5 py-4 text-sm font-black text-emerald-600">{formatCurrency(batch.net_value)}</td>
+                                                    <td className="px-5 py-4 text-sm font-medium text-slate-800">{formatCurrency(batch.net_value)}</td>
                                                     <td className="px-5 py-4 text-sm text-gray-700">{formatCurrency(batch.paid_amount)}</td>
-                                                    <td className="px-5 py-4 text-sm font-bold text-red-600">{formatCurrency(batch.due_amount)}</td>
+                                                    <td className="px-5 py-4 text-sm font-medium text-slate-800">{formatCurrency(batch.due_amount)}</td>
                                                     <td className="px-5 py-4 text-xs font-black text-gray-500">{batch.payment_status}</td>
                                                 </tr>
                                             ))}
@@ -1292,7 +1292,7 @@ const ReportsPage = ({ onNavigate }) => {
                                                     <p className="text-xs text-gray-500">{payment.batch_number} · {payment.method} · {formatDateTime(payment.date)}</p>
                                                 </div>
                                                 <div className="text-right">
-                                                    <p className="text-sm font-black text-emerald-600">{formatCurrency(payment.amount)}</p>
+                                                    <p className="text-sm font-medium text-slate-800">{formatCurrency(payment.amount)}</p>
                                                     <p className="text-[10px] font-black text-gray-400 uppercase">{payment.status}</p>
                                                 </div>
                                             </div>
@@ -1326,7 +1326,7 @@ const ReportsPage = ({ onNavigate }) => {
                         <div className="px-6 py-4 border-t border-gray-100 bg-white flex justify-end">
                             <button
                                 onClick={() => setSelectedSupplierReport(null)}
-                                className="px-5 py-2 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 transition-all"
+                                className="inventory-outline-btn report-page-btn px-5 py-2"
                             >
                                 Close Report
                             </button>
