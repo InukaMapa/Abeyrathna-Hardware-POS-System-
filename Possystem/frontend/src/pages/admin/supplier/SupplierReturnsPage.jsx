@@ -248,15 +248,12 @@ const SupplierReturnsPage = ({ onNavigate }) => {
                                             </div>
                                         </td>
                                         <td className="px-4 py-3 text-right">
-                                            <div className="flex justify-end gap-2 text-white">
+                                            <div className="flex justify-end text-white">
                                                 <button
-                                                    onClick={() => setSelectedReturnView(ret)}
-                                                    className="supplier-returns-icon-btn"
-                                                    title="View Return"
+                                                    onClick={() => onNavigate('return-management', { id: ret.id })}
+                                                    className="supplier-returns-row-action"
+                                                    title="Open return action"
                                                 >
-                                                    <RefreshCcw className="w-4 h-4" />
-                                                </button>
-                                                <button className="supplier-returns-icon-btn p-2 hover:bg-white/5 rounded-lg text-white/10 hover:text-white transition-all">
                                                     <MoreVertical className="w-4 h-4" />
                                                 </button>
                                             </div>

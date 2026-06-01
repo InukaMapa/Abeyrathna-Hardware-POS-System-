@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import LoginPage from './pages/auth/LoginPage';
-import RegisterPage from './pages/auth/RegisterPage';
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
 import ResetPasswordPage from './pages/auth/ResetPasswordPage';
 import VerifyEmailPage from './pages/auth/VerifyEmailPage';
@@ -68,7 +67,6 @@ function AppContent() {
     <>
       {/* Public Routes */}
       {currentPage === 'login' && <LoginPage onNavigate={navigateTo} />}
-      {currentPage === 'register' && <RegisterPage onNavigate={navigateTo} />}
       {currentPage === 'forgot-password' && <ForgotPasswordPage onNavigate={navigateTo} />}
       {currentPage === 'verify-email' && <VerifyEmailPage onNavigate={navigateTo} />}
       {currentPage === 'reset-password' && <ResetPasswordPage onNavigate={navigateTo} />}

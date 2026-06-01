@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
-import { API_BASE_URL } from '../../config/api';
 import { fetchOrders } from '../../services/orderService';
 import { useAuth } from '../../context/AuthContext';
+import { ArrowLeft, Briefcase, ChevronDown, Plus, RefreshCcw } from 'lucide-react';
 import '../../styles/dashboard.css'; // Reuse dashboard styles
 
 const OrdersPage = ({ onNavigate }) => {
@@ -10,7 +10,6 @@ const OrdersPage = ({ onNavigate }) => {
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [updatingStatusId, setUpdatingStatusId] = useState(null);
 
     // Filter State
     const [dateRange, setDateRange] = useState('today'); // today, yesterday, week, month, all, custom
@@ -69,46 +68,6 @@ const OrdersPage = ({ onNavigate }) => {
         }
     };
 
-    const handleStatusChange = async (orderId, newStatus) => {
-        try {
-            setUpdatingStatusId(orderId);
-            const token = localStorage.getItem('token');
-            const url = newStatus === 'PAID'
-                ? `${API_BASE_URL}/orders/${orderId}/close`
-                : `${API_BASE_URL}/orders/${orderId}/status`;
-
-            const method = 'PATCH';
-            const body = newStatus === 'PAID' ? {} : { status: newStatus };
-
-            const response = await fetch(url, {
-                method,
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(body)
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Failed to update status');
-            }
-
-            // Reload orders to reflect the new state immediately
-            await loadOrders();
-
-            // If it was closed/paid, alert success.
-            if (newStatus === 'PAID') {
-                alert('Order closed and payment received successfully!');
-            }
-        } catch (err) {
-            console.error('Error updating status:', err);
-            alert(`Error: ${err.message}`);
-        } finally {
-            setUpdatingStatusId(null);
-        }
-    };
-
     useEffect(() => {
         loadOrders();
         // Auto-refresh every 30 seconds (increased from 15 to reduce load when history is large)
@@ -131,59 +90,52 @@ const OrdersPage = ({ onNavigate }) => {
         });
     };
 
-    const getStatusColor = (status) => {
-        switch (status?.toUpperCase()) {
-            case 'PLACED': return '#3498db';
-            case 'BILL_OPEN': return '#f1c40f';
-            case 'PAID':
-            case 'CLOSED': return '#95a5a6';
-            default: return '#95a5a6';
-        }
+    const getStatusLabel = (status) => {
+        if (status === 'PAID' || status === 'CLOSED') return 'CLOSED / PAID';
+        if (status === 'BILL_OPEN') return 'BILL OPEN';
+        return status || 'UNKNOWN';
     };
 
     return (
         <DashboardLayout onNavigate={onNavigate} activePage="orders">
-            <div className="orders-page-container p-6 bg-[#121212] min-h-screen text-white">
-                <div className="flex justify-between items-center mb-8 bg-[#1E1E1E] p-6 rounded-2xl border border-[#333333] shadow-xl">
+            <div className="orders-page-container p-8 max-w-[1600px] mx-auto">
+                <div className="orders-page-header flex justify-between items-end mb-8">
                     <div className="flex items-center gap-4">
                         <button
                             onClick={() => onNavigate('dashboard')}
-                            className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-full transition-all"
+                            className="orders-page-icon-btn"
                             title="Back to Dashboard"
                         >
-                            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                            </svg>
+                            <ArrowLeft className="w-5 h-5" />
                         </button>
                         <div>
-                            <h2 className="text-2xl font-black uppercase tracking-tight m-0">Order Management</h2>
+                            <h2 className="orders-page-title m-0 mb-2">Order Management</h2>
+                            <p className="orders-page-subtitle m-0">Review cashier orders, payment status, and order history.</p>
                         </div>
                     </div>
 
                     {userRole === 'CASHIER' && (
                         <button
                             onClick={() => onNavigate('cashier-new-order')}
-                            className="flex items-center gap-2 px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-black uppercase tracking-widest rounded-xl transition-all shadow-lg shadow-red-600/20 active:scale-95"
+                            className="orders-page-action-btn orders-page-primary-btn"
                         >
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                            </svg>
+                            <Plus className="w-5 h-5" />
                             Create Order
                         </button>
                     )}
                 </div>
 
                 {/* Filters Section */}
-                <div className="bg-[#1E1E1E] p-6 rounded-2xl border border-[#333333] mb-8 shadow-xl">
+                <div className="orders-filter-card mb-8">
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                         {/* Date Range Presets */}
                         <div className="md:col-span-2">
-                            <label className="block text-gray-500 text-[10px] font-black uppercase tracking-widest mb-3">Time Period</label>
+                            <label className="orders-page-label">Time Period</label>
                             <div className="relative">
                                 <select
                                     value={dateRange}
                                     onChange={(e) => setDateRange(e.target.value)}
-                                    className="w-full bg-[#252525] text-white text-[10px] font-black uppercase tracking-widest px-4 py-3 rounded-lg border border-[#444] outline-none focus:border-red-600 transition-all appearance-none cursor-pointer"
+                                    className="orders-page-field appearance-none cursor-pointer"
                                 >
                                     <option value="today">Today</option>
                                     <option value="yesterday">Yesterday</option>
@@ -192,21 +144,19 @@ const OrdersPage = ({ onNavigate }) => {
                                     <option value="all">All History</option>
                                     <option value="custom">Custom</option>
                                 </select>
-                                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-white/50">
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                    </svg>
+                                <div className="orders-field-chevron">
+                                    <ChevronDown className="w-4 h-4" />
                                 </div>
                             </div>
                         </div>
 
                         {/* Status Filter */}
                         <div>
-                            <label className="block text-gray-500 text-[10px] font-black uppercase tracking-widest mb-3">Order Status</label>
+                            <label className="orders-page-label">Order Status</label>
                             <select
                                 value={statusFilter}
                                 onChange={(e) => setStatusFilter(e.target.value)}
-                                className="w-full bg-[#252525] text-white text-[10px] font-black uppercase tracking-widest px-4 py-3 rounded-lg border border-[#444] outline-none focus:border-red-600 transition-all appearance-none cursor-pointer"
+                                className="orders-page-field appearance-none cursor-pointer"
                             >
                                 <option value="ALL">ALL STATUSES</option>
                                 <option value="PLACED">PLACED</option>
@@ -218,16 +168,14 @@ const OrdersPage = ({ onNavigate }) => {
                         {/* Refresh & Totals Info */}
                         <div className="flex items-end justify-end gap-3">
                             <div className="text-right mr-4">
-                                <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Total Results</p>
-                                <p className="text-2xl font-black text-white">{orders.length}</p>
+                                <p className="orders-page-label mb-1">Total Results</p>
+                                <p className="orders-total-count">{orders.length}</p>
                             </div>
                             <button
                                 onClick={() => loadOrders()}
-                                className="flex items-center gap-2 px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-black uppercase tracking-widest rounded-xl transition-all shadow-lg shadow-red-600/20 active:scale-95"
+                                className="orders-page-action-btn orders-page-primary-btn"
                             >
-                                <svg className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                </svg>
+                                <RefreshCcw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                                 Refresh
                             </button>
                         </div>
@@ -235,28 +183,28 @@ const OrdersPage = ({ onNavigate }) => {
 
                     {/* Custom Date Inputs */}
                     {dateRange === 'custom' && (
-                        <div className="grid grid-cols-2 gap-4 mt-6 pt-6 border-t border-[#333]">
+                        <div className="grid grid-cols-2 gap-4 mt-6 pt-6 border-t border-[#D7E7DC]">
                             <div>
-                                <label className="block text-gray-500 text-[10px] font-black uppercase tracking-widest mb-2">Start Date</label>
+                                <label className="orders-page-label">Start Date</label>
                                 <input
                                     type="date"
                                     value={customDates.start}
                                     onChange={(e) => setCustomDates({ ...customDates, start: e.target.value })}
-                                    className="w-full bg-[#252525] text-white text-xs px-4 py-3 rounded-lg border border-[#444] outline-none focus:border-red-600 transition-all"
+                                    className="orders-page-field"
                                 />
                             </div>
                             <div>
-                                <label className="block text-gray-500 text-[10px] font-black uppercase tracking-widest mb-2">End Date (Optional)</label>
+                                <label className="orders-page-label">End Date (Optional)</label>
                                 <div className="flex gap-2">
                                     <input
                                         type="date"
                                         value={customDates.end}
                                         onChange={(e) => setCustomDates({ ...customDates, end: e.target.value })}
-                                        className="w-full bg-[#252525] text-white text-xs px-4 py-3 rounded-lg border border-[#444] outline-none focus:border-red-600 transition-all"
+                                        className="orders-page-field"
                                     />
                                     <button
                                         onClick={() => loadOrders()}
-                                        className="px-6 bg-[#333] hover:bg-gray-700 text-white font-black uppercase tracking-widest text-[10px] rounded-lg transition-all"
+                                        className="orders-page-action-btn"
                                     >
                                         Apply
                                     </button>
@@ -267,13 +215,13 @@ const OrdersPage = ({ onNavigate }) => {
                 </div>
 
                 {loading && (
-                    <div className="flex flex-col items-center justify-center py-20 bg-[#1E1E1E] rounded-2xl border border-[#333333] mb-8">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mb-4"></div>
-                        <p className="text-gray-500 font-bold uppercase tracking-widest">Fetching filtered orders...</p>
+                    <div className="orders-state-card flex flex-col items-center justify-center py-20 mb-8">
+                        <div className="orders-spinner mb-4"></div>
+                        <p>Fetching filtered orders...</p>
                     </div>
                 )}
                 {error && (
-                    <div className="p-6 bg-red-900/20 border border-red-900/50 rounded-2xl text-red-500 font-bold mb-8 flex items-center gap-3">
+                    <div className="orders-error-card mb-8 flex items-center gap-3">
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
@@ -282,32 +230,32 @@ const OrdersPage = ({ onNavigate }) => {
                 )}
 
                 {!loading && !error && (
-                    <div className="table-container bg-[#1E1E1E] border border-[#333333] rounded-2xl overflow-hidden shadow-2xl">
+                    <div className="orders-table-shell table-container overflow-hidden">
                         <table className="w-full border-collapse text-left">
                             <thead>
-                                <tr className="bg-gray-800/50 border-b border-[#333333]">
-                                    <th className="p-5 font-bold uppercase tracking-widest text-xs text-gray-400">Order ID</th>
-                                    <th className="p-5 font-bold uppercase tracking-widest text-xs text-gray-400">Customer</th>
-                                    <th className="p-5 font-bold uppercase tracking-widest text-xs text-gray-400">Items</th>
-                                    <th className="p-5 font-bold uppercase tracking-widest text-xs text-gray-400">Total Amount</th>
-                                    <th className="p-5 font-bold uppercase tracking-widest text-xs text-gray-400 text-center">Status</th>
-                                    <th className="p-5 font-bold uppercase tracking-widest text-xs text-gray-400 text-right">Time</th>
+                                <tr>
+                                    <th className="p-5">Order ID</th>
+                                    <th className="p-5">Customer</th>
+                                    <th className="p-5">Items</th>
+                                    <th className="p-5">Total Amount</th>
+                                    <th className="p-5 text-center">Status</th>
+                                    <th className="p-5 text-right">Time</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-[#333333]">
+                            <tbody>
                                 {orders.map(order => (
                                     <tr
                                         key={order.order_id}
-                                        className="hover:bg-white/5 transition-colors group cursor-pointer"
+                                        className="transition-colors group cursor-pointer"
                                         onClick={() => onNavigate('order-details', { orderId: order.order_id })}
                                     >
-                                        <td className="p-5 font-bold text-gray-400">#{order.order_id}</td>
-                                        <td className="p-5 font-bold text-white">{order.customer_phone || <span className="opacity-20">-</span>}</td>
+                                        <td className="p-5 orders-id-cell">#{order.order_id}</td>
+                                        <td className="p-5 orders-main-cell">{order.customer_phone || <span className="opacity-40">-</span>}</td>
                                         <td className="p-5">
                                             <div className="flex flex-col gap-1.5">
                                                 {order.order_items && order.order_items.map(item => (
-                                                    <span key={item.order_item_id} className="text-sm font-medium text-gray-300">
-                                                        <span className="text-white bg-[#333333] px-1.5 py-0.5 rounded mr-2 font-bold text-xs">{item.quantity}x</span>
+                                                    <span key={item.order_item_id} className="orders-item-line">
+                                                        <span className="orders-qty-badge">{item.quantity}x</span>
                                                         {item.item_name}
                                                     </span>
                                                 ))}
@@ -315,47 +263,24 @@ const OrdersPage = ({ onNavigate }) => {
                                             </div>
                                         </td>
                                         <td className="p-5">
-                                            <span className="font-bold text-white text-lg tabular-nums">Rs. {parseFloat(order.total_amount).toFixed(2)}</span>
+                                            <span className="orders-amount tabular-nums">Rs. {parseFloat(order.total_amount).toFixed(2)}</span>
                                         </td>
-                                        <td className="p-5 text-center" onClick={(e) => e.stopPropagation()}>
-                                            <div className="relative inline-block">
-                                                <select
-                                                    value={order.status === 'CLOSED' ? 'PAID' : order.status}
-                                                    onChange={(e) => handleStatusChange(order.order_id, e.target.value)}
-                                                    disabled={updatingStatusId === order.order_id || order.status === 'PAID' || order.status === 'CLOSED'}
-                                                    className="appearance-none bg-[#252525] text-white text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-full border border-[#444] cursor-pointer hover:border-gray-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed outline-none pr-8"
-                                                    style={{ backgroundColor: getStatusColor(order.status) }}
-                                                >
-                                                    {(order.status === 'PAID' || order.status === 'CLOSED') ? (
-                                                        <option value="PAID">CLOSED / PAID</option>
-                                                    ) : (
-                                                        <>
-                                                            <option value="PLACED">PLACED</option>
-                                                            <option value="BILL_OPEN">BILL OPEN</option>
-                                                            <option value="PAID">CLOSED / PAID</option>
-                                                        </>
-                                                    )}
-                                                </select>
-                                                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-white/50">
-                                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
-                                                    </svg>
-                                                </div>
-                                            </div>
+                                        <td className="p-5 text-center">
+                                            <span className="orders-status-badge">
+                                                {getStatusLabel(order.status)}
+                                            </span>
                                         </td>
-                                        <td className="p-5 text-right font-medium text-gray-500 text-xs tabular-nums">
+                                        <td className="p-5 text-right orders-time-cell tabular-nums">
                                             {formatDate(order.created_at)}
                                         </td>
                                     </tr>
                                 ))}
                                 {orders.length === 0 && (
                                     <tr>
-                                        <td colSpan="7" className="p-20 text-center">
+                                        <td colSpan="6" className="p-20 text-center">
                                             <div className="flex flex-col items-center">
-                                                <svg className="w-16 h-16 text-gray-800 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                                                </svg>
-                                                <p className="text-gray-600 font-bold uppercase tracking-widest">No orders at the moment</p>
+                                                <Briefcase className="orders-empty-icon mb-4" />
+                                                <p className="orders-empty-text">No orders at the moment</p>
                                             </div>
                                         </td>
                                     </tr>

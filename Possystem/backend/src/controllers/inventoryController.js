@@ -418,6 +418,8 @@ export const fetchInventoryBatches = async (req, res) => {
                 *, 
                 suppliers(supplier_name),
                 inventory_batch_items(
+                    id,
+                    inventory_id,
                     quantity_added,
                     buying_price_at_time,
                     inventory(ingredient_name, unit)
