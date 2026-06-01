@@ -111,30 +111,45 @@ const SupplierPage = ({ onNavigate, focusSection }) => {
         notes: ''
     });
 
-    const handleSelectPayment = async (batch) => {
-        try {
-            const invResponse = await axios.get(`${API_BASE_URL}/inventory`, {
-                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-            });
-            const itemsInBatch = invResponse.data
-                .filter(item => item.batch_id === batch.id)
-                .map(item => ({
-                    name: item.ingredient_name,
-                    qty: item.quantity,
-                    price: parseFloat(item.buying_price || 0).toLocaleString(),
-                    total: (parseFloat(item.quantity) * parseFloat(item.buying_price || 0)).toLocaleString()
-                }));
+    const getBatchLineItems = (batch) => {
+        const grouped = (batch.inventory_batch_items || []).reduce((acc, item) => {
+            const id = item.inventory_id
+                || item.inventory?.item_code
+                || item.inventory?.ingredient_name
+                || item.id;
 
-            setSelectedPaymentProcessing({ ...batch, lineItems: itemsInBatch });
-            setPaymentForm({
-                type: 'Full',
-                amount: batch.remaining_balance,
-                date: new Date().toISOString().split('T')[0],
-                method: 'Cash',
-                reference: '',
-                notes: ''
-            });
-        } catch (err) { console.error(err); }
+            if (!acc[id]) {
+                acc[id] = {
+                    name: item.inventory?.ingredient_name || 'Unknown Item',
+                    qty: 0,
+                    price: parseFloat(item.buying_price_at_time || 0)
+                };
+            }
+
+            acc[id].qty += parseFloat(item.quantity_added || 0);
+            return acc;
+        }, {});
+
+        return Object.values(grouped).map(item => ({
+            name: item.name,
+            qty: item.qty,
+            price: item.price.toLocaleString(),
+            total: (item.qty * item.price).toLocaleString()
+        }));
+    };
+
+    const handleSelectPayment = async (batch) => {
+        const itemsInBatch = getBatchLineItems(batch);
+
+        setSelectedPaymentProcessing({ ...batch, lineItems: itemsInBatch });
+        setPaymentForm({
+            type: 'Full',
+            amount: batch.remaining_balance,
+            date: new Date().toISOString().split('T')[0],
+            method: 'Cash',
+            reference: '',
+            notes: ''
+        });
     };
 
     const handleCompletePaymentForm = async () => {
@@ -1218,9 +1233,12 @@ const SupplierPage = ({ onNavigate, focusSection }) => {
                                                         <div
                                                             key={idx}
                                                             onClick={() => {
-                                                                // Group items by inventory_id to prevent duplicates in the list
+                                                                // Group repeated ledger rows for the same item, but keep different products separate.
                                                                 const grouped = (trx.inventory_batch_items || []).reduce((acc, item) => {
-                                                                    const id = item.inventory_id;
+                                                                    const id = item.inventory_id
+                                                                        || item.inventory?.item_code
+                                                                        || item.inventory?.ingredient_name
+                                                                        || item.id;
                                                                     if (!acc[id]) {
                                                                         acc[id] = {
                                                                             name: item.inventory?.ingredient_name || 'Unknown Item',

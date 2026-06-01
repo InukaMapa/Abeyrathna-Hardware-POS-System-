@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import DashboardLayout from '../../../components/layout/DashboardLayout';
 import {
-    RefreshCcw, ArrowLeft, CheckCircle2, XCircle, CreditCard,
-    FileText, Package, Calendar, Truck, AlertCircle, ArrowRight,
+    RefreshCcw, ArrowLeft,
+    FileText, Calendar, AlertCircle, ArrowRight,
     TrendingDown, Info, ShieldCheck, DollarSign
 } from 'lucide-react';
 import { API_BASE_URL } from '../../../config/api';
@@ -42,6 +42,10 @@ const ReturnManagementPage = ({ onNavigate, returnId }) => {
     };
 
     const handleResolve = async () => {
+        if (returnData?.status !== 'PENDING') {
+            alert('This return has already been processed.');
+            return;
+        }
         if (!window.confirm(`Are you sure you want to resolve this return as ${resolution}?`)) return;
         setProcessing(true);
         try {
@@ -62,182 +66,194 @@ const ReturnManagementPage = ({ onNavigate, returnId }) => {
         setProcessing(false);
     };
 
-    if (loading) return <div className="h-screen bg-black flex items-center justify-center text-white/20">Loading Dossier...</div>;
-    if (!returnData) return <div className="h-screen bg-black flex items-center justify-center text-white/20 uppercase tracking-widest">Return Not Found</div>;
+    if (loading) return <div className="h-screen bg-[#F5FAF7] flex items-center justify-center text-sm font-semibold text-gray-700">Loading return details...</div>;
+    if (!returnData) return <div className="h-screen bg-[#F5FAF7] flex items-center justify-center text-sm font-semibold text-gray-700">Return not found</div>;
+
+    const isPendingReturn = returnData.status === 'PENDING';
+    const statusLabel = isPendingReturn ? 'Pending Approval' : `Already Returned (${returnData.status || 'Processed'})`;
 
     return (
         <DashboardLayout activePage="supplier-returns" onNavigate={onNavigate}>
-            <div className="p-10 max-w-[1400px] mx-auto min-h-screen">
+            <div className="p-6 max-w-[1320px] mx-auto min-h-screen text-gray-950">
                 {/* Top Nav */}
                 <button
+                    title="Back to returns"
                     onClick={() => onNavigate('supplier-returns')}
-                    className="flex items-center gap-2 text-white/40 hover:text-white transition-all mb-8 group"
+                    className="return-management-back-btn mb-5 group"
                 >
                     <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-                    <span className="text-[10px] font-bold uppercase tracking-widest">Back to Return Registry</span>
+                    <span>Back to Return Registry</span>
                 </button>
 
-                <div className="grid grid-cols-12 gap-10">
+                <div className="grid grid-cols-12 gap-5">
                     {/* Left: Dossier Overview */}
-                    <div className="col-span-4 space-y-8">
-                        <div className="p-8 bg-white/[0.02] border border-white/5 rounded-[40px] relative overflow-hidden group">
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-[#D4AF37]/5 rounded-full -mr-16 -mt-16 blur-2xl"></div>
+                    <div className="col-span-4 space-y-5">
+                        <div className="p-5 bg-white border border-green-100 rounded-lg shadow-sm relative overflow-hidden group">
 
-                            <div className="flex items-center gap-4 mb-8">
-                                <div className="p-4 bg-[#D4AF37]/10 rounded-2xl">
-                                    <ShieldCheck className="w-6 h-6 text-[#D4AF37]" />
+                            <div className="flex items-center gap-3 mb-5">
+                                <div className="p-2.5 bg-green-50 rounded-lg border border-green-100">
+                                    <ShieldCheck className="w-5 h-5 text-green-700" />
                                 </div>
                                 <div>
-                                    <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em] block mb-1">Return List</span>
-                                    <p className="text-[#D4AF37] text-[10px] font-black uppercase tracking-widest">{returnData.return_number}</p>
+                                    <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-0.5">Return Record</span>
+                                    <p className="text-sm font-bold text-gray-950">{returnData.return_number}</p>
                                 </div>
                             </div>
 
-                            <div className="space-y-6">
+                            <div className="space-y-4">
                                 <div className="space-y-2">
-                                    <p className="text-[10px] font-bold text-white/20 uppercase tracking-widest">Item & Quantity</p>
-                                    <div className="bg-white/5 p-4 rounded-2xl">
-                                        <p className="text-sm font-bold text-white">{returnData.inventory?.ingredient_name}</p>
-                                        <p className="text-xl font-black text-red-500 mt-1">{returnData.quantity} Units</p>
+                                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Item & Quantity</p>
+                                    <div className="bg-[#F7FBF8] p-4 rounded-lg border border-green-100">
+                                        <p className="text-sm font-bold text-gray-950">{returnData.inventory?.ingredient_name}</p>
+                                        <p className="text-lg font-bold text-green-700 mt-1">{returnData.quantity} Units</p>
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-4 text-[11px]">
-                                    <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
-                                        <p className="text-white/20 uppercase text-[9px] mb-1 font-bold">Supplier</p>
-                                        <p className="text-white font-bold">{returnData.suppliers?.supplier_name}</p>
+                                <div className="grid grid-cols-2 gap-3 text-xs">
+                                    <div className="p-3 bg-white rounded-lg border border-gray-200">
+                                        <p className="text-gray-500 uppercase text-[10px] mb-1 font-bold">Supplier</p>
+                                        <p className="text-gray-950 font-semibold">{returnData.suppliers?.supplier_name}</p>
                                     </div>
-                                    <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
-                                        <p className="text-white/20 uppercase text-[9px] mb-1 font-bold">Batch REF</p>
-                                        <p className="text-white font-bold">{returnData.inventory_batches?.batch_number}</p>
+                                    <div className="p-3 bg-white rounded-lg border border-gray-200">
+                                        <p className="text-gray-500 uppercase text-[10px] mb-1 font-bold">Batch Ref</p>
+                                        <p className="text-gray-950 font-semibold">{returnData.inventory_batches?.batch_number}</p>
                                     </div>
                                 </div>
 
-                                <div className="flex items-center gap-3 p-4 bg-yellow-500/5 border border-yellow-500/10 rounded-2xl text-yellow-500/60">
+                                <div className="flex items-center gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-800">
                                     <AlertCircle className="w-4 h-4" />
-                                    <span className="text-[10px] font-bold uppercase tracking-tighter">Issue: {returnData.return_type}</span>
+                                    <span className="text-xs font-semibold">Issue: {returnData.return_type}</span>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="p-8 bg-white/[0.02] border border-white/5 rounded-[40px] space-y-6">
-                            <h3 className="text-[10px] font-bold text-white/20 uppercase tracking-widest border-b border-white/5 pb-4">Internal Audit Trail</h3>
-                            <div className="space-y-6 relative ml-2 border-l border-white/5 pl-6">
+                        <div className="p-5 bg-white border border-green-100 rounded-lg shadow-sm space-y-5">
+                            <h3 className="text-xs font-bold text-gray-950 border-b border-gray-200 pb-3">Internal Audit Trail</h3>
+                            <div className="space-y-5 relative ml-2 border-l border-green-100 pl-5">
                                 <div className="relative">
-                                    <div className="absolute -left-[29px] top-0 w-2 h-2 bg-[#D4AF37] rounded-full ring-4 ring-[#D4AF37]/20"></div>
-                                    <p className="text-[10px] font-black text-white uppercase">Created</p>
-                                    <p className="text-[10px] text-white/30 uppercase mt-1">{new Date(returnData.created_at).toLocaleDateString()} @ {new Date(returnData.created_at).toLocaleTimeString()}</p>
+                                    <div className="absolute -left-[25px] top-1 w-2 h-2 bg-green-600 rounded-full ring-4 ring-green-100"></div>
+                                    <p className="text-xs font-bold text-gray-950">Created</p>
+                                    <p className="text-xs text-gray-600 mt-1">{new Date(returnData.created_at).toLocaleDateString()} @ {new Date(returnData.created_at).toLocaleTimeString()}</p>
                                 </div>
                                 <div className="relative">
-                                    <div className="absolute -left-[29px] top-0 w-2 h-2 bg-white/20 rounded-full"></div>
-                                    <p className="text-[10px] font-black text-white/20 uppercase">Awaiting Resolution</p>
-                                    <p className="text-[10px] text-white/10 uppercase mt-1">Pending Approval</p>
+                                    <div className="absolute -left-[25px] top-1 w-2 h-2 bg-amber-500 rounded-full ring-4 ring-amber-100"></div>
+                                    <p className="text-xs font-bold text-gray-950">{isPendingReturn ? 'Awaiting Resolution' : 'Return Processed'}</p>
+                                    <p className="text-xs text-gray-600 mt-1">{statusLabel}</p>
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     {/* Right: Resolution Portal */}
-                    <div className="col-span-8 space-y-8">
-                        <div className="bg-[#111] border border-white/10 rounded-[50px] p-12 shadow-2xl relative overflow-hidden">
-                            <div className="flex items-center justify-between mb-12">
+                    <div className="col-span-8 space-y-5">
+                        <div className="bg-white border border-green-100 rounded-lg p-6 shadow-sm relative overflow-hidden">
+                            <div className="flex items-center justify-between mb-6">
                                 <div>
-                                    <h2 className="text-2xl font-black text-white uppercase tracking-widest mb-1">Resolution Portal</h2>
-                                    <p className="text-white/20 text-[10px] font-medium uppercase tracking-widest">Finalize return request outcome</p>
+                                    <h2 className="text-lg font-bold text-gray-950 mb-1">Resolution Portal</h2>
+                                    <p className="text-xs font-medium text-gray-500">
+                                        {isPendingReturn ? 'Finalize the supplier return request outcome.' : 'This return has already been processed.'}
+                                    </p>
                                 </div>
-                                <div className="bg-white/5 p-4 rounded-3xl border border-white/5 flex flex-col items-end">
-                                    <p className="text-[9px] font-bold text-white/20 uppercase tracking-widest mb-1">Total Estimated Value</p>
-                                    <p className="text-2xl font-black text-[#D4AF37]">Rs. {(parseFloat(returnData.quantity) * parseFloat(returnData.inventory?.buying_price || 0)).toLocaleString()}</p>
+                                <div className="bg-[#F7FBF8] p-3 rounded-lg border border-green-100 flex flex-col items-end">
+                                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Estimated Value</p>
+                                    <p className="text-lg font-bold text-green-800">Rs. {(parseFloat(returnData.quantity) * parseFloat(returnData.inventory?.buying_price || 0)).toLocaleString()}</p>
                                 </div>
                             </div>
 
+                            {!isPendingReturn && (
+                                <div className="mb-6 rounded-lg border border-green-200 bg-green-50 px-4 py-3">
+                                    <p className="text-sm font-bold text-green-800">Already Returned</p>
+                                    <p className="mt-1 text-xs font-medium text-green-700">
+                                        This return is no longer pending, so another refund, credit note, or replacement cannot be created from it.
+                                    </p>
+                                </div>
+                            )}
+
                             {/* Resolution Options */}
-                            <div className="grid grid-cols-3 gap-6 mb-12">
+                            <div className="grid grid-cols-3 gap-3 mb-6">
                                 {[
                                     { id: 'REFUND', label: 'Refund Money', icon: DollarSign, desc: 'Create Cash-In Batch' },
                                     { id: 'CREDIT_NOTE', label: 'Give Credit Note', icon: FileText, desc: 'Add balance to Profile' },
                                     { id: 'REPLACEMENT', label: 'Replace Products', icon: RefreshCcw, desc: 'Restock new batch' }
                                 ].map(opt => (
                                     <button
+                                        title={opt.label}
                                         key={opt.id}
+                                        disabled={!isPendingReturn}
                                         onClick={() => setResolution(opt.id)}
-                                        className={`p-6 rounded-[34px] border-2 transition-all flex flex-col items-center text-center gap-4 group ${resolution === opt.id
-                                            ? 'bg-[#D4AF37]/10 border-[#D4AF37] shadow-[0_0_40px_rgba(212,175,55,0.1)]'
-                                            : 'bg-white/[0.02] border-white/5 hover:border-white/10'
-                                            }`}
+                                        className={`return-resolution-btn ${resolution === opt.id ? 'return-resolution-btn-active' : ''} ${!isPendingReturn ? 'return-resolution-btn-disabled' : ''}`}
                                     >
-                                        <div className={`p-4 rounded-2xl transition-all ${resolution === opt.id ? 'bg-[#D4AF37] text-black scale-110' : 'bg-white/5 text-white/20'
-                                            }`}>
-                                            <opt.icon className="w-6 h-6" />
+                                        <div className="return-resolution-icon">
+                                            <opt.icon className="w-4 h-4" />
                                         </div>
                                         <div>
-                                            <p className={`text-xs font-black uppercase tracking-widest mb-1 ${resolution === opt.id ? 'text-[#D4AF37]' : 'text-white/40'
-                                                }`}>{opt.label}</p>
-                                            <p className="text-[9px] font-bold text-white/20 uppercase tracking-tighter">{opt.desc}</p>
+                                            <p className="text-xs font-bold">{opt.label}</p>
+                                            <p className="text-[10px] font-semibold">{opt.desc}</p>
                                         </div>
                                     </button>
                                 ))}
                             </div>
 
                             {/* Dynamic Resolution Form */}
-                            <div className="p-8 bg-white/[0.01] border border-white/5 rounded-[40px] space-y-8 animate-fade-in">
+                            <div className="p-5 bg-[#F7FBF8] border border-green-100 rounded-lg space-y-5 animate-fade-in">
                                 {resolution === 'REFUND' && (
-                                    <div className="space-y-6">
+                                    <div className="space-y-4">
                                         <div className="flex items-center gap-2 mb-2">
-                                            <h4 className="text-xs font-black text-white/40 uppercase tracking-[0.3em]">Financial Refund Setup</h4>
+                                            <h4 className="text-sm font-bold text-gray-950">Financial Refund Setup</h4>
                                         </div>
-                                        <div className="grid grid-cols-2 gap-8 font-bold">
+                                        <div className="grid grid-cols-2 gap-4 font-semibold">
                                             <div className="space-y-3">
-                                                <label className="text-[10px] text-white/20 uppercase tracking-[0.2em] block">Refund Amount (Rs.)</label>
+                                                <label className="text-xs text-gray-600 block">Refund Amount (Rs.)</label>
                                                 <input
                                                     type="number"
+                                                    disabled={!isPendingReturn}
                                                     value={form.refund_amount}
                                                     onChange={(e) => setForm({ ...form, refund_amount: e.target.value })}
-                                                    className="w-full bg-white/5 border border-white/10 rounded-2xl p-5 text-xl font-black text-white focus:outline-none focus:border-[#4caf50]"
+                                                    className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2.5 text-sm font-semibold text-gray-950 focus:outline-none focus:border-green-600"
                                                 />
                                             </div>
                                             <div className="space-y-3">
-                                                <label className="text-[10px] text-white/20 uppercase tracking-[0.2em] block">Batch Authorization</label>
-                                                <div className="bg-white/5 border border-white/10 p-5 rounded-2xl flex items-center justify-between">
-                                                    <span className="text-white/40 text-[10px]">RFB-GENERATED</span>
-                                                    <span className="text-[10px] bg-[#4caf50]/10 text-[#4caf50] px-3 py-1 rounded-full animate-pulse">AUTO-LINK</span>
+                                                <label className="text-xs text-gray-600 block">Batch Authorization</label>
+                                                <div className="bg-white border border-gray-200 px-3 py-2.5 rounded-lg flex items-center justify-between">
+                                                    <span className="text-gray-700 text-xs font-semibold">RFB-GENERATED</span>
+                                                    <span className="text-[10px] bg-green-50 text-green-700 px-2 py-1 rounded-full border border-green-100">AUTO-LINK</span>
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="p-4 bg-[#4caf50]/5 border border-[#4caf50]/10 rounded-2xl">
-                                            <p className="text-[10px] text-[#4caf50]/80 font-medium leading-relaxed italic">
-                                                Once processed, this will create a "Refuind Batch" for the cashier. Status will become "Cash Refunded, Wait for Cashier Approval".
+                                        <div className="p-3 bg-green-50 border border-green-100 rounded-lg">
+                                            <p className="text-xs text-green-800 font-medium leading-relaxed">
+                                                Once processed, this will create a refund batch for the cashier. Status will become Cash Refunded, Wait for Cashier Approval.
                                             </p>
                                         </div>
                                     </div>
                                 )}
 
                                 {resolution === 'CREDIT_NOTE' && (
-                                    <div className="space-y-6">
+                                    <div className="space-y-4">
                                         <div className="flex items-center gap-3 mb-2">
                                             <FileText className="w-5 h-5 text-blue-500" />
-                                            <h4 className="text-sm font-black text-white uppercase tracking-widest">Credit Note Issuance</h4>
+                                            <h4 className="text-sm font-bold text-gray-950">Credit Note Issuance</h4>
                                         </div>
-                                        <div className="grid grid-cols-2 gap-8 font-bold">
+                                        <div className="grid grid-cols-2 gap-4 font-semibold">
                                             <div className="space-y-3">
-                                                <label className="text-[10px] text-white/20 uppercase tracking-[0.2em] block">Credit Note Number</label>
+                                                <label className="text-xs text-gray-600 block">Credit Note Number</label>
                                                 <input
                                                     type="text"
                                                     value={form.credit_note_number}
                                                     readOnly
-                                                    className="w-full bg-white/5 border border-white/10 rounded-2xl p-5 text-xl font-black text-white/40 focus:outline-none"
+                                                    className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2.5 text-sm font-semibold text-gray-700 focus:outline-none"
                                                 />
                                             </div>
                                             <div className="space-y-3">
-                                                <label className="text-[10px] text-white/20 uppercase tracking-[0.2em] block">Note Validity</label>
-                                                <div className="bg-white/5 border border-white/10 p-5 rounded-2xl flex items-center justify-between">
-                                                    <span className="text-white/40 text-xs">Indefinite</span>
-                                                    <Calendar className="w-4 h-4 text-white/20" />
+                                                <label className="text-xs text-gray-600 block">Note Validity</label>
+                                                <div className="bg-white border border-gray-200 px-3 py-2.5 rounded-lg flex items-center justify-between">
+                                                    <span className="text-gray-700 text-xs font-semibold">Indefinite</span>
+                                                    <Calendar className="w-4 h-4 text-gray-500" />
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="p-4 bg-blue-500/5 border border-blue-500/10 rounded-2xl font-bold">
-                                            <p className="text-[10px] text-blue-500/80 leading-relaxed italic uppercase tracking-tighter">
+                                        <div className="p-3 bg-blue-50 border border-blue-100 rounded-lg font-semibold">
+                                            <p className="text-xs text-blue-800 leading-relaxed">
                                                 This credit will be stored in the supplier profile and can be used for future procurements.
                                             </p>
                                         </div>
@@ -245,18 +261,20 @@ const ReturnManagementPage = ({ onNavigate, returnId }) => {
                                 )}
 
                                 {resolution === 'REPLACEMENT' && (
-                                    <div className="space-y-6 text-center py-10">
-                                        <div className="w-20 h-20 bg-purple-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
-                                            <TrendingDown className="w-10 h-10 text-purple-500" />
+                                    <div className="space-y-4 text-center py-5">
+                                        <div className="w-12 h-12 bg-purple-50 rounded-lg flex items-center justify-center mx-auto mb-3 border border-purple-100">
+                                            <TrendingDown className="w-6 h-6 text-purple-600" />
                                         </div>
                                         <div className="max-w-md mx-auto">
-                                            <h4 className="text-xl font-black text-white uppercase tracking-tighter mb-2">Inventory Restocking Workflow</h4>
-                                            <p className="text-white/30 text-[11px] leading-relaxed mb-8">
+                                            <h4 className="text-sm font-bold text-gray-950 mb-2">Inventory Restocking Workflow</h4>
+                                            <p className="text-xs text-gray-600 leading-relaxed mb-5">
                                                 By selecting Replacement, you will approve the return and be redirected to create a new Inventory Batch to represent the incoming replacement items.
                                             </p>
                                             <button
+                                                title="Initiate replacement batch"
+                                                disabled={!isPendingReturn}
                                                 onClick={() => setShowReplacementModal(true)}
-                                                className="bg-white/5 border border-white/10 px-8 py-4 rounded-2xl text-[10px] font-black text-white uppercase tracking-widest hover:bg-white/10 transition-all flex items-center gap-3 mx-auto"
+                                                className="bg-[#7C3AED] border border-[#7C3AED] px-4 py-2 rounded-lg text-xs font-semibold text-white hover:bg-[#6D28D9] transition-all flex items-center gap-2 mx-auto"
                                             >
                                                 Initiate Replacement Batch
                                                 <ArrowRight className="w-4 h-4" />
@@ -265,10 +283,11 @@ const ReturnManagementPage = ({ onNavigate, returnId }) => {
                                     </div>
                                 )}
 
-                                <div className="space-y-3 pt-6 border-t border-white/5">
-                                    <label className="text-[10px] text-white/20 uppercase tracking-[0.2em] block font-bold">Final Resolution Notes</label>
+                                <div className="space-y-3 pt-5 border-t border-green-100">
+                                    <label className="text-xs text-gray-600 block font-semibold">Final Resolution Notes</label>
                                     <textarea
-                                        className="w-full bg-white/5 border border-white/10 rounded-2xl p-5 text-sm text-white focus:outline-none min-h-[120px] resize-none"
+                                        disabled={!isPendingReturn}
+                                        className="w-full bg-white border border-gray-200 rounded-lg p-3 text-sm text-gray-950 focus:outline-none focus:border-green-600 min-h-[100px] resize-none placeholder:text-gray-400"
                                         placeholder="Add any specific details about this resolution..."
                                         value={form.notes}
                                         onChange={(e) => setForm({ ...form, notes: e.target.value })}
@@ -276,33 +295,45 @@ const ReturnManagementPage = ({ onNavigate, returnId }) => {
                                 </div>
                             </div>
 
-                            <div className="mt-12 flex gap-6">
+                            <div className="mt-5 flex gap-3">
                                 <button
+                                    title="Cancel and return"
                                     disabled={processing}
                                     onClick={() => onNavigate('supplier-returns')}
-                                    className="flex-1 py-6 border border-white/10 rounded-[24px] text-white/40 text-[10px] font-black uppercase tracking-widest hover:bg-white/5 transition-all"
+                                    className="return-management-secondary-btn"
                                 >
                                     Cancel & Stay Pending
                                 </button>
-                                <button
-                                    disabled={processing}
-                                    onClick={handleResolve}
-                                    className="flex-[2] py-6 bg-[#D4AF37] rounded-[24px] text-white text-[11px] font-black uppercase tracking-[0.3em] hover:bg-[#E5C158] transition-all transform hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-3 shadow-[0_20px_50px_rgba(212,175,55,0.15)]"
-                                >
-                                    {processing ? 'Processing...' : 'Authorize Final Resolution'}
-                                    <ArrowRight className="w-5 h-5" />
-                                </button>
+                                {isPendingReturn ? (
+                                    <button
+                                        title="Authorize final resolution"
+                                        disabled={processing}
+                                        onClick={handleResolve}
+                                        className="return-management-primary-btn"
+                                    >
+                                        {processing ? 'Processing...' : 'Authorize Final Resolution'}
+                                        <ArrowRight className="w-4 h-4" />
+                                    </button>
+                                ) : (
+                                    <button
+                                        title="Already returned"
+                                        disabled
+                                        className="return-management-complete-btn"
+                                    >
+                                        Already Returned
+                                    </button>
+                                )}
                             </div>
                         </div>
 
                         {/* Help Desk */}
-                        <div className="p-8 bg-white/[0.02] border border-white/5 rounded-[40px] flex items-center gap-6">
-                            <div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center">
-                                <Info className="w-6 h-6 text-white/20" />
+                        <div className="p-4 bg-white border border-green-100 rounded-lg flex items-center gap-4 shadow-sm">
+                            <div className="w-10 h-10 bg-green-50 rounded-lg flex items-center justify-center border border-green-100">
+                                <Info className="w-5 h-5 text-green-700" />
                             </div>
                             <div>
-                                <p className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-1">Standard Operating Procedure</p>
-                                <p className="text-[10px] text-white/10 font-bold leading-relaxed italic">
+                                <p className="text-xs font-bold text-gray-950 mb-1">Standard Operating Procedure</p>
+                                <p className="text-xs text-gray-600 font-medium leading-relaxed">
                                     Refunds require Cashier confirmation at the till. Credit Notes are immediate balance updates. Replacements create new inventory debt.
                                 </p>
                             </div>
@@ -375,57 +406,56 @@ const ReplacementBatchModal = ({ returnData, onClose, onSuccess }) => {
     };
 
     return (
-        <div className="fixed inset-0 z-[5000] backdrop-blur-xl bg-black/70 p-4 sm:p-0 flex items-center justify-center">
-            <div className="bg-[#1A1A1A] w-full max-w-lg max-h-[90vh] flex flex-col rounded-3xl shadow-2xl border border-white/5 overflow-hidden animate-scale-up relative">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-purple-500/5 rounded-full -mr-32 -mt-32 blur-3xl"></div>
-                <div className="overflow-y-auto p-12 w-full custom-scrollbar relative z-10">
-                    <div className="flex justify-between items-center mb-10">
+        <div className="fixed inset-0 z-[5000] backdrop-blur-sm bg-black/40 p-4 sm:p-0 flex items-center justify-center">
+            <div className="bg-white w-full max-w-lg max-h-[90vh] flex flex-col rounded-lg shadow-2xl border border-green-100 overflow-hidden animate-scale-up relative">
+                <div className="overflow-y-auto p-6 w-full custom-scrollbar relative z-10 text-gray-950">
+                    <div className="flex justify-between items-center mb-6">
                         <div>
-                            <h2 className="text-xl font-black text-white uppercase tracking-widest">Replacement Batch</h2>
-                            <p className="text-[10px] text-white/20 font-bold uppercase tracking-widest mt-1">Authorized Restocking Session</p>
+                            <h2 className="text-lg font-bold text-gray-950">Replacement Batch</h2>
+                            <p className="text-xs text-gray-500 font-medium mt-1">Authorized restocking session</p>
                         </div>
-                    <button onClick={onClose} className="p-3 bg-white/5 hover:bg-white/10 rounded-2xl text-white/20 hover:text-white transition-all">
+                    <button title="Close replacement batch" onClick={onClose} className="p-2 bg-gray-50 hover:bg-gray-100 rounded-lg text-gray-600 hover:text-gray-950 border border-gray-200 transition-all">
                         <ArrowLeft className="w-5 h-5" />
                     </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-8 relative">
-                    <div className="p-6 bg-purple-500/5 border border-purple-500/10 rounded-3xl flex items-center gap-6">
-                        <div className="w-14 h-14 bg-purple-500/10 rounded-2xl flex items-center justify-center">
-                            <RefreshCcw className="w-7 h-7 text-purple-500" />
+                <form onSubmit={handleSubmit} className="space-y-5 relative">
+                    <div className="p-4 bg-purple-50 border border-purple-100 rounded-lg flex items-center gap-4">
+                        <div className="w-11 h-11 bg-white rounded-lg border border-purple-100 flex items-center justify-center">
+                            <RefreshCcw className="w-5 h-5 text-purple-600" />
                         </div>
                         <div>
-                            <p className="text-[10px] font-black text-purple-500/60 uppercase tracking-widest">Resolution Item</p>
-                            <p className="text-sm font-black text-white mt-1 uppercase">{batchData.item_name}</p>
-                            <p className="text-xs font-bold text-white/30 mt-0.5">{batchData.quantity} Units | {batchData.supplier_name}</p>
+                            <p className="text-[10px] font-bold text-purple-700 uppercase tracking-wider">Resolution Item</p>
+                            <p className="text-sm font-bold text-gray-950 mt-1">{batchData.item_name}</p>
+                            <p className="text-xs font-medium text-gray-600 mt-0.5">{batchData.quantity} Units | {batchData.supplier_name}</p>
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-8">
-                        <div className="form-group space-y-3">
-                            <label className="text-[10px] font-black text-white/20 uppercase tracking-widest ml-1">Batch Number</label>
-                            <div className="bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-xs font-black text-white/40 tracking-widest">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="form-group space-y-2">
+                            <label className="text-xs font-semibold text-gray-600">Batch Number</label>
+                            <div className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5 text-xs font-semibold text-gray-950">
                                 {batchData.batch_number}
                             </div>
                         </div>
-                        <div className="form-group space-y-3">
-                            <label className="text-[10px] font-black text-white/20 uppercase tracking-widest ml-1">Procurement Date</label>
-                            <div className="bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-xs font-black text-white tracking-widest">
+                        <div className="form-group space-y-2">
+                            <label className="text-xs font-semibold text-gray-600">Procurement Date</label>
+                            <div className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5 text-xs font-semibold text-gray-950">
                                 {batchData.date}
                             </div>
                         </div>
                     </div>
 
-                    <div className="form-group space-y-3">
-                        <label className="text-[10px] font-black text-white/20 uppercase tracking-widest ml-1">Net Transaction Value</label>
-                        <div className="bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-xl font-black text-[#4caf50] tracking-tighter flex items-center justify-between">
+                    <div className="form-group space-y-2">
+                        <label className="text-xs font-semibold text-gray-600">Net Transaction Value</label>
+                        <div className="bg-green-50 border border-green-100 rounded-lg px-3 py-2.5 text-sm font-bold text-green-800 flex items-center justify-between">
                             <span>Rs. 0.00</span>
-                            <span className="text-[9px] font-bold text-white/10 uppercase tracking-widest">Non-Monetary Replacement</span>
+                            <span className="text-[10px] font-semibold text-green-700">Non-monetary replacement</span>
                         </div>
                     </div>
 
-                    <div className="flex gap-4 pt-6">
-                        <button type="submit" disabled={loading} className="flex-1 py-5 bg-purple-600 text-white font-black rounded-3xl text-[10px] uppercase tracking-[0.2em] hover:bg-purple-700 transition-all shadow-lg shadow-purple-500/20 disabled:opacity-50 active:scale-95">
+                    <div className="flex gap-4 pt-2">
+                        <button title="Authorize replacement batch" type="submit" disabled={loading} className="flex-1 py-2.5 bg-[#7C3AED] text-white font-semibold rounded-lg text-xs hover:bg-[#6D28D9] transition-all shadow-sm disabled:opacity-50 active:scale-[0.99]">
                             {loading ? 'Finalizing...' : 'Authorize Replacement Batch'}
                         </button>
                     </div>
