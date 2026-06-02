@@ -12,6 +12,7 @@ import cashierRoutes from './src/routes/cashierRoutes.js';
 import cashRoutes from './src/routes/cashRoutes.js';
 import adminRoutes from './src/routes/adminRoutes.js';
 import supplierRoutes from './src/routes/supplierRoutes.js';
+import staffRoutes from './src/routes/staffRoutes.js';
 import websiteRoutes from './src/website/routes/websiteRoutes.js';
 import ocrRoutes from './src/ocr/routes/ocrRoutes.js';
 
@@ -40,6 +41,7 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/cashier', cashierRoutes);
 app.use('/api/cash', cashRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/staff', staffRoutes);
 app.use('/api/suppliers', supplierRoutes);
 app.use('/api/website', websiteRoutes);
 
