@@ -229,7 +229,7 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
        ╚══════════════════════════════════════════════════╝ */
     return (
         <DashboardLayout onNavigate={onNavigate} activePage="orders">
-            <div className="min-h-screen bg-[#0d0d0d] text-white px-4 py-6 md:px-8">
+            <div className="cashier-new-order-page min-h-screen px-4 py-6 md:px-8">
 
                 {/* ── PAGE HEADER ── */}
                 <div className="flex items-center justify-between mb-8">
@@ -242,7 +242,7 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
                                     onNavigate('orders');
                                 }
                             }}
-                            className="p-2 rounded-full bg-[#1E1E1E] border border-[#333] hover:border-red-600 hover:text-red-500 transition-all"
+                            className="cashier-order-back-btn"
                         >
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -390,13 +390,34 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
                                                         key={item.id}
                                                         id={`item-${item.id}`}
                                                         onClick={() => addToCart(item)}
-                                                        className={`relative rounded-2xl overflow-hidden cursor-pointer group transition-all duration-200 border ${inCart
+                                                        className={`cashier-order-item-card relative rounded-2xl overflow-hidden cursor-pointer group transition-all duration-200 border ${inCart
                                                             ? 'border-red-600 ring-2 ring-red-600/30 shadow-lg shadow-red-600/10'
                                                             : 'border-[#333] hover:border-red-600/40'
                                                             } bg-[#161616] hover:bg-[#1a1a1a] active:scale-95`}
+                                                        style={{
+                                                            height: '238px',
+                                                            minHeight: '238px',
+                                                            display: 'flex',
+                                                            flexDirection: 'column',
+                                                            background: '#FFFFFF',
+                                                            borderColor: '#D7E7DC',
+                                                            borderRadius: '8px',
+                                                            overflow: 'hidden'
+                                                        }}
                                                     >
                                                         {/* Image */}
-                                                        <div className="aspect-square overflow-hidden">
+                                                        <div
+                                                            className="cashier-order-item-media"
+                                                            style={{
+                                                                height: '104px',
+                                                                minHeight: '104px',
+                                                                maxHeight: '104px',
+                                                                flex: '0 0 104px',
+                                                                background: '#F8FCFA',
+                                                                borderBottom: '1px solid #E3ECE6',
+                                                                overflow: 'hidden'
+                                                            }}
+                                                        >
                                                             {item.image ? (
                                                                 <img
                                                                     src={item.image}
@@ -425,14 +446,64 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
                                                         )}
 
                                                         {/* Info */}
-                                                        <div className="p-3">
-                                                            <p className="font-bold text-white text-xs leading-tight line-clamp-2 mb-1">{item.name}</p>
+                                                        <div
+                                                            className="cashier-order-item-info p-3"
+                                                            style={{
+                                                                display: 'flex',
+                                                                flex: '1 1 auto',
+                                                                flexDirection: 'column',
+                                                                justifyContent: 'flex-start',
+                                                                minHeight: '134px',
+                                                                padding: '14px',
+                                                                background: '#FFFFFF',
+                                                                color: '#132238',
+                                                                position: 'relative',
+                                                                zIndex: 2
+                                                            }}
+                                                        >
+                                                            <p
+                                                                className="cashier-order-item-name"
+                                                                style={{
+                                                                    margin: 0,
+                                                                    color: '#132238',
+                                                                    fontSize: '0.86rem',
+                                                                    fontWeight: 500,
+                                                                    lineHeight: 1.3,
+                                                                    minHeight: '34px',
+                                                                    overflow: 'hidden'
+                                                                }}
+                                                            >
+                                                                {item.name || 'Unnamed item'}
+                                                            </p>
                                                             {(item.category || item.category_name) && (
-                                                                <p className="text-[10px] text-gray-600 uppercase tracking-wider truncate mb-2">
+                                                                <p
+                                                                    className="cashier-order-item-category"
+                                                                    style={{
+                                                                        margin: '6px 0 0',
+                                                                        color: '#64748B',
+                                                                        fontSize: '0.72rem',
+                                                                        fontWeight: 400,
+                                                                        letterSpacing: '0.04em',
+                                                                        lineHeight: 1.25,
+                                                                        overflow: 'hidden',
+                                                                        textOverflow: 'ellipsis',
+                                                                        whiteSpace: 'nowrap',
+                                                                        textTransform: 'uppercase'
+                                                                    }}
+                                                                >
                                                                     {item.category || item.category_name}
                                                                 </p>
                                                             )}
-                                                            <p className="font-black text-red-500 text-sm">
+                                                            <p
+                                                                className="cashier-order-item-price"
+                                                                style={{
+                                                                    margin: 'auto 0 0',
+                                                                    color: '#132238',
+                                                                    fontSize: '0.92rem',
+                                                                    fontWeight: 500,
+                                                                    lineHeight: 1.25
+                                                                }}
+                                                            >
                                                                 Rs. {parseFloat(item.price || 0).toFixed(2)}
                                                             </p>
                                                         </div>

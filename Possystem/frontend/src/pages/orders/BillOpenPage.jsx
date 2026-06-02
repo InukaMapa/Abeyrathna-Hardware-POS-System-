@@ -142,6 +142,17 @@ const BillOpenPage = ({ orderId, onNavigate }) => {
         setActionLoading(true);
         try {
             const token = localStorage.getItem('token');
+            const normalizedPayments = paymentMethods.map((payment) => {
+                const enteredAmount = parseFloat(payment.amount);
+                const shouldUseFullTotal = paymentMethods.length === 1
+                    && payment.method === 'Cash'
+                    && !Number.isFinite(enteredAmount);
+
+                return {
+                    method: payment.method,
+                    amount: shouldUseFullTotal ? grandTotal : (Number.isFinite(enteredAmount) ? enteredAmount : 0)
+                };
+            });
             const response = await fetch(`${API_BASE_URL}/orders/${order.order_id}/close`, {
                 method: 'PATCH',
                 headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -151,6 +162,7 @@ const BillOpenPage = ({ orderId, onNavigate }) => {
                     customer_name: customerName,
                     discount: overallDiscountAmount,
                     other_charges: parsedOtherCharges,
+                    payments: normalizedPayments,
                     notes: notes
                 })
             });
@@ -200,7 +212,7 @@ const BillOpenPage = ({ orderId, onNavigate }) => {
     if (loading || !order) {
         return (
             <DashboardLayout onNavigate={onNavigate} activePage="orders">
-                <div className="flex items-center justify-center min-h-screen bg-[#121212]">
+                <div className="flex items-center justify-center min-h-screen bill-open-page">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div>
                 </div>
             </DashboardLayout>
@@ -210,7 +222,7 @@ const BillOpenPage = ({ orderId, onNavigate }) => {
     if (isCompleted) {
         return (
             <DashboardLayout onNavigate={onNavigate} activePage="orders">
-                <div className="flex items-center justify-center min-h-screen bg-[#0a0a0a] p-6">
+                <div className="flex items-center justify-center min-h-screen bill-open-page p-6">
                     <div className="max-w-md w-full bg-white rounded-2xl shadow-2xl overflow-hidden relative">
                         <div className="absolute top-0 left-0 w-full h-3 bg-emerald-500"></div>
                         <div className="p-8 text-center border-b border-gray-100">
@@ -277,12 +289,12 @@ const BillOpenPage = ({ orderId, onNavigate }) => {
 
     return (
         <DashboardLayout onNavigate={onNavigate} activePage="orders">
-            <div className="p-4 md:p-6 bg-[#0a0a0a] min-h-screen text-white font-sans flex flex-col gap-6">
+            <div className="bill-open-page p-4 md:p-6 min-h-screen font-sans flex flex-col gap-6">
 
                 {/* 1. HEADER SECTION */}
                 <div className="bg-[#1E1E1E] border border-[#333] rounded-2xl shadow-xl p-6 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6">
                     <div className="flex items-center gap-4">
-                        <button onClick={() => onNavigate('order-details', { orderId })} className="p-3 bg-white/5 border border-white/10 hover:bg-white/10 rounded-xl transition-all"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg></button>
+                        <button onClick={() => onNavigate('order-details', { orderId })} className="bill-open-back-btn p-3 bg-white/5 border border-white/10 hover:bg-white/10 rounded-xl transition-all"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg></button>
                         <div>
                             <h2 className="text-2xl font-black uppercase tracking-tight m-0 text-emerald-500">Invoice #{order.order_id}</h2>
                             <div className="flex items-center gap-4 mt-2 font-mono text-gray-400 text-xs">
@@ -327,7 +339,7 @@ const BillOpenPage = ({ orderId, onNavigate }) => {
                                 <svg className="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
                                 Billed Items
                             </h3>
-                            <span className="text-[10px] font-bold text-red-400 uppercase tracking-widest border border-red-500/20 bg-red-500/10 px-2 py-1 rounded">Read-Only Order Base</span>
+                            <span className="bill-readonly-badge text-[10px] font-bold text-red-400 uppercase tracking-widest border border-red-500/20 bg-red-500/10 px-2 py-1 rounded">Read-Only</span>
                         </div>
                         <div className="overflow-x-auto flex-1">
                             <table className="w-full text-left border-collapse">
@@ -408,7 +420,7 @@ const BillOpenPage = ({ orderId, onNavigate }) => {
                                         <select
                                             value={overallDiscountType}
                                             onChange={(e) => setOverallDiscountType(e.target.value)}
-                                            className="bg-[#252525] border border-[#444] text-white text-[10px] font-bold uppercase rounded px-2 py-1 outline-none"
+                                            className="bill-discount-type bg-[#252525] border border-[#444] text-white text-[10px] font-bold uppercase rounded px-2 py-1 outline-none"
                                         >
                                             <option value="fixed">Fixed (Rs.)</option>
                                             <option value="percent">Percentage (%)</option>
@@ -434,7 +446,7 @@ const BillOpenPage = ({ orderId, onNavigate }) => {
                                     />
                                 </div>
 
-                                <div className="pt-6 mt-4 border-t border-[#333] flex justify-between items-end pb-4">
+                                <div className="bill-grand-total pt-6 mt-4 border-t border-[#333] flex justify-between items-end pb-4">
                                     <span className="text-sm font-black text-gray-300 uppercase tracking-widest">Grand Total</span>
                                     <span className="text-4xl font-black text-emerald-500 tracking-tight tabular-nums font-mono">
                                         Rs. {grandTotal.toFixed(2)}

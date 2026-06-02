@@ -17,6 +17,7 @@ const CashCounterPage = ({ onNavigate }) => {
     const [endingShift, setEndingShift] = useState(false);
     const [savingCount, setSavingCount] = useState(false);
     const [savedCounts, setSavedCounts] = useState([]);
+    const [activeCashTab, setActiveCashTab] = useState('counter');
     const [selectedCountForSubmit, setSelectedCountForSubmit] = useState(null);
     const [showSubmitModal, setShowSubmitModal] = useState(false);
 
@@ -222,167 +223,219 @@ const CashCounterPage = ({ onNavigate }) => {
         }
     };
 
-    if (loading) return <DashboardLayout onNavigate={onNavigate} activePage="cash-counter"><div>Loading...</div></DashboardLayout>;
+    if (loading) return <DashboardLayout onNavigate={onNavigate} activePage="cash-counter"><div className="cash-counter-container"><div className="cash-card">Loading...</div></div></DashboardLayout>;
 
     return (
         <DashboardLayout onNavigate={onNavigate} activePage="cash-counter">
-            <div className="cash-counter-container p-6 bg-[#121212] min-h-screen text-white">
-                <div className="flex items-center gap-4 mb-8 bg-[#1E1E1E] p-6 rounded-2xl border border-[#333333] shadow-xl">
+            <div className="cash-counter-container">
+                <div className="cash-page-header">
                     <button
                         onClick={() => onNavigate('dashboard')}
-                        className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-full transition-all"
+                        className="cash-back-button"
                         title="Back to Dashboard"
+                        aria-label="Back to Dashboard"
                     >
-                        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="cash-back-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                         </svg>
                     </button>
-                    <div>
-                        <h2 className="text-2xl lg:text-3xl font-black uppercase tracking-tight m-0">Cash Counter</h2>
+                    <div className="cash-page-title-group">
+                        <span className="cash-page-kicker">Cashier workspace</span>
+                        <h2>Cash Counter</h2>
+                        <p>{currentShift ? `Shift ${currentShift.counter_number} is active` : 'Initialize your drawer for the current shift'}</p>
                     </div>
                 </div>
 
                 {!currentShift ? (
                     <ShiftStartForm onShiftStarted={handleShiftStarted} />
                 ) : (
-                    <div className="active-shift-layout">
-                        {/* Column 1: Denomination Counter */}
-                        <div className="denomination-column">
-                            <DenominationCounter
-                                key={`${currentShift.shift_id}-${counterKey}`}
-                                onTotalChange={handleDenominationChange}
-                                initialCounts={initialCounts}
-                                shiftId={currentShift.shift_id}
-                            />
-                            <p style={{ marginTop: '10px', fontSize: '0.8rem', color: '#666' }}>
-                                * Edit counts above and click "Save Progress" to sync latest counts.
-                            </p>
+                    <>
+                        <div className="cash-workspace-tabs">
+                            <button
+                                type="button"
+                                className={`inventory-outline-btn cash-workspace-tab ${activeCashTab === 'counter' ? 'active' : ''}`}
+                                onClick={() => setActiveCashTab('counter')}
+                            >
+                                Cash Denomination Counter
+                            </button>
+                            <button
+                                type="button"
+                                className={`inventory-outline-btn cash-workspace-tab ${activeCashTab === 'documents' ? 'active' : ''}`}
+                                onClick={() => setActiveCashTab('documents')}
+                            >
+                                Saved Documents
+                                <span>{savedCounts.length}</span>
+                            </button>
                         </div>
 
-                        {/* Column 2: Shift Summary & Movements */}
-                        <div className="summary-column">
-                            <ShiftSummaryPanel
-                                shiftId={currentShift.shift_id}
-                                onSummaryUpdate={setSummaryData}
-                                key={currentShift.shift_id}
-                            />
-                            <MovementForm
-                                shiftId={currentShift.shift_id}
-                                onMovementAdded={() => setSummaryData({ ...summaryData })}
-                            />
-                        </div>
-
-                        {/* Column 3: Reconciliation & History */}
-                        <div className="action-column">
-                            <div className="cash-card reconciliation-card bg-[#1E1E1E] border border-[#333333] rounded-2xl p-6 shadow-xl relative overflow-hidden">
-                                <div className="absolute top-0 right-0 w-32 h-32 bg-red-600/5 rounded-full -mr-16 -mt-16 blur-3xl"></div>
-                                <h3 className="text-sm font-black uppercase tracking-[0.2em] text-gray-500 mb-6 relative z-10 flex items-center gap-2">
-                                    <span className="w-1.5 h-4 bg-red-600 rounded-full"></span>
-                                    Actual vs Expected
-                                </h3>
-
-                                <div className="space-y-3 mb-6 relative z-10">
-                                    <div className="flex justify-between items-center py-1.5 border-b border-[#333333]/30">
-                                        <span className="text-gray-500 font-bold uppercase tracking-widest text-[10px]">Expected Cash</span>
-                                        <strong className="text-gray-300 font-bold text-sm">Rs. {summaryData?.expected_cash?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
-                                    </div>
-                                    <div className="flex justify-between items-center py-1.5 border-b border-[#333333]/30">
-                                        <span className="text-gray-500 font-bold uppercase tracking-widest text-[10px]">Actual Cash</span>
-                                        <strong className="text-gray-300 font-bold text-sm">Rs. {actualTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
-                                    </div>
-                                    <div className={`flex justify-between items-center pt-3 ${Math.abs(actualTotal - (summaryData?.expected_cash || 0)) > 500 ? 'text-red-500' : 'text-green-500'}`}>
-                                        <span className="font-black uppercase tracking-[0.2em] text-[10px]">Difference</span>
-                                        <strong className="text-xl font-black tracking-tight">Rs. {(actualTotal - (summaryData?.expected_cash || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
-                                    </div>
+                        {activeCashTab === 'counter' ? (
+                            <div className="active-shift-layout">
+                                <div className="denomination-column">
+                                    <DenominationCounter
+                                        key={`${currentShift.shift_id}-${counterKey}`}
+                                        onTotalChange={handleDenominationChange}
+                                        initialCounts={initialCounts}
+                                        shiftId={currentShift.shift_id}
+                                    />
+                                    <p className="cash-helper-text">
+                                        Update the denomination quantities, then save progress to create a cash count document.
+                                    </p>
                                 </div>
 
-
-                                <div className="grid grid-cols-1 gap-3 relative z-10">
-                                    <button
-                                        className="w-full py-3 bg-gray-800/50 hover:bg-gray-800 text-gray-500 font-bold uppercase tracking-widest text-[10px] rounded-xl transition-all border border-[#333333] active:scale-95"
-                                        onClick={handleSaveCount}
-                                        disabled={savingCount}
-                                    >
-                                        {savingCount ? 'Saving...' : 'Save Progress'}
-                                    </button>
-                                    <button
-                                        className="w-full py-3.5 bg-red-600 hover:bg-red-700 text-white font-bold uppercase tracking-widest text-[10px] rounded-xl transition-all shadow-lg shadow-red-600/10 active:scale-95 disabled:opacity-50"
-                                        onClick={handleOpenSubmitModal}
-                                        disabled={savingCount || currentShift.status === 'REPORT_SUBMITTED'}
-                                    >
-                                        {currentShift.status === 'REPORT_SUBMITTED' ? (
-                                            <span className="flex items-center justify-center gap-2">
-                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                                </svg>
-                                                Report Sent
-                                            </span>
-                                        ) : 'Submit to Admin'}
-                                    </button>
-                                    <button
-                                        className={`w-full py-3.5 font-bold uppercase tracking-widest text-[10px] rounded-xl transition-all active:scale-95 shadow-lg ${Math.abs(actualTotal - (summaryData?.expected_cash || 0)) < 0.01 && currentShift.status === 'REPORT_SUBMITTED' ? 'bg-green-600/20 text-green-500 border border-green-600/30' : 'bg-gray-900/50 border border-[#333333] text-gray-700 cursor-not-allowed'}`}
-                                        onClick={handleEndShift}
-                                        disabled={endingShift || currentShift.status !== 'REPORT_SUBMITTED' || Math.abs(actualTotal - (summaryData?.expected_cash || 0)) > 0.01}
-                                        title={currentShift.status !== 'REPORT_SUBMITTED' ? 'Submit report first' : Math.abs(actualTotal - (summaryData?.expected_cash || 0)) > 0.01 ? 'Cash must be balanced' : 'Click to end shift'}
-                                    >
-                                        {endingShift ? 'Ending...' : 'End Shift'}
-                                    </button>
+                                <div className="summary-column">
+                                    <ShiftSummaryPanel
+                                        shiftId={currentShift.shift_id}
+                                        onSummaryUpdate={setSummaryData}
+                                        key={currentShift.shift_id}
+                                    />
+                                    <MovementForm
+                                        shiftId={currentShift.shift_id}
+                                        availableAfter={currentShift.start_time}
+                                        onMovementAdded={() => setSummaryData({ ...summaryData })}
+                                    />
                                 </div>
 
-                                {currentShift.status === 'REPORT_SUBMITTED' && (
-                                    <div className="latest-report-info" style={{ marginTop: '20px', padding: '15px', background: 'rgba(76, 175, 80, 0.1)', borderRadius: '8px', border: '1px solid var(--success-color)' }}>
-                                        <h4 style={{ margin: '0 0 10px 0', fontSize: '0.9rem', color: 'var(--success-color)' }}>Latest Sent Report</h4>
-                                        <div style={{ fontSize: '0.85rem' }}>
-                                            <div>Actual: Rs. {parseFloat(currentShift.actual_cash).toLocaleString()}</div>
-                                            <div>Expected: Rs. {parseFloat(currentShift.expected_cash).toLocaleString()}</div>
-                                            <div>Difference: Rs. {parseFloat(currentShift.difference).toLocaleString()}</div>
+                                <div className="action-column">
+                                    <div className="cash-card reconciliation-card">
+                                        <h3 className="cash-section-title">
+                                            Actual vs Expected
+                                        </h3>
+
+                                        <div className="reconciliation-list">
+                                            <div className="reconciliation-row">
+                                                <span>Expected Cash</span>
+                                                <strong>Rs. {summaryData?.expected_cash?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+                                            </div>
+                                            <div className="reconciliation-row">
+                                                <span>Actual Cash</span>
+                                                <strong>Rs. {actualTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+                                            </div>
+                                            <div className={`reconciliation-row difference ${Math.abs(actualTotal - (summaryData?.expected_cash || 0)) > 500 ? 'warning' : 'success'}`}>
+                                                <span>Difference</span>
+                                                <strong>Rs. {(actualTotal - (summaryData?.expected_cash || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+                                            </div>
                                         </div>
+
+                                        <div className="cash-action-stack">
+                                            <button
+                                                className="cash-action-button secondary"
+                                                onClick={handleSaveCount}
+                                                disabled={savingCount}
+                                            >
+                                                {savingCount ? 'Saving...' : 'Save Progress'}
+                                            </button>
+                                            <button
+                                                className="cash-action-button primary"
+                                                onClick={handleOpenSubmitModal}
+                                                disabled={savingCount || currentShift.status === 'REPORT_SUBMITTED'}
+                                            >
+                                                {currentShift.status === 'REPORT_SUBMITTED' ? (
+                                                    <span className="flex items-center justify-center gap-2">
+                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                                        </svg>
+                                                        Report Sent
+                                                    </span>
+                                                ) : 'Submit to Admin'}
+                                            </button>
+                                            <button
+                                                className={`cash-action-button ${Math.abs(actualTotal - (summaryData?.expected_cash || 0)) < 0.01 && currentShift.status === 'REPORT_SUBMITTED' ? 'success' : 'disabled'}`}
+                                                onClick={handleEndShift}
+                                                disabled={endingShift || currentShift.status !== 'REPORT_SUBMITTED' || Math.abs(actualTotal - (summaryData?.expected_cash || 0)) > 0.01}
+                                                title={currentShift.status !== 'REPORT_SUBMITTED' ? 'Submit report first' : Math.abs(actualTotal - (summaryData?.expected_cash || 0)) > 0.01 ? 'Cash must be balanced' : 'Click to end shift'}
+                                            >
+                                                {endingShift ? 'Ending...' : 'End Shift'}
+                                            </button>
+                                        </div>
+
+                                        {currentShift.status === 'REPORT_SUBMITTED' && (
+                                            <div className="latest-report-info" style={{ marginTop: '20px', padding: '15px', background: 'rgba(76, 175, 80, 0.1)', borderRadius: '8px', border: '1px solid var(--success-color)' }}>
+                                                <h4 style={{ margin: '0 0 10px 0', fontSize: '0.9rem', color: 'var(--success-color)' }}>Latest Sent Report</h4>
+                                                <div style={{ fontSize: '0.85rem' }}>
+                                                    <div>Actual: Rs. {parseFloat(currentShift.actual_cash).toLocaleString()}</div>
+                                                    <div>Expected: Rs. {parseFloat(currentShift.expected_cash).toLocaleString()}</div>
+                                                    <div>Difference: Rs. {parseFloat(currentShift.difference).toLocaleString()}</div>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="saved-documents-panel">
+                                <div className="saved-documents-header">
+                                    <div>
+                                        <h3>Saved Cash Count Documents</h3>
+                                        <p>Review saved cash count summaries for this active shift. Select a document to open the full report view.</p>
+                                    </div>
+                                    <span>{savedCounts.length} Documents</span>
+                                </div>
+
+                                {savedCounts.length === 0 ? (
+                                    <div className="saved-documents-empty">
+                                        <h4>No saved documents yet</h4>
+                                        <p>Save progress from the denomination counter to create your first cash count document.</p>
+                                    </div>
+                                ) : (
+                                    <div className="saved-documents-table-wrap">
+                                        <table className="saved-documents-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Document</th>
+                                                    <th>Saved Time</th>
+                                                    <th>Total Cash</th>
+                                                    <th>Expected Cash</th>
+                                                    <th>Difference</th>
+                                                    <th>Status</th>
+                                                    <th className="text-right">Action</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {savedCounts.map((c, idx) => {
+                                                    const expectedCash = Number(c.expected_cash || summaryData?.expected_cash || 0);
+                                                    const totalCash = Number(c.total_cash || 0);
+                                                    const difference = totalCash - expectedCash;
+                                                    return (
+                                                        <tr key={c.count_id}>
+                                                            <td>
+                                                                <div className="saved-table-document">
+                                                                    <span>#{String(idx + 1).padStart(2, '0')}</span>
+                                                                    <div>
+                                                                        <strong>Cash Count Summary</strong>
+                                                                        <p>{idx === 0 ? 'Latest saved report' : 'Saved report'}</p>
+                                                                    </div>
+                                                                </div>
+                                                            </td>
+                                                            <td>{new Date(c.created_at).toLocaleString()}</td>
+                                                            <td>Rs. {totalCash.toLocaleString()}</td>
+                                                            <td>Rs. {expectedCash.toLocaleString()}</td>
+                                                            <td className={Math.abs(difference) < 0.01 ? 'saved-table-positive' : 'saved-table-attention'}>
+                                                                Rs. {difference.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                            </td>
+                                                            <td>
+                                                                <span className={`saved-table-status ${Math.abs(difference) < 0.01 ? 'balanced' : 'variance'}`}>
+                                                                    {Math.abs(difference) < 0.01 ? 'Balanced' : 'Variance'}
+                                                                </span>
+                                                            </td>
+                                                            <td className="text-right">
+                                                                <button
+                                                                    type="button"
+                                                                    className="inventory-outline-btn saved-table-view-btn"
+                                                                    onClick={() => handleSelectHistoryCount(c)}
+                                                                >
+                                                                    View
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
                                     </div>
                                 )}
                             </div>
-
-                            <div className="cash-card history-sidebar bg-[#1E1E1E] border border-[#333333] rounded-2xl p-6 shadow-xl">
-                                <h3 className="text-sm font-black uppercase tracking-[0.2em] text-gray-500 mb-6 flex items-center gap-2">
-                                    <span className="w-1.5 h-4 bg-red-600 rounded-full"></span>
-                                    Saved Summaries
-                                </h3>
-                                <div className="history-list">
-                                    {savedCounts.length === 0 ? (
-                                        <p style={{ color: '#666', fontSize: '0.9rem', textAlign: 'center', padding: '20px' }}>No saved counts yet.</p>
-                                    ) : (
-                                        savedCounts.map((c, idx) => (
-                                            <div
-                                                key={c.count_id}
-                                                className={`history-item ${actualTotal === parseFloat(c.total_cash) ? 'active' : ''}`}
-                                                onClick={() => handleSelectHistoryCount(c)}
-                                            >
-                                                <div className="history-time">
-                                                    {idx === 0 && <span className="latest-badge">LATEST</span>}
-                                                    {new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                </div>
-                                                <div className="history-actions">
-                                                    <span className="history-amount">Rs. {parseFloat(c.total_cash).toLocaleString()}</span>
-                                                    <button
-                                                        className="btn-text"
-                                                        style={{ fontSize: '0.7rem', color: 'var(--accent-color)', marginLeft: '10px' }}
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            const { count_id, shift_id, created_at, total_cash, ...denomCounts } = c;
-                                                            setInitialCounts(denomCounts);
-                                                            setActualTotal(parseFloat(total_cash));
-                                                            setCounterKey(prev => prev + 1);
-                                                        }}
-                                                    >
-                                                        Edit
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        ))
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                        )}
+                    </>
                 )}
             </div>
 
@@ -396,14 +449,14 @@ const CashCounterPage = ({ onNavigate }) => {
 
             {/* Submit Selection Modal */}
             {showSubmitModal && (
-                <div className="modal-overlay" onClick={() => setShowSubmitModal(false)}>
-                    <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '600px' }}>
-                        <div className="modal-header">
+                <div className="modal-overlay cash-submit-overlay" onClick={() => setShowSubmitModal(false)}>
+                    <div className="modal-content cash-submit-modal" onClick={e => e.stopPropagation()}>
+                        <div className="modal-header cash-submit-header">
                             <h2>Select Report to Submit</h2>
                             <button className="close-btn" onClick={() => setShowSubmitModal(false)}>&times;</button>
                         </div>
-                        <div className="modal-body">
-                            <p style={{ marginBottom: '15px', color: '#888' }}>
+                        <div className="modal-body cash-submit-body">
+                            <p className="cash-submit-note">
                                 Please select the latest saved cash count to send to the admin for approval.
                             </p>
                             <table className="selection-table">
@@ -433,7 +486,7 @@ const CashCounterPage = ({ onNavigate }) => {
                                                 {idx === 0 && <span className="latest-badge" style={{ marginRight: '8px' }}>LATEST</span>}
                                                 {new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                             </td>
-                                            <td style={{ textAlign: 'right', fontWeight: 'bold' }}>
+                                            <td className="selection-total-cell">
                                                 Rs. {parseFloat(c.total_cash).toLocaleString()}
                                             </td>
                                         </tr>
@@ -441,10 +494,10 @@ const CashCounterPage = ({ onNavigate }) => {
                                 </tbody>
                             </table>
                         </div>
-                        <div className="modal-footer">
-                            <button className="btn btn-secondary" onClick={() => setShowSubmitModal(false)}>Cancel</button>
+                        <div className="modal-footer cash-submit-footer">
+                            <button className="inventory-outline-btn cash-submit-cancel" onClick={() => setShowSubmitModal(false)}>Cancel</button>
                             <button
-                                className="btn btn-primary"
+                                className="inventory-outline-btn cash-submit-confirm"
                                 onClick={handleConfirmSubmit}
                                 disabled={endingShift || !selectedCountForSubmit}
                             >

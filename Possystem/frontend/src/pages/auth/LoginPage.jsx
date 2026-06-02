@@ -107,9 +107,6 @@ const LoginPage = ({ onNavigate }) => {
                 </button>
 
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '24px', gap: '10px' }}>
-                    <a onClick={() => onNavigate('register')} className="auth-link" style={{ margin: 0 }}>
-                        Don't have an account? Sign Up
-                    </a>
                     <a onClick={() => onNavigate('forgot-password')} className="auth-link" style={{ margin: 0 }}>
                         Forgot password?
                     </a>
