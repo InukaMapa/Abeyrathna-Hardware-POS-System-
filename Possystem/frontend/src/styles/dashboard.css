@@ -1006,14 +1006,14 @@ button[class*="bg-[#6A5ACD]"] {
 }
 
 /* Ensure default base button in index.css is never dark black inside dashboard */
-.dashboard-layout button:not(.btn-primary):not(.btn-secondary):not(.auth-button):not(.icon-btn):not(.close-btn):not(.inventory-outline-btn):not(.supplier-header-action):not(.supplier-filter-btn):not(.supplier-quick-action):not(.supplier-small-action):not(.supplier-settlement-action):not(.supplier-form-close):not(.supplier-form-btn):not(.supplier-profile-close):not(.supplier-profile-back):not(.supplier-profile-tab):not(.supplier-profile-note-action):not(.supplier-profile-inline-btn):not(.supplier-payments-back):not(.supplier-payment-type-btn):not(.supplier-payment-authorize):not(.supplier-returns-action-btn):not(.supplier-returns-form-btn):not(.supplier-returns-icon-btn):not(.supplier-returns-form-close):not(.supplier-returns-view-close):not(.report-page-btn):not(.report-page-icon-btn):not(.report-explorer-btn):not(.report-export-btn):not(.report-apply-btn):not(.shift-report-close):not(.shift-report-action):not(.orders-page-action-btn):not(.orders-page-icon-btn):not(.cashier-order-back-btn):not([title]) {
+.dashboard-layout button:not(.btn-primary):not(.btn-secondary):not(.auth-button):not(.icon-btn):not(.close-btn):not(.inventory-outline-btn):not(.staff-form-btn):not(.supplier-header-action):not(.supplier-filter-btn):not(.supplier-quick-action):not(.supplier-small-action):not(.supplier-settlement-action):not(.supplier-form-close):not(.supplier-form-btn):not(.supplier-profile-close):not(.supplier-profile-back):not(.supplier-profile-tab):not(.supplier-profile-note-action):not(.supplier-profile-inline-btn):not(.supplier-payments-back):not(.supplier-payment-type-btn):not(.supplier-payment-authorize):not(.supplier-returns-action-btn):not(.supplier-returns-form-btn):not(.supplier-returns-icon-btn):not(.supplier-returns-form-close):not(.supplier-returns-view-close):not(.report-page-btn):not(.report-page-icon-btn):not(.report-explorer-btn):not(.report-export-btn):not(.report-apply-btn):not(.shift-report-close):not(.shift-report-action):not(.orders-page-action-btn):not(.orders-page-icon-btn):not(.cashier-order-back-btn):not([title]) {
     background: linear-gradient(135deg, var(--primary-green), var(--dark-green)) !important;
     color: white !important;
     border: none !important;
     box-shadow: 0 4px 14px rgba(22, 163, 74, 0.2) !important;
 }
 
-.dashboard-layout button:not(.btn-primary):not(.btn-secondary):not(.auth-button):not(.icon-btn):not(.close-btn):not(.inventory-outline-btn):not(.supplier-header-action):not(.supplier-filter-btn):not(.supplier-quick-action):not(.supplier-small-action):not(.supplier-settlement-action):not(.supplier-form-close):not(.supplier-form-btn):not(.supplier-profile-close):not(.supplier-profile-back):not(.supplier-profile-tab):not(.supplier-profile-note-action):not(.supplier-profile-inline-btn):not(.supplier-payments-back):not(.supplier-payment-type-btn):not(.supplier-payment-authorize):not(.supplier-returns-action-btn):not(.supplier-returns-form-btn):not(.supplier-returns-icon-btn):not(.supplier-returns-form-close):not(.supplier-returns-view-close):not(.report-page-btn):not(.report-page-icon-btn):not(.report-explorer-btn):not(.report-export-btn):not(.report-apply-btn):not(.shift-report-close):not(.shift-report-action):not(.orders-page-action-btn):not(.orders-page-icon-btn):not(.cashier-order-back-btn):not([title]):hover {
+.dashboard-layout button:not(.btn-primary):not(.btn-secondary):not(.auth-button):not(.icon-btn):not(.close-btn):not(.inventory-outline-btn):not(.staff-form-btn):not(.supplier-header-action):not(.supplier-filter-btn):not(.supplier-quick-action):not(.supplier-small-action):not(.supplier-settlement-action):not(.supplier-form-close):not(.supplier-form-btn):not(.supplier-profile-close):not(.supplier-profile-back):not(.supplier-profile-tab):not(.supplier-profile-note-action):not(.supplier-profile-inline-btn):not(.supplier-payments-back):not(.supplier-payment-type-btn):not(.supplier-payment-authorize):not(.supplier-returns-action-btn):not(.supplier-returns-form-btn):not(.supplier-returns-icon-btn):not(.supplier-returns-form-close):not(.supplier-returns-view-close):not(.report-page-btn):not(.report-page-icon-btn):not(.report-explorer-btn):not(.report-export-btn):not(.report-apply-btn):not(.shift-report-close):not(.shift-report-action):not(.orders-page-action-btn):not(.orders-page-icon-btn):not(.cashier-order-back-btn):not([title]):hover {
     background: linear-gradient(135deg, var(--dark-green), #14532D) !important;
     color: white !important;
     transform: translateY(-1.5px) !important;
@@ -3327,7 +3327,7 @@ button[class*="bg-[#6A5ACD]"] {
     color: var(--primary-green) !important;
     background: #FFFFFF !important;
     background-image: none !important;
-    border: 1px solid rgba(22, 163, 74, 0.3) !important;
+    border: 1px solid #FFFFFF !important;
     border-radius: 7px !important;
     box-shadow: none !important;
 }
@@ -3359,6 +3359,292 @@ button[class*="bg-[#6A5ACD]"] {
     color: #991B1B !important;
     background: #FFF8F8 !important;
     border-color: #E7B8B8 !important;
+}
+
+.staff-management-page .staff-search {
+    flex: 1 1 360px;
+}
+
+.staff-management-page .staff-table {
+    min-width: 1040px;
+}
+
+.staff-management-page .staff-actions-heading,
+.staff-management-page .staff-actions-cell {
+    width: 220px;
+    min-width: 220px;
+}
+
+.staff-management-page .staff-table-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.dashboard-layout .staff-management-page button.inventory-action-btn.inventory-action-btn {
+    border-color: rgba(22, 163, 74, 0.3) !important;
+}
+
+.staff-management-page .staff-status-pill {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    padding: 0 9px;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    line-height: 1;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.staff-management-page .staff-status-active {
+    color: #166534;
+    background: #F0FDF4;
+    border: 1px solid #BBF7D0;
+}
+
+.staff-management-page .staff-status-inactive {
+    color: #991B1B;
+    background: #FFF8F8;
+    border: 1px solid #F1D2D2;
+}
+
+.staff-management-page .staff-alert {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 18px;
+    padding: 13px 16px;
+    background: #FFFFFF;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: var(--card-shadow);
+    color: #334155;
+    font-size: 0.84rem;
+    font-weight: 500;
+}
+
+.staff-management-page .staff-alert span {
+    width: 8px;
+    height: 8px;
+    flex: 0 0 auto;
+    border-radius: 999px;
+}
+
+.staff-management-page .staff-alert-success span {
+    background: var(--primary-green);
+}
+
+.staff-management-page .staff-alert-error span {
+    background: #B91C1C;
+}
+
+.staff-management-page .staff-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    padding: 14px 18px;
+    background: #F8FCFA;
+    border-top: 1px solid var(--border-color);
+}
+
+.staff-management-page .staff-pagination span {
+    color: #64748B;
+    font-size: 0.78rem;
+    font-weight: 500;
+}
+
+.staff-management-page .staff-pagination-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.dashboard-layout .staff-management-page button.inventory-action-btn:disabled {
+    opacity: 0.45 !important;
+    cursor: not-allowed !important;
+    box-shadow: none !important;
+}
+
+.staff-form-overlay {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 9999;
+    width: 100vw !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: 32px 44px;
+    overflow: hidden;
+    box-sizing: border-box;
+    isolation: isolate;
+    background: rgba(216, 222, 225, 0.78);
+    backdrop-filter: blur(18px) saturate(105%);
+    -webkit-backdrop-filter: blur(18px) saturate(105%);
+}
+
+.staff-form-overlay::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    left: 0;
+    top: 0;
+    background: rgba(216, 222, 225, 0.78);
+    backdrop-filter: blur(20px) saturate(105%);
+    -webkit-backdrop-filter: blur(20px) saturate(105%);
+    pointer-events: none;
+}
+
+.staff-form-modal {
+    position: relative;
+    z-index: 1;
+    width: min(560px, calc(100vw - 88px));
+    min-width: 520px;
+    height: auto;
+    max-height: none;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: #FFFFFF;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.2);
+}
+
+.staff-form-header {
+    min-height: 62px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 0 22px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.staff-form-header h3 {
+    margin: 0;
+    color: #102033;
+    font-size: 1rem;
+    font-weight: 600;
+    line-height: 1.25;
+    letter-spacing: 0;
+    text-transform: none;
+}
+
+.staff-form-body {
+    flex: 0 0 auto;
+    overflow: visible;
+    padding: 20px 22px 22px;
+}
+
+.staff-form-body > * + * {
+    margin-top: 14px;
+}
+
+.staff-form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px !important;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-color);
+}
+
+.dashboard-layout button.staff-form-btn.staff-form-btn {
+    min-height: 38px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    padding: 0 14px !important;
+    color: #334155 !important;
+    background: #FFFFFF !important;
+    background-image: none !important;
+    border: 1px solid #D7E7DC !important;
+    border-radius: 7px !important;
+    box-shadow: none !important;
+    font-family: inherit !important;
+    font-size: 0.82rem !important;
+    font-weight: 500 !important;
+    letter-spacing: 0 !important;
+    text-transform: none !important;
+}
+
+.dashboard-layout button.staff-form-icon-btn.staff-form-icon-btn {
+    width: 36px !important;
+    height: 36px !important;
+    padding: 0 !important;
+}
+
+.dashboard-layout button.staff-form-btn.staff-form-btn svg {
+    width: 16px !important;
+    height: 16px !important;
+    color: var(--primary-green) !important;
+    stroke: currentColor !important;
+}
+
+.dashboard-layout button.staff-form-btn.staff-form-btn:hover,
+.dashboard-layout button.staff-form-btn.staff-form-btn:focus {
+    color: var(--dark-green) !important;
+    background: #F8FCFA !important;
+    background-image: none !important;
+    border-color: rgba(22, 163, 74, 0.45) !important;
+    box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.07) !important;
+    transform: none !important;
+}
+
+@media (max-width: 768px) {
+    .staff-management-page .inventory-toolbar,
+    .staff-management-page .inventory-filter-group {
+        width: 100%;
+    }
+
+    .staff-management-page .inventory-outline-btn,
+    .staff-management-page .inventory-select {
+        width: 100%;
+    }
+
+    .staff-management-page .staff-pagination {
+        align-items: stretch;
+    }
+
+    .staff-management-page .staff-pagination-actions {
+        justify-content: flex-end;
+    }
+
+    .staff-form-overlay {
+        inset: 0 !important;
+        width: auto !important;
+        height: auto !important;
+        padding: 24px 16px;
+    }
+
+    .staff-form-overlay::before {
+        left: 0;
+    }
+
+    .staff-form-modal {
+        width: min(560px, calc(100vw - 32px));
+        min-width: 0;
+        max-height: none;
+    }
+
+    .staff-form-actions {
+        flex-direction: column-reverse;
+    }
+
+    .dashboard-layout button.staff-form-btn.staff-form-btn {
+        width: 100%;
+    }
 }
 
 /* Create inventory batch modal */

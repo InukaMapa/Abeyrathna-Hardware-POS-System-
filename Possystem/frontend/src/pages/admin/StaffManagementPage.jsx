@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { API_BASE_URL } from '../../config/api';
-import { Search, Plus, Edit2, Trash2, Key, ToggleLeft, ToggleRight, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Plus, Edit2, Trash2, Key, ToggleLeft, ToggleRight, X, ChevronLeft, ChevronRight, Eye, Loader } from 'lucide-react';
+import '../../styles/menu.css';
 
 const StaffManagementPage = ({ onNavigate }) => {
     // State Variables
@@ -22,6 +23,7 @@ const StaffManagementPage = ({ onNavigate }) => {
 
     // Modals State
     const [isFormModalOpen, setIsFormModalOpen] = useState(false);
+    const [isViewModalOpen, setIsViewModalOpen] = useState(false);
     const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
@@ -30,7 +32,6 @@ const StaffManagementPage = ({ onNavigate }) => {
 
     // Form Data State
     const [formData, setFormData] = useState({
-        full_name: '',
         username: '',
         email: '',
         contact_number: '',
@@ -132,7 +133,6 @@ const StaffManagementPage = ({ onNavigate }) => {
     const openAddModal = () => {
         setSelectedStaff(null);
         setFormData({
-            full_name: '',
             username: '',
             email: '',
             contact_number: '',
@@ -144,10 +144,14 @@ const StaffManagementPage = ({ onNavigate }) => {
         setIsFormModalOpen(true);
     };
 
+    const openViewModal = (staff) => {
+        setSelectedStaff(staff);
+        setIsViewModalOpen(true);
+    };
+
     const openEditModal = (staff) => {
         setSelectedStaff(staff);
         setFormData({
-            full_name: staff.full_name || '',
             username: staff.username || '',
             email: staff.email || '',
             contact_number: staff.contact_number || '',
@@ -177,7 +181,6 @@ const StaffManagementPage = ({ onNavigate }) => {
     // Form validations
     const validateForm = () => {
         const errors = {};
-        if (!formData.full_name.trim()) errors.full_name = 'Full name is required';
         if (!formData.username.trim()) errors.username = 'Username is required';
         else if (/\s/.test(formData.username)) errors.username = 'Username cannot contain spaces';
 
@@ -222,6 +225,7 @@ const StaffManagementPage = ({ onNavigate }) => {
             if (selectedStaff) {
                 delete payload.password; // Do not send password on edit
                 delete payload.status; // Status handled by separate endpoint
+                payload.full_name = selectedStaff.full_name || null;
             }
 
             const response = await fetch(url, {
@@ -332,257 +336,269 @@ const StaffManagementPage = ({ onNavigate }) => {
 
     return (
         <DashboardLayout onNavigate={onNavigate} activePage="staff-management">
-            <div className="dashboard-page staff-management-page p-6 text-xs">
+            <div className="menu-management-container inventory-page staff-management-page animate-fade-in custom-scrollbar">
 
-                {/* Heading Area */}
-                <div className="flex items-center justify-between gap-4 mb-6">
-                    <div>
-                        <h1 className="section-title mb-0">Staff Management</h1>
-                        <p className="text-sm text-slate-500 font-medium mt-1">Manage admin and cashier roles, passwords, and security access.</p>
+                <div className="inventory-sticky-panel sticky top-[-28px] z-[50]">
+                    <div className="menu-header inventory-header !mb-6">
+                        <div>
+                            <h1 className="menu-title inventory-title">Staff Management</h1>
+                            <p className="inventory-subtitle">Manage admin and cashier roles, passwords, and security access.</p>
+                        </div>
+                        <div className="inventory-toolbar">
+                            <button
+                                title="Add Staff"
+                                className="inventory-outline-btn"
+                                onClick={openAddModal}
+                            >
+                                <Plus size={15} />
+                                Add Staff
+                            </button>
+                        </div>
                     </div>
-                    <button
-                        className="flex items-center gap-2 px-5 h-[42px] bg-white text-slate-700 border border-white hover:bg-gray-100 rounded-xl transition-all shadow-md active:scale-95 text-sm"
-                        onClick={openAddModal}
-                    >
-                        <Plus size={16} />
-                        Add New Staff
-                    </button>
+
+                    <div className="menu-filters-container inventory-filters !mb-0">
+                        <div className="menu-top-bar">
+                            <div className="search-wrapper inventory-search staff-search">
+                                <Search className="search-icon w-4 h-4" />
+                                <input
+                                    type="text"
+                                    className="menu-search-input"
+                                    placeholder="Search by full name, username, email..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                />
+                            </div>
+
+                            <div className="inventory-filter-group">
+                                <select
+                                    className="filter-select inventory-select"
+                                    value={roleFilter}
+                                    onChange={(e) => {
+                                        setRoleFilter(e.target.value);
+                                        setCurrentPage(1);
+                                    }}
+                                >
+                                    <option value="ALL">All Roles</option>
+                                    <option value="ADMIN">Admins</option>
+                                    <option value="CASHIER">Cashiers</option>
+                                </select>
+
+                                <select
+                                    className="filter-select inventory-select"
+                                    value={statusFilter}
+                                    onChange={(e) => {
+                                        setStatusFilter(e.target.value);
+                                        setCurrentPage(1);
+                                    }}
+                                >
+                                    <option value="ALL">All Status</option>
+                                    <option value="ACTIVE">Active</option>
+                                    <option value="INACTIVE">Inactive</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                {/* Notifications */}
                 {successMessage && (
-                    <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl text-sm font-semibold flex items-center gap-2 shadow-sm">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                    <div className="staff-alert staff-alert-success">
+                        <span></span>
                         {successMessage}
                     </div>
                 )}
 
                 {error && (
-                    <div className="mb-6 p-4 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-sm font-semibold flex items-center gap-2 shadow-sm">
-                        <span className="w-2 h-2 rounded-full bg-rose-500"></span>
+                    <div className="staff-alert staff-alert-error">
+                        <span></span>
                         {error}
                     </div>
                 )}
 
-                {/* Filters Board */}
-                <div className="bg-white rounded-2xl border border-[#D7E7DC] shadow-sm px-6 py-6 mb-6">
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        {/* Search Input */}
-                        <div className="relative md:col-span-2">
-                            <label className="block text-[0.8rem] font-bold text-slate-500 uppercase tracking-wider mb-2">Search Staff</label>
-                            <div className="relative">
-                                <input
-                                    type="text"
-                                    className="w-full h-[42px] rounded-xl border border-[#D7E7DC] bg-white pl-10 pr-4 text-[0.9rem] font-normal text-slate-700 outline-none transition-all focus:border-emerald-400 focus:ring-4 focus:ring-emerald-500/10"
-                                    placeholder="Search by full name, username, email..."
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                />
-                                <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                            </div>
-                        </div>
-
-                        {/* Role Filter */}
-                        <div>
-                            <label className="block text-[0.8rem] font-bold text-slate-500 uppercase tracking-wider mb-2">Filter by Role</label>
-                            <select
-                                className="w-full h-[42px] rounded-xl border border-[#D7E7DC] bg-white px-4 text-[0.9rem] font-medium text-slate-700 outline-none transition-all focus:border-emerald-400 focus:ring-4 focus:ring-emerald-500/10 cursor-pointer"
-                                value={roleFilter}
-                                onChange={(e) => {
-                                    setRoleFilter(e.target.value);
-                                    setCurrentPage(1);
-                                }}
-                            >
-                                <option value="ALL">ALL ROLES</option>
-                                <option value="ADMIN">ADMINS Only</option>
-                                <option value="CASHIER">CASHIERS Only</option>
-                            </select>
-                        </div>
-
-                        {/* Status Filter */}
-                        <div>
-                            <label className="block text-[0.8rem] font-bold text-slate-500 uppercase tracking-wider mb-2">Filter by Status</label>
-                            <select
-                                className="w-full h-[42px] rounded-xl border border-[#D7E7DC] bg-white px-4 text-[0.9rem] font-medium text-slate-700 outline-none transition-all focus:border-emerald-400 focus:ring-4 focus:ring-emerald-500/10 cursor-pointer"
-                                value={statusFilter}
-                                onChange={(e) => {
-                                    setStatusFilter(e.target.value);
-                                    setCurrentPage(1);
-                                }}
-                            >
-                                <option value="ALL">ALL STATUSES</option>
-                                <option value="ACTIVE">ACTIVE Only</option>
-                                <option value="INACTIVE">INACTIVE Only</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Table Area */}
-                <div className="bg-white rounded-2xl border border-[#D7E7DC] shadow-sm overflow-hidden">
-                    {loading ? (
-                        <div className="flex flex-col items-center justify-center py-20">
-                            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-600 mb-4"></div>
-                            <p className="text-slate-500 font-semibold uppercase tracking-wider text-xs">Loading staff data...</p>
-                        </div>
-                    ) : (
-                        <>
-                            <div className="overflow-x-hidden">
-                                <table className="orders-table w-full text-left">
-                                    <thead>
-                                        <tr>
-
-                                            <th>Username</th>
-                                            <th>Email</th>
-                                            <th>Contact Number</th>
-                                            <th>Role</th>
-                                            <th>Status</th>
-                                            <th>Created Date</th>
-                                            <th className="text-right">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
+                <div className="inventory-table-card staff-table-card">
+                    <div className="overflow-x-auto">
+                        <table className="inventory-table staff-table w-full text-left border-collapse">
+                            <thead>
+                                <tr>
+                                    <th className="p-4 font-semibold">Username</th>
+                                    <th className="p-4 font-semibold">Email</th>
+                                    <th className="p-4 font-semibold">Contact Number</th>
+                                    <th className="p-4 font-semibold">Role</th>
+                                    <th className="p-4 font-semibold">Status</th>
+                                    <th className="p-4 font-semibold">Created Date</th>
+                                    <th className="p-4 font-semibold text-right staff-actions-heading">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {loading ? (
+                                    <tr>
+                                        <td colSpan="7" className="p-12 text-center text-[#A0A0A0]">
+                                            <Loader className="w-6 h-6 animate-spin mx-auto mb-2" />
+                                            Loading staff data...
+                                        </td>
+                                    </tr>
+                                ) : staffList.length === 0 ? (
+                                    <tr>
+                                        <td colSpan="7" className="p-12 text-center text-[#A0A0A0]">
+                                            No staff accounts found matching your filters.
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    <>
                                         {staffList.map(staff => (
-                                            <tr key={staff.id} className="hover:bg-slate-50/50 transition-colors">
+                                            <tr key={staff.id}>
 
-                                                <td className="font-semibold text-slate-700">@{staff.username}</td>
-                                                <td className="text-slate-600">{staff.email || <span className="text-slate-400 italic">No email</span>}</td>
-                                                <td className="text-slate-600">{staff.contact_number || <span className="text-slate-400 italic">No contact</span>}</td>
-                                                <td>
-                                                    <span className={`status-badge px-2.5 py-1 text-xs font-bold rounded-lg ${staff.role === 'ADMIN' ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                                        }`}>
+                                                <td className="p-4">
+                                                    <div className="inventory-item-name">@{staff.username}</div>
+                                                    <div className="inventory-item-unit">{staff.full_name || 'Staff member'}</div>
+                                                </td>
+                                                <td className="p-4 inventory-cell-text">{staff.email || <span className="text-[#666] italic">No email</span>}</td>
+                                                <td className="p-4 inventory-cell-text">{staff.contact_number || <span className="text-[#666] italic">No contact</span>}</td>
+                                                <td className="p-4">
+                                                    <span className="inventory-category-pill">
                                                         {staff.role}
                                                     </span>
                                                 </td>
-                                                <td>
-                                                    <span className={`status-badge px-2.5 py-1 text-xs font-bold rounded-lg ${staff.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'
+                                                <td className="p-4">
+                                                    <span className={`staff-status-pill ${staff.status === 'ACTIVE' ? 'staff-status-active' : 'staff-status-inactive'
                                                         }`}>
                                                         {staff.status}
                                                     </span>
                                                 </td>
-                                                <td className="text-slate-500 text-xs font-medium">
+                                                <td className="p-4 inventory-code">
                                                     {new Date(staff.created_at).toLocaleDateString(undefined, {
                                                         year: 'numeric',
                                                         month: 'short',
                                                         day: 'numeric'
                                                     })}
                                                 </td>
-                                                <td>
-                                                    <div className="flex items-center justify-end gap-2.5">
-                                                        {/* Edit details */}
+                                                <td className="p-4 text-right staff-actions-cell">
+                                                    <div className="staff-table-actions">
+                                                        <button
+                                                            onClick={() => openViewModal(staff)}
+                                                            className="inventory-action-btn"
+                                                            title="View Staff Details"
+                                                        >
+                                                            <Eye />
+                                                        </button>
+
                                                         <button
                                                             onClick={() => openEditModal(staff)}
-                                                            className="p-0.5 bg-white text-black border border-white hover:bg-gray-100 hover:shadow-md rounded-lg transition-all"
+                                                            className="inventory-action-btn"
                                                             title="Edit Staff Details"
                                                         >
-                                                            <Edit2 size={16} />
+                                                            <Edit2 />
                                                         </button>
 
-                                                        {/* Toggle status (Activate/Deactivate) */}
-                                                        <button
-                                                            onClick={() => handleToggleStatus(staff)}
-                                                            className={`p-0.5 bg-white text-black border border-white hover:bg-gray-100 hover:shadow-md rounded-lg transition-all`}
-                                                            title={staff.status === 'ACTIVE' ? 'Deactivate Account' : 'Activate Account'}
-                                                        >
-                                                            {staff.status === 'ACTIVE' ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
-                                                        </button>
-
-                                                        {/* Reset password */}
                                                         <button
                                                             onClick={() => openPasswordModal(staff)}
-                                                            className="p-0.5 bg-white text-black border border-white hover:bg-gray-100 hover:shadow-md rounded-lg transition-all"
+                                                            className="inventory-action-btn"
                                                             title="Reset Password"
                                                         >
-                                                            <Key size={16} />
+                                                            <Key />
                                                         </button>
 
-                                                        {/* Delete */}
                                                         <button
-                                                            onClick={() => openDeleteModal(staff)}
-                                                            className="p-0.5 bg-white text-black border border-white hover:bg-gray-100 hover:shadow-md rounded-lg transition-all"
-                                                            title="Delete Staff Account"
+                                                            onClick={() => handleToggleStatus(staff)}
+                                                            className="inventory-action-btn"
+                                                            title={staff.status === 'ACTIVE' ? 'Deactivate Account' : 'Activate Account'}
                                                         >
-                                                            <Trash2 size={16} />
+                                                            {staff.status === 'ACTIVE' ? <ToggleRight /> : <ToggleLeft />}
                                                         </button>
                                                     </div>
                                                 </td>
                                             </tr>
                                         ))}
+                                    </>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
 
-                                        {staffList.length === 0 && (
-                                            <tr>
-                                                <td colSpan="7" className="text-center py-16 text-slate-400 font-medium">
-                                                    No staff accounts found matching your filters.
-                                                </td>
-                                            </tr>
-                                        )}
-                                    </tbody>
-                                </table>
+                    {totalPages > 1 && (
+                        <div className="staff-pagination">
+                            <span>
+                                Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, totalResults)} of {totalResults} staff members
+                            </span>
+                            <div className="staff-pagination-actions">
+                                <button
+                                    title="Previous Page"
+                                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                                    disabled={currentPage === 1}
+                                    className="inventory-action-btn"
+                                >
+                                    <ChevronLeft />
+                                </button>
+                                <button
+                                    title="Next Page"
+                                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                                    disabled={currentPage === totalPages}
+                                    className="inventory-action-btn"
+                                >
+                                    <ChevronRight />
+                                </button>
                             </div>
-
-                            {/* Pagination Controls */}
-                            {totalPages > 1 && (
-                                <div className="flex items-center justify-between px-6 py-4 border-t border-[#D7E7DC] bg-slate-50/50">
-                                    <span className="text-xs font-semibold text-slate-500">
-                                        Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, totalResults)} of {totalResults} staff members
-                                    </span>
-                                    <div className="flex gap-2">
-                                        <button
-                                            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                                            disabled={currentPage === 1}
-                                            className="p-2 border border-[#D7E7DC] rounded-xl hover:bg-white text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-                                        >
-                                            <ChevronLeft size={16} />
-                                        </button>
-                                        <button
-                                            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                                            disabled={currentPage === totalPages}
-                                            className="p-2 border border-[#D7E7DC] rounded-xl hover:bg-white text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-                                        >
-                                            <ChevronRight size={16} />
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-                        </>
+                        </div>
                     )}
                 </div>
 
-                {/* MODAL 1: ADD & EDIT STAFF FORM */}
-                {isFormModalOpen && (
+                {/* MODAL 0: VIEW STAFF */}
+                {isViewModalOpen && (
                     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn">
-                        <div className="bg-white rounded-3xl border border-[#D7E7DC] w-full max-w-lg shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
-                            {/* Modal Header */}
+                        <div className="bg-white rounded-3xl border border-[#D7E7DC] w-full max-w-md shadow-2xl overflow-hidden">
                             <div className="flex items-center justify-between px-6 py-5 border-b border-[#D7E7DC]">
                                 <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight">
-                                    {selectedStaff ? 'Edit Staff Account' : 'Add New Staff Account'}
+                                    Staff Details
                                 </h3>
-                                <button onClick={() => setIsFormModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition-all">
+                                <button title="Close" onClick={() => setIsViewModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition-all">
                                     <X size={20} />
                                 </button>
                             </div>
 
+                            <div className="p-6 space-y-4">
+                                {[
+                                    ['Full Name', selectedStaff?.full_name || 'Not provided'],
+                                    ['Username', selectedStaff?.username ? `@${selectedStaff.username}` : 'Not provided'],
+                                    ['Email', selectedStaff?.email || 'No email'],
+                                    ['Contact Number', selectedStaff?.contact_number || 'No contact'],
+                                    ['Role', selectedStaff?.role || 'Not assigned'],
+                                    ['Status', selectedStaff?.status || 'Unknown'],
+                                    ['Created Date', selectedStaff?.created_at ? new Date(selectedStaff.created_at).toLocaleDateString(undefined, {
+                                        year: 'numeric',
+                                        month: 'short',
+                                        day: 'numeric'
+                                    }) : 'Not available']
+                                ].map(([label, value]) => (
+                                    <div key={label} className="flex items-center justify-between gap-4 border-b border-[#EAF1EC] pb-3 last:border-b-0 last:pb-0">
+                                        <span className="text-xs font-bold uppercase tracking-wider text-slate-500">{label}</span>
+                                        <span className="text-sm font-semibold text-slate-800 text-right">{value}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* MODAL 1: ADD & EDIT STAFF FORM */}
+                {isFormModalOpen && (
+                    <div className="staff-form-overlay animate-fadeIn">
+                        <div className="staff-form-modal">
+                            {/* Modal Header */}
+                            <div className="staff-form-header">
+                                <h3>
+                                    {selectedStaff ? 'Edit Staff Account' : 'Add New Staff Account'}
+                                </h3>
+                                <button title="Close" onClick={() => setIsFormModalOpen(false)} className="staff-form-btn staff-form-icon-btn">
+                                    <X />
+                                </button>
+                            </div>
+
                             {/* Modal Form */}
-                            <form onSubmit={handleFormSubmit} className="flex-1 overflow-y-auto p-6 space-y-4">
+                            <form onSubmit={handleFormSubmit} className="staff-form-body">
                                 {formErrors.form && (
                                     <div className="p-3.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-sm font-semibold">
                                         {formErrors.form}
                                     </div>
                                 )}
-
-                                {/* Full Name */}
-                                <div className="space-y-1.5">
-                                    <label className="block text-[0.8rem] font-bold text-slate-600 uppercase tracking-wider">Full Name</label>
-                                    <input
-                                        type="text"
-                                        name="full_name"
-                                        className={`w-full h-[40px] rounded-xl border ${formErrors.full_name ? 'border-rose-400 focus:ring-rose-500/10' : 'border-[#D7E7DC] focus:border-emerald-400 focus:ring-emerald-500/10'} bg-white px-4 text-[0.9rem] text-slate-700 outline-none transition-all focus:ring-4`}
-                                        placeholder="John Doe"
-                                        value={formData.full_name}
-                                        onChange={handleFormChange}
-                                    />
-                                    {formErrors.full_name && <span className="text-[11px] font-bold text-rose-600">{formErrors.full_name}</span>}
-                                </div>
 
                                 {/* Username */}
                                 <div className="space-y-1.5">
@@ -656,17 +672,17 @@ const StaffManagementPage = ({ onNavigate }) => {
                                 )}
 
                                 {/* Form Action Buttons */}
-                                <div className="flex justify-end gap-3 pt-4 border-t border-[#D7E7DC] !mt-6">
+                                <div className="staff-form-actions">
                                     <button
                                         type="button"
                                         onClick={() => setIsFormModalOpen(false)}
-                                        className="px-5 h-[42px] border border-[#D7E7DC] hover:bg-slate-50 text-slate-700 font-semibold rounded-xl transition-all text-sm active:scale-95"
+                                        className="staff-form-btn"
                                     >
                                         Cancel
                                     </button>
                                     <button
                                         type="submit"
-                                        className="px-5 h-[42px] bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl transition-all shadow-md active:scale-95 text-sm"
+                                        className="staff-form-btn"
                                     >
                                         Save Changes
                                     </button>
