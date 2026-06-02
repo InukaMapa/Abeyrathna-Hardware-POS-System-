@@ -8,6 +8,7 @@ export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [initializing, setInitializing] = useState(true);
 
     // Decode JWT and get user info
     const decodeToken = (token) => {
@@ -49,6 +50,7 @@ export const AuthProvider = ({ children }) => {
                 localStorage.removeItem('token');
             }
         }
+        setInitializing(false);
     }, []);
 
     const login = async (username, password) => {
@@ -227,6 +229,7 @@ export const AuthProvider = ({ children }) => {
             setUser,
             loading,
             error,
+            initializing,
             login,
             register,
             logout,

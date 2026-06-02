@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { AuthProvider } from './context/AuthContext';
+import { useState, useEffect } from 'react';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import LoginPage from './pages/auth/LoginPage';
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
@@ -27,6 +27,7 @@ import './styles/dashboard.css';
 
 function AppContent() {
   const [currentPage, setCurrentPage] = useState('login');
+  const { isAuthenticated, initializing } = useAuth();
 
   // State to hold selected inventory item ID for detail view
   const [selectedInventoryId, setSelectedInventoryId] = useState(null);
@@ -40,6 +41,18 @@ function AppContent() {
   // State to hold order object when editing from details
   const [editOrderData, setEditOrderData] = useState(null);
   const [supplierFocusSection, setSupplierFocusSection] = useState(null);
+
+  // Check authentication on mount and stay on dashboard if authenticated
+  useEffect(() => {
+    if (!initializing && isAuthenticated) {
+      setCurrentPage('dashboard');
+    }
+  }, [isAuthenticated, initializing]);
+
+  // Don't render anything until auth is initialized
+  if (initializing) {
+    return null;
+  }
 
   const navigateTo = (page, params = {}) => {
     setCurrentPage(page);
