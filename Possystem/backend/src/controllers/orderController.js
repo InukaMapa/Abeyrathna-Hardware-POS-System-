@@ -373,11 +373,35 @@ export const closeOrder = async (req, res) => {
             .limit(1)
             .maybeSingle();
 
+        const paymentRows = Array.isArray(payments)
+            ? payments
+                .map(payment => ({
+                    method: String(payment?.method || '').trim(),
+                    amount: Number.parseFloat(payment?.amount) || 0
+                }))
+                .filter(payment => payment.method && payment.amount > 0)
+            : [];
+        const normalizedPaymentRows = paymentRows.length > 0
+            ? paymentRows
+            : [{
+                method: 'Cash',
+                amount: Number.parseFloat(final_total) || 0
+            }];
+        const cashAmount = normalizedPaymentRows.reduce((sum, payment) => (
+            payment.method.toLowerCase() === 'cash' ? sum + payment.amount : sum
+        ), 0);
+        const paymentMethod = normalizedPaymentRows.length === 1
+            ? normalizedPaymentRows[0].method
+                : 'Split';
+
         // Prepare the update payload. If final_total is provided from the checkout page, we override total_amount.
         const updatePayload = {
             status: 'CLOSED',
             closed_at: new Date().toISOString(),
-            shift_id: activeShift ? activeShift.shift_id : null
+            shift_id: activeShift ? activeShift.shift_id : null,
+            payment_method: paymentMethod,
+            payment_details: normalizedPaymentRows,
+            cash_amount: cashAmount
         };
 
         if (final_total !== undefined) {
@@ -387,12 +411,31 @@ export const closeOrder = async (req, res) => {
             updatePayload.customer_phone = customer_phone;
         }
 
-        const { data, error } = await supabase
+        let { data, error } = await supabase
             .from('orders')
             .update(updatePayload)
             .eq('order_id', orderId)
             .select()
             .single();
+
+        if (error?.code === 'PGRST204' && (
+            error.message?.includes('payment_method') ||
+            error.message?.includes('payment_details') ||
+            error.message?.includes('cash_amount')
+        )) {
+            const {
+                payment_method: _paymentMethod,
+                payment_details: _paymentDetails,
+                cash_amount: _cashAmount,
+                ...legacyUpdatePayload
+            } = updatePayload;
+            ({ data, error } = await supabase
+                .from('orders')
+                .update(legacyUpdatePayload)
+                .eq('order_id', orderId)
+                .select()
+                .single());
+        }
 
         if (error) {
             console.error('Error closing order:', error);

@@ -4,8 +4,12 @@ import { API_BASE_URL } from '../../config/api';
 
 const ShiftStartForm = ({ onShiftStarted }) => {
     const { user } = useAuth();
+    const cashierName = user?.full_name || user?.name || user?.username || 'Cashier';
+    const cashierEmail = user?.email || user?.user_email || 'Email not available';
+    const cashierRole = user?.role || 'CASHIER';
+    const cashierId = user?.id || user?.user_id || user?.sub || 'Session user';
     const [formData, setFormData] = useState({
-        cashier_name: user?.username || '',
+        cashier_name: cashierName,
         counter_number: '1',
         opening_cash: '0'
     });
@@ -14,10 +18,10 @@ const ShiftStartForm = ({ onShiftStarted }) => {
 
     // Sync cashier name if user state loads later
     React.useEffect(() => {
-        if (user?.username && !formData.cashier_name) {
-            setFormData(prev => ({ ...prev, cashier_name: user.username }));
+        if (cashierName && formData.cashier_name !== cashierName) {
+            setFormData(prev => ({ ...prev, cashier_name: cashierName }));
         }
-    }, [user, formData.cashier_name]);
+    }, [cashierName, formData.cashier_name]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -48,42 +52,67 @@ const ShiftStartForm = ({ onShiftStarted }) => {
     };
 
     return (
-        <div className="max-w-sm mx-auto mt-16">
-            <div className="bg-[#1E1E1E] border border-[#333333] rounded-2xl p-8 shadow-2xl relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-24 h-24 bg-red-600/5 rounded-full -mr-12 -mt-12 blur-2xl"></div>
+        <div className="shift-start-shell">
+            <aside className="shift-details-card">
+                <div className="shift-details-header">
+                    <div className="shift-avatar">
+                        {cashierName.slice(0, 1).toUpperCase()}
+                    </div>
+                    <div>
+                        <span>Cashier profile</span>
+                        <h2>{cashierName}</h2>
+                        <p>{cashierRole}</p>
+                    </div>
+                </div>
 
-                <div className="text-center mb-8 relative z-10">
-                    <div className="w-16 h-16 bg-red-600/10 rounded-xl flex items-center justify-center mx-auto mb-4 border border-red-600/20">
-                        <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="shift-detail-list">
+                    <div className="shift-detail-row">
+                        <span>Name</span>
+                        <strong>{cashierName}</strong>
+                    </div>
+                    <div className="shift-detail-row">
+                        <span>Email</span>
+                        <strong>{cashierEmail}</strong>
+                    </div>
+                    <div className="shift-detail-row">
+                        <span>Role</span>
+                        <strong>{cashierRole}</strong>
+                    </div>
+                    <div className="shift-detail-row">
+                        <span>User ID</span>
+                        <strong>{cashierId}</strong>
+                    </div>
+                    <div className="shift-detail-row">
+                        <span>Branch</span>
+                        <strong>Main Branch</strong>
+                    </div>
+                </div>
+            </aside>
+
+            <section className="shift-start-card">
+                <div className="shift-start-header">
+                    <div className="shift-start-icon">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                     </div>
-                    <h2 className="text-2xl font-bold text-white uppercase tracking-tight mb-1">Initialize Shift</h2>
-                    <p className="text-gray-500 font-bold uppercase tracking-widest text-[10px]">Opening cash balance</p>
+                    <div>
+                        <span>Opening cash balance</span>
+                        <h2>Initialize Shift</h2>
+                    </div>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-6 relative z-10">
-                    <div className="grid grid-cols-2 gap-3">
-                        <div className="col-span-2">
-                            <label className="block text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-3">
-                                Cashier Name
-                            </label>
-                            <input
-                                type="text"
-                                value={formData.cashier_name}
-                                readOnly
-                                className="block w-full px-4 py-3 bg-gray-900/30 border border-[#333] rounded-xl text-gray-500 font-bold text-sm focus:outline-none cursor-not-allowed"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-3">
+                <form onSubmit={handleSubmit} className="shift-start-form">
+                    <input type="hidden" name="cashier_name" value={formData.cashier_name} />
+                    <div className="shift-start-grid">
+                        <div className="shift-field">
+                            <label>
                                 Counter
                             </label>
                             <select
                                 value={formData.counter_number}
                                 onChange={(e) => setFormData({ ...formData, counter_number: e.target.value })}
-                                className="block w-full px-4 py-3 bg-gray-900 border border-[#444] rounded-xl text-white font-bold text-sm focus:outline-none focus:ring-2 focus:ring-red-600/50 appearance-none"
+                                className="shift-input"
                             >
                                 <option value="1">C-01</option>
                                 <option value="2">C-02</option>
@@ -91,24 +120,22 @@ const ShiftStartForm = ({ onShiftStarted }) => {
                             </select>
                         </div>
 
-                        <div>
-                            <label className="block text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-3">
+                        <div className="shift-field">
+                            <label>
                                 Time
                             </label>
-                            <div className="px-4 py-3 bg-gray-900/30 border border-[#333] rounded-xl text-gray-500 font-bold text-[10px] flex items-center h-[46px]">
+                            <div className="shift-input is-readonly shift-time">
                                 {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </div>
                         </div>
                     </div>
 
-                    <div>
-                        <label className="block text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-3">
+                    <div className="shift-field">
+                        <label>
                             Opening Balance (Rs.)
                         </label>
-                        <div className="relative">
-                            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                <span className="text-gray-600 font-bold text-base">Rs.</span>
-                            </div>
+                        <div className="shift-money-wrap">
+                            <span>Rs.</span>
                             <input
                                 type="number"
                                 step="0.01"
@@ -116,15 +143,15 @@ const ShiftStartForm = ({ onShiftStarted }) => {
                                 min="0"
                                 value={formData.opening_cash}
                                 onChange={(e) => setFormData({ ...formData, opening_cash: e.target.value })}
-                                className="block w-full pl-12 pr-4 py-4 bg-gray-900 border border-[#444] rounded-xl text-white text-xl font-black placeholder-gray-800 focus:outline-none focus:ring-2 focus:ring-red-600/30 focus:border-red-600 transition-all font-mono"
+                                className="shift-input money"
                                 placeholder="0.00"
                             />
                         </div>
                     </div>
 
                     {error && (
-                        <div className="p-3 bg-red-900/20 border border-red-900/50 rounded-lg text-red-500 font-bold text-xs flex items-center gap-2">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div className="shift-error">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                             {error}
@@ -134,7 +161,7 @@ const ShiftStartForm = ({ onShiftStarted }) => {
                     <button
                         type="submit"
                         disabled={loading}
-                        className="w-full py-4 bg-red-600 text-white font-bold uppercase tracking-widest text-[10px] rounded-xl hover:bg-red-700 transition-all transform active:scale-95 shadow-lg shadow-red-600/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="shift-start-button"
                     >
                         {loading ? (
                             <span className="flex items-center justify-center gap-2">
@@ -149,7 +176,7 @@ const ShiftStartForm = ({ onShiftStarted }) => {
                         )}
                     </button>
                 </form>
-            </div>
+            </section>
         </div>
     );
 };
