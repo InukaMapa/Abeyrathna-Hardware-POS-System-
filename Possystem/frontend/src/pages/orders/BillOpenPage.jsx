@@ -142,6 +142,17 @@ const BillOpenPage = ({ orderId, onNavigate }) => {
         setActionLoading(true);
         try {
             const token = localStorage.getItem('token');
+            const normalizedPayments = paymentMethods.map((payment) => {
+                const enteredAmount = parseFloat(payment.amount);
+                const shouldUseFullTotal = paymentMethods.length === 1
+                    && payment.method === 'Cash'
+                    && !Number.isFinite(enteredAmount);
+
+                return {
+                    method: payment.method,
+                    amount: shouldUseFullTotal ? grandTotal : (Number.isFinite(enteredAmount) ? enteredAmount : 0)
+                };
+            });
             const response = await fetch(`${API_BASE_URL}/orders/${order.order_id}/close`, {
                 method: 'PATCH',
                 headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -151,6 +162,7 @@ const BillOpenPage = ({ orderId, onNavigate }) => {
                     customer_name: customerName,
                     discount: overallDiscountAmount,
                     other_charges: parsedOtherCharges,
+                    payments: normalizedPayments,
                     notes: notes
                 })
             });

@@ -82,72 +82,141 @@ const MovementDetailsModal = ({ isOpen, onClose, shiftId, type }) => {
                     left: 0;
                     right: 0;
                     bottom: 0;
-                    background: rgba(0, 0, 0, 0.7);
+                    background: rgba(15, 23, 42, 0.42);
                     display: flex;
                     align-items: center;
                     justify-content: center;
                     z-index: 2100;
-                    backdrop-filter: blur(4px);
+                    backdrop-filter: blur(5px);
                 }
                 .movement-details-modal {
                     width: 90%;
-                    max-width: 500px;
+                    max-width: 560px;
                     max-height: 70vh;
-                    background: #1a1a1a;
-                    border: 1px solid #333;
-                    border-radius: 12px;
+                    background: #FFFFFF;
+                    border: 1px solid #D7E7DC;
+                    border-top: 4px solid var(--primary-green);
+                    border-radius: 10px;
                     display: flex;
                     flex-direction: column;
+                    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.16);
+                    color: #132238;
+                    overflow: hidden;
                 }
                 .modal-header {
-                    padding: 15px 20px;
-                    border-bottom: 1px solid #333;
+                    padding: 20px 24px 16px;
+                    border-bottom: 1px solid #D7E7DC;
                     display: flex;
                     justify-content: space-between;
                     align-items: center;
                 }
                 .modal-header h2 {
                     margin: 0;
-                    font-size: 1.1rem;
-                    color: #fff;
+                    color: #132238;
+                    font-size: 1rem;
+                    font-weight: 600;
+                    letter-spacing: 0;
+                    line-height: 1.25;
                 }
                 .close-btn {
-                    background: none;
-                    border: none;
-                    color: #888;
-                    font-size: 1.5rem;
+                    width: 36px;
+                    height: 36px;
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    background: #FFFFFF;
+                    border: 1px solid #D7E7DC;
+                    border-radius: 8px;
+                    color: #64748B;
+                    font-size: 1.35rem;
                     cursor: pointer;
+                    line-height: 1;
+                    transition: all 0.2s ease;
+                }
+                .close-btn:hover {
+                    color: var(--primary-green);
+                    background: #F8FCFA;
+                    border-color: rgba(22, 163, 74, 0.36);
                 }
                 .modal-body {
-                    padding: 20px;
+                    padding: 22px 24px;
                     overflow-y: auto;
                     flex: 1;
+                    background: #FFFFFF;
                 }
                 .movements-table {
                     width: 100%;
-                    border-collapse: collapse;
+                    border-collapse: separate;
+                    border-spacing: 0;
+                    border: 1px solid #E5EFE9;
+                    border-radius: 8px;
+                    overflow: hidden;
                 }
                 .movements-table th {
                     text-align: left;
-                    color: #888;
-                    padding-bottom: 10px;
-                    font-size: 0.85rem;
+                    color: #526782;
+                    background: #F8FCFA;
+                    padding: 12px 14px;
+                    font-size: 0.68rem;
+                    font-weight: 600;
+                    letter-spacing: 0.08em;
+                    text-transform: uppercase;
+                    border-bottom: 1px solid #E5EFE9;
                 }
                 .movements-table td {
-                    padding: 12px 0;
-                    color: #ccc;
-                    border-bottom: 1px solid #222;
+                    padding: 13px 14px;
+                    color: #132238;
+                    border-bottom: 1px solid #EEF4F0;
+                    font-size: 0.84rem;
+                    font-weight: 400;
                 }
-                .no-data {
+                .movements-table tr:last-child td {
+                    border-bottom: none;
+                }
+                .movements-table td:last-child {
+                    font-weight: 500 !important;
+                    color: #0F5132;
+                }
+                .no-data,
+                .loading-spinner {
                     text-align: center;
-                    color: #888;
-                    padding: 30px 0;
+                    color: #64748B;
+                    padding: 46px 0;
+                    font-size: 0.86rem;
+                    font-weight: 400;
                 }
                 .modal-footer {
-                    padding: 15px 20px;
-                    border-top: 1px solid #333;
+                    padding: 16px 24px 20px;
+                    border-top: 1px solid #D7E7DC;
                     display: flex;
                     justify-content: flex-end;
+                    background: #FFFFFF;
+                }
+                .modal-footer .btn {
+                    min-height: 38px;
+                    padding: 0 20px;
+                    border-radius: 8px;
+                    border: 1px solid rgba(22, 163, 74, 0.25);
+                    color: var(--dark-green) !important;
+                    background: #FFFFFF !important;
+                    font-size: 0.8rem;
+                    font-weight: 500;
+                    box-shadow: none !important;
+                }
+                .modal-footer .btn:hover {
+                    background: #F8FCFA !important;
+                    border-color: rgba(22, 163, 74, 0.42) !important;
+                }
+                @media (max-width: 640px) {
+                    .movement-details-modal {
+                        width: calc(100% - 32px);
+                    }
+                    .modal-header,
+                    .modal-body,
+                    .modal-footer {
+                        padding-left: 18px;
+                        padding-right: 18px;
+                    }
                 }
             `}</style>
         </div>

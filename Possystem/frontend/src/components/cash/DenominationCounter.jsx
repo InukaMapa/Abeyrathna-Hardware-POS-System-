@@ -67,7 +67,7 @@ const DenominationCounter = ({ onTotalChange, initialCounts, shiftId = 'default'
 
     return (
         <div className="cash-card bg-white border border-[#D7E7DC] rounded-2xl p-8 shadow-sm relative overflow-hidden">
-            <h3 className="text-[0.8rem] font-semibold uppercase tracking-[0.18em] text-slate-500 mb-6 relative z-10 flex items-center gap-3">
+            <h3 className="text-[0.78rem] font-medium uppercase tracking-[0.12em] text-slate-500 mb-6 relative z-10 flex items-center gap-3">
                 <span className="w-1.5 h-5 bg-emerald-600 rounded-full"></span>
                 Cash Denomination Counter
             </h3>
@@ -75,15 +75,15 @@ const DenominationCounter = ({ onTotalChange, initialCounts, shiftId = 'default'
                 <table className="w-full border-collapse text-left">
                     <thead>
                         <tr className="bg-[#F8FCFA] border-b border-[#D7E7DC]">
-                            <th className="p-4 font-semibold uppercase tracking-[0.18em] text-[10px] text-slate-500">Denomination</th>
-                            <th className="p-4 font-semibold uppercase tracking-[0.18em] text-[10px] text-slate-500 text-center">Quantity</th>
-                            <th className="p-4 font-semibold uppercase tracking-[0.18em] text-[10px] text-slate-500 text-right">Line Total</th>
+                            <th className="p-4 font-medium uppercase tracking-[0.12em] text-[10px] text-slate-500">Denomination</th>
+                            <th className="p-4 font-medium uppercase tracking-[0.12em] text-[10px] text-slate-500 text-center">Quantity</th>
+                            <th className="p-4 font-medium uppercase tracking-[0.12em] text-[10px] text-slate-500 text-right">Line Total</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-[#EAF1EC]">
                         {denominations.map(den => (
                             <tr key={den.key} className="hover:bg-[#FCFEFD] transition-colors">
-                                <td className="p-4 font-medium text-slate-800">{den.label}</td>
+                                <td className="p-4 font-normal text-slate-800">{den.label}</td>
                                 <td className="p-4 text-center">
                                     <input
                                         type="number"
@@ -95,7 +95,7 @@ const DenominationCounter = ({ onTotalChange, initialCounts, shiftId = 'default'
                                         className="w-24 h-11 px-3 py-2 bg-white border border-[#E2E8F0] rounded-xl text-slate-700 text-center font-normal focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 transition-all placeholder-slate-300 disabled:opacity-70"
                                     />
                                 </td>
-                                <td className="p-4 text-right font-medium text-slate-800 tabular-nums">
+                                <td className="p-4 text-right font-normal text-slate-800 tabular-nums">
                                     Rs. {totals[den.key]?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </td>
                             </tr>
@@ -105,8 +105,8 @@ const DenominationCounter = ({ onTotalChange, initialCounts, shiftId = 'default'
             </div>
 
             <div className="mt-6 pt-6 border-t border-[#E2E8F0] flex justify-between items-center relative z-10">
-                <span className="text-slate-500 text-[0.78rem] font-semibold uppercase tracking-[0.18em]">Grand Total</span>
-                <span className="text-[1.05rem] font-semibold text-slate-900 truncate whitespace-nowrap">
+                <span className="text-slate-500 text-[0.76rem] font-medium uppercase tracking-[0.12em]">Grand Total</span>
+                <span className="text-[1rem] font-medium text-slate-900 truncate whitespace-nowrap">
                     Rs. {grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
             </div>
