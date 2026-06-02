@@ -56,16 +56,24 @@ const ShiftOrdersModal = ({ isOpen, onClose, shiftId }) => {
                                             <span className="order-id">Order #{order.order_id}</span>
                                             <span className="order-time">
                                                 {new Date(order.closed_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                {order.payment_method && ` · ${order.payment_method}`}
                                             </span>
                                         </div>
                                         <div className="order-amount-group">
-                                            <span className="order-amount">Rs. {parseFloat(order.total_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                                            <span className="order-amount">
+                                                Rs. {parseFloat(order.cash_amount ?? order.total_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                            </span>
                                             <span className="expand-icon">{expandedOrder === order.order_id ? '-' : '+'}</span>
                                         </div>
                                     </div>
 
                                     {expandedOrder === order.order_id && (
                                         <div className="order-details-expanded">
+                                            {order.cash_amount !== undefined && Number(order.cash_amount) !== Number(order.total_amount) && (
+                                                <div className="cash-payment-note">
+                                                    Invoice total Rs. {parseFloat(order.total_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}; cash received Rs. {parseFloat(order.cash_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}.
+                                                </div>
+                                            )}
                                             <table className="items-table">
                                                 <thead>
                                                     <tr>
@@ -116,12 +124,12 @@ const ShiftOrdersModal = ({ isOpen, onClose, shiftId }) => {
 
                 .shift-orders-modal {
                     width: 90%;
-                    max-width: 600px;
+                    max-width: 680px;
                     max-height: 80vh;
                     background: #FFFFFF;
                     border: 1px solid #D7E7DC;
                     border-top: 4px solid var(--primary-green);
-                    border-radius: 8px;
+                    border-radius: 10px;
                     display: flex;
                     flex-direction: column;
                     box-shadow: 0 24px 60px rgba(15, 23, 42, 0.16);
@@ -130,7 +138,7 @@ const ShiftOrdersModal = ({ isOpen, onClose, shiftId }) => {
                 }
 
                 .modal-header {
-                    padding: 24px 28px 18px;
+                    padding: 20px 24px 16px;
                     border-bottom: 1px solid #D7E7DC;
                     display: flex;
                     justify-content: space-between;
@@ -140,15 +148,15 @@ const ShiftOrdersModal = ({ isOpen, onClose, shiftId }) => {
                 .modal-header h2 {
                     margin: 0;
                     color: #132238;
-                    font-size: 1.2rem;
+                    font-size: 1rem;
                     font-weight: 600;
                     letter-spacing: 0;
                     line-height: 1.2;
                 }
 
                 .close-btn {
-                    width: 38px;
-                    height: 38px;
+                    width: 36px;
+                    height: 36px;
                     display: inline-flex;
                     align-items: center;
                     justify-content: center;
@@ -156,7 +164,7 @@ const ShiftOrdersModal = ({ isOpen, onClose, shiftId }) => {
                     border: 1px solid #D7E7DC;
                     border-radius: 8px;
                     color: #64748B;
-                    font-size: 1.6rem;
+                    font-size: 1.35rem;
                     cursor: pointer;
                     line-height: 1;
                     transition: all 0.2s ease;
@@ -169,7 +177,7 @@ const ShiftOrdersModal = ({ isOpen, onClose, shiftId }) => {
                 }
 
                 .modal-body {
-                    padding: 24px 28px;
+                    padding: 22px 24px;
                     overflow-y: auto;
                     flex: 1;
                     background: #FFFFFF;
@@ -191,7 +199,7 @@ const ShiftOrdersModal = ({ isOpen, onClose, shiftId }) => {
                 }
 
                 .order-summary-row {
-                    padding: 16px 18px;
+                    padding: 14px 16px;
                     display: flex;
                     justify-content: space-between;
                     align-items: center;
@@ -207,14 +215,14 @@ const ShiftOrdersModal = ({ isOpen, onClose, shiftId }) => {
 
                 .order-id {
                     color: #132238;
-                    font-size: 0.94rem;
-                    font-weight: 600;
+                    font-size: 0.88rem;
+                    font-weight: 500;
                 }
 
                 .order-time {
                     color: #64748B;
-                    font-size: 0.78rem;
-                    font-weight: 500;
+                    font-size: 0.74rem;
+                    font-weight: 400;
                 }
 
                 .order-amount-group {
@@ -225,8 +233,8 @@ const ShiftOrdersModal = ({ isOpen, onClose, shiftId }) => {
 
                 .order-amount {
                     color: #132238;
-                    font-size: 0.94rem;
-                    font-weight: 700;
+                    font-size: 0.88rem;
+                    font-weight: 500;
                 }
 
                 .expand-icon {
@@ -240,27 +248,34 @@ const ShiftOrdersModal = ({ isOpen, onClose, shiftId }) => {
                     border: 1px solid #BBF7D0;
                     border-radius: 999px;
                     font-size: 1rem;
-                    font-weight: 700;
+                    font-weight: 500;
                     text-align: center;
                 }
 
                 .order-details-expanded {
-                    padding: 16px 18px;
+                    padding: 14px 16px;
                     background: #F8FCFA;
                     border-top: 1px solid #D7E7DC;
+                }
+
+                .cash-payment-note {
+                    margin-bottom: 12px;
+                    color: #526782;
+                    font-size: 0.78rem;
+                    line-height: 1.4;
                 }
 
                 .items-table {
                     width: 100%;
                     border-collapse: collapse;
-                    font-size: 0.84rem;
+                    font-size: 0.82rem;
                 }
 
                 .items-table th {
                     text-align: left;
                     color: #526782;
                     padding: 0 8px 8px 0;
-                    font-size: 0.7rem;
+                    font-size: 0.66rem;
                     font-weight: 600;
                     letter-spacing: 0.06em;
                     text-transform: uppercase;
@@ -270,10 +285,11 @@ const ShiftOrdersModal = ({ isOpen, onClose, shiftId }) => {
                     padding: 8px 8px 0 0;
                     color: #132238;
                     border-top: 1px solid #E5EFE9;
+                    font-weight: 400;
                 }
 
                 .modal-footer {
-                    padding: 18px 28px 24px;
+                    padding: 16px 24px 20px;
                     border-top: 1px solid #D7E7DC;
                     display: flex;
                     justify-content: flex-end;
@@ -281,27 +297,32 @@ const ShiftOrdersModal = ({ isOpen, onClose, shiftId }) => {
                 }
 
                 .modal-footer .btn {
-                    min-height: 40px;
-                    padding: 0 22px;
-                    border-radius: 999px;
-                    font-size: 0.82rem;
-                    font-weight: 700;
+                    min-height: 38px;
+                    padding: 0 20px;
+                    border-radius: 8px;
+                    font-size: 0.8rem;
+                    font-weight: 500;
                 }
 
                 .modal-footer .btn-secondary {
-                    color: #FFFFFF;
-                    background: linear-gradient(135deg, #1AA34A 0%, #137436 100%);
-                    border: 1px solid transparent;
-                    box-shadow: 0 10px 22px rgba(19, 116, 54, 0.18);
+                    color: var(--dark-green) !important;
+                    background: #FFFFFF !important;
+                    border: 1px solid rgba(22, 163, 74, 0.25);
+                    box-shadow: none !important;
+                }
+
+                .modal-footer .btn-secondary:hover {
+                    background: #F8FCFA !important;
+                    border-color: rgba(22, 163, 74, 0.42) !important;
                 }
 
                 .no-data,
                 .loading-spinner {
                     color: #64748B;
-                    padding: 40px 0;
+                    padding: 46px 0;
                     text-align: center;
-                    font-size: 0.9rem;
-                    font-weight: 500;
+                    font-size: 0.86rem;
+                    font-weight: 400;
                 }
 
                 @media (max-width: 640px) {

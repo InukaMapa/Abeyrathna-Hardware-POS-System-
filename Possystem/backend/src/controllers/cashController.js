@@ -1,5 +1,81 @@
 import { supabase } from '../config/db.js';
 
+const hasCashPayment = (order) => {
+    const cashAmount = Number.parseFloat(order.cash_amount);
+    if (Number.isFinite(cashAmount) && cashAmount > 0) return true;
+
+    const paymentMethod = String(order.payment_method || '').trim().toLowerCase();
+    if (!paymentMethod) return true;
+    return paymentMethod === 'cash';
+};
+
+const getOrderCashAmount = (order) => {
+    const cashAmount = Number.parseFloat(order.cash_amount);
+    if (Number.isFinite(cashAmount) && cashAmount > 0) return cashAmount;
+
+    const totalAmount = Number.parseFloat(order.total_amount);
+    return Number.isFinite(totalAmount) ? totalAmount : 0;
+};
+
+const fetchClosedCashOrdersForShift = async (shift) => {
+    const orderSelect = 'order_id, total_amount, cash_amount, payment_method, closed_at';
+    const legacyOrderSelect = 'order_id, total_amount, closed_at';
+    const endTime = shift.end_time || new Date().toISOString();
+
+    let { data: shiftOrders, error } = await supabase
+        .from('orders')
+        .select(orderSelect)
+        .eq('status', 'CLOSED')
+        .eq('shift_id', shift.shift_id);
+
+    if (error?.code === 'PGRST204' && (
+        error.message?.includes('cash_amount') ||
+        error.message?.includes('payment_method')
+    )) {
+        ({ data: shiftOrders, error } = await supabase
+            .from('orders')
+            .select(legacyOrderSelect)
+            .eq('status', 'CLOSED')
+            .eq('shift_id', shift.shift_id));
+    }
+
+    if (error) throw error;
+
+    let { data: timedOrders, error: timedError } = await supabase
+        .from('orders')
+        .select(orderSelect)
+        .eq('status', 'CLOSED')
+        .gte('closed_at', shift.start_time)
+        .lte('closed_at', endTime);
+
+    if (timedError?.code === 'PGRST204' && (
+        timedError.message?.includes('cash_amount') ||
+        timedError.message?.includes('payment_method')
+    )) {
+        ({ data: timedOrders, error: timedError } = await supabase
+            .from('orders')
+            .select(legacyOrderSelect)
+            .eq('status', 'CLOSED')
+            .gte('closed_at', shift.start_time)
+            .lte('closed_at', endTime));
+    }
+
+    if (timedError) throw timedError;
+
+    return [...(shiftOrders || []), ...(timedOrders || [])]
+        .filter(hasCashPayment)
+        .reduce((uniqueOrders, order) => {
+            if (!uniqueOrders.has(order.order_id)) {
+                uniqueOrders.set(order.order_id, {
+                    ...order,
+                    cash_amount: getOrderCashAmount(order)
+                });
+            }
+            return uniqueOrders;
+        }, new Map())
+        .values();
+};
+
 /**
  * Start a new cashier shift
  * @route POST /api/cash/start-shift
@@ -89,15 +165,11 @@ export const getShiftSummary = async (req, res) => {
 
         if (shiftError || !shift) return res.status(404).json({ error: 'Shift not found' });
 
-        // 2. Get Cash Sales (From closed orders associated with this shift)
-        const { data: orders, error: ordersError } = await supabase
-            .from('orders')
-            .select('total_amount')
-            .eq('status', 'CLOSED')
-            .eq('shift_id', shiftId);
-
-        const cashSales = orders ? orders.reduce((sum, order) => sum + parseFloat(order.total_amount), 0) : 0;
-        const cashSalesCount = orders ? orders.length : 0;
+        // 2. Get Cash Sales. Prefer orders linked by shift_id, and also include
+        // orders closed during the shift window in case older records missed shift_id.
+        const cashOrders = Array.from(await fetchClosedCashOrdersForShift(shift));
+        const cashSales = cashOrders.reduce((sum, order) => sum + getOrderCashAmount(order), 0);
+        const cashSalesCount = cashOrders.length;
 
         // 3. Get Cash In/Out movements
         const { data: movements, error: movementsError } = await supabase
@@ -143,18 +215,47 @@ export const saveCashCount = async (req, res) => {
             return res.status(400).json({ error: 'Missing required fields' });
         }
 
+        const allowedDenominations = [
+            'rs5000',
+            'rs2000',
+            'rs1000',
+            'rs500',
+            'rs100',
+            'rs50',
+            'rs20',
+            'rs10',
+            'rs5',
+            'rs2',
+            'rs1'
+        ];
+        const sanitizedDenominations = allowedDenominations.reduce((counts, key) => {
+            counts[key] = Number.parseInt(denominations?.[key], 10) || 0;
+            return counts;
+        }, {});
+
+        const countPayload = {
+            shift_id,
+            ...sanitizedDenominations,
+            total_cash,
+            expected_cash,
+            created_at: new Date().toISOString()
+        };
+
         // Always insert new record to maintain history
-        const { data, error } = await supabase
+        let { data, error } = await supabase
             .from('cash_counts')
-            .insert([{
-                shift_id,
-                ...denominations,
-                total_cash,
-                expected_cash,
-                created_at: new Date().toISOString()
-            }])
+            .insert([countPayload])
             .select()
             .single();
+
+        if (error?.code === 'PGRST204' && error.message?.includes('expected_cash')) {
+            const { expected_cash: _expectedCash, ...legacyPayload } = countPayload;
+            ({ data, error } = await supabase
+                .from('cash_counts')
+                .insert([legacyPayload])
+                .select()
+                .single());
+        }
 
         if (error) throw error;
 
@@ -372,11 +473,19 @@ export const getShiftOrders = async (req, res) => {
     try {
         const { shiftId } = req.params;
 
-        const { data: orders, error } = await supabase
-            .from('orders')
-            .select(`
+        const { data: shift, error: shiftError } = await supabase
+            .from('cash_shifts')
+            .select('*')
+            .eq('shift_id', shiftId)
+            .single();
+
+        if (shiftError || !shift) return res.status(404).json({ error: 'Shift not found' });
+
+        const orderSelect = `
                 order_id,
                 total_amount,
+                cash_amount,
+                payment_method,
                 closed_at,
                 order_items (
                     order_item_id,
@@ -385,14 +494,81 @@ export const getShiftOrders = async (req, res) => {
                     item_price,
                     subtotal
                 )
-            `)
+            `;
+        const legacyOrderSelect = `
+                    order_id,
+                    total_amount,
+                    closed_at,
+                    order_items (
+                        order_item_id,
+                        item_name,
+                        quantity,
+                        item_price,
+                        subtotal
+                    )
+                `;
+        const endTime = shift.end_time || new Date().toISOString();
+
+        let { data: shiftOrders, error } = await supabase
+            .from('orders')
+            .select(orderSelect)
             .eq('shift_id', shiftId)
             .eq('status', 'CLOSED')
             .order('closed_at', { ascending: false });
 
+        if (error?.code === 'PGRST204' && (
+            error.message?.includes('cash_amount') ||
+            error.message?.includes('payment_method')
+        )) {
+            ({ data: shiftOrders, error } = await supabase
+                .from('orders')
+                .select(legacyOrderSelect)
+                .eq('shift_id', shiftId)
+                .eq('status', 'CLOSED')
+                .order('closed_at', { ascending: false }));
+        }
+
         if (error) throw error;
 
-        res.status(200).json(orders);
+        let { data: timedOrders, error: timedError } = await supabase
+            .from('orders')
+            .select(orderSelect)
+            .eq('status', 'CLOSED')
+            .gte('closed_at', shift.start_time)
+            .lte('closed_at', endTime)
+            .order('closed_at', { ascending: false });
+
+        if (timedError?.code === 'PGRST204' && (
+            timedError.message?.includes('cash_amount') ||
+            timedError.message?.includes('payment_method')
+        )) {
+            ({ data: timedOrders, error: timedError } = await supabase
+                .from('orders')
+                .select(legacyOrderSelect)
+                .eq('status', 'CLOSED')
+                .gte('closed_at', shift.start_time)
+                .lte('closed_at', endTime)
+                .order('closed_at', { ascending: false }));
+        }
+
+        if (timedError) throw timedError;
+
+        const orders = [...(shiftOrders || []), ...(timedOrders || [])]
+            .filter(hasCashPayment)
+            .reduce((uniqueOrders, order) => {
+                if (!uniqueOrders.has(order.order_id)) {
+                    uniqueOrders.set(order.order_id, {
+                        ...order,
+                        cash_amount: getOrderCashAmount(order)
+                    });
+                }
+                return uniqueOrders;
+            }, new Map());
+
+        res.status(200).json(Array.from(orders.values()).map(order => ({
+            ...order,
+            cash_amount: getOrderCashAmount(order)
+        })).sort((a, b) => new Date(b.closed_at) - new Date(a.closed_at)));
     } catch (error) {
         console.error('[CASH] Get Shift Orders Error:', error);
         res.status(500).json({ error: error.message });

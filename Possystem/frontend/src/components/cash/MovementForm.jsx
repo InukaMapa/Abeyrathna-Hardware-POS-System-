@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { API_BASE_URL } from '../../config/api';
 
-const MovementForm = ({ shiftId, onMovementAdded }) => {
+const MovementForm = ({ shiftId, availableAfter, onMovementAdded }) => {
     const [formData, setFormData] = useState({
         type: 'cash_in',
         amount: '',
@@ -17,27 +17,69 @@ const MovementForm = ({ shiftId, onMovementAdded }) => {
     useEffect(() => {
         fetchPayouts();
         fetchRefunds();
-    }, []);
+    }, [shiftId, availableAfter]);
+
+    const onlyPending = (items) => items.filter(item => String(item.status || 'PENDING').toUpperCase() === 'PENDING');
+    const isAfterAvailableTime = (item) => {
+        if (!availableAfter) return true;
+
+        const itemTime = item.authorized_at || item.created_at || item.requested_at || item.received_at;
+        if (!itemTime) return false;
+
+        return new Date(itemTime).getTime() >= new Date(availableAfter).getTime();
+    };
+    const onlyCurrentShiftBatches = (items) => items.filter(isAfterAvailableTime);
+    const extractMovementRefs = (movements) => new Set(
+        movements
+            .map(movement => String(movement.reason || '').match(/\b(PAY-\d+|RFB-\d+)\b/i)?.[1]?.toUpperCase())
+            .filter(Boolean)
+    );
+
+    const fetchUsedMovementRefs = async () => {
+        if (!shiftId) return new Set();
+
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`${API_BASE_URL}/cash/shift-movements/${shiftId}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await response.json();
+            return Array.isArray(data) ? extractMovementRefs(data) : new Set();
+        } catch (err) {
+            console.error('Failed to fetch shift movements:', err);
+            return new Set();
+        }
+    };
 
     const fetchPayouts = async () => {
         try {
             const token = localStorage.getItem('token');
-            const response = await fetch(`${API_BASE_URL}/inventory/payout-requests`, {
+            const [response, usedRefs] = await Promise.all([fetch(`${API_BASE_URL}/inventory/payout-requests`, {
                 headers: { 'Authorization': `Bearer ${token}` }
-            });
+            }), fetchUsedMovementRefs()]);
             const data = await response.json();
-            if (Array.isArray(data)) setPayoutRequests(data);
+            if (Array.isArray(data)) {
+                setPayoutRequests(
+                    onlyCurrentShiftBatches(onlyPending(data))
+                        .filter(p => !usedRefs.has(String(p.payout_number || '').toUpperCase()))
+                );
+            }
         } catch (err) { console.error('Failed to fetch payouts:', err); }
     };
 
     const fetchRefunds = async () => {
         try {
             const token = localStorage.getItem('token');
-            const response = await fetch(`${API_BASE_URL}/inventory/refund-batches`, {
+            const [response, usedRefs] = await Promise.all([fetch(`${API_BASE_URL}/inventory/refund-batches`, {
                 headers: { 'Authorization': `Bearer ${token}` }
-            });
+            }), fetchUsedMovementRefs()]);
             const data = await response.json();
-            if (Array.isArray(data)) setRefundBatches(data);
+            if (Array.isArray(data)) {
+                setRefundBatches(
+                    onlyCurrentShiftBatches(onlyPending(data))
+                        .filter(r => !usedRefs.has(String(r.batch_number || '').toUpperCase()))
+                );
+            }
         } catch (err) { console.error('Failed to fetch refunds:', err); }
     };
 
@@ -100,21 +142,29 @@ const MovementForm = ({ shiftId, onMovementAdded }) => {
 
             // 2. If it was a payout, mark the payout as completed
             if (formData.type === 'cash_out' && selectedPayoutId) {
-                await fetch(`${API_BASE_URL}/inventory/payout-requests/${selectedPayoutId}/complete`, {
+                const completeResponse = await fetch(`${API_BASE_URL}/inventory/payout-requests/${selectedPayoutId}/complete`, {
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
-                fetchPayouts(); // Refresh list
+                const completeData = await completeResponse.json().catch(() => ({}));
+                if (!completeResponse.ok) throw new Error(completeData.message || 'Failed to complete payout batch');
+
+                setPayoutRequests(prev => prev.filter(p => String(p.id) !== String(selectedPayoutId)));
+                await fetchPayouts(); // Refresh with only pending batches
                 setSelectedPayoutId('');
             }
 
             // 3. If it was a refund (cash in), mark the refund batch as received
             if (formData.type === 'cash_in' && selectedRefundId) {
-                await fetch(`${API_BASE_URL}/inventory/refund-batches/${selectedRefundId}/complete`, {
+                const completeResponse = await fetch(`${API_BASE_URL}/inventory/refund-batches/${selectedRefundId}/complete`, {
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
-                fetchRefunds(); // Refresh list
+                const completeData = await completeResponse.json().catch(() => ({}));
+                if (!completeResponse.ok) throw new Error(completeData.message || 'Failed to complete refund batch');
+
+                setRefundBatches(prev => prev.filter(r => String(r.id) !== String(selectedRefundId)));
+                await fetchRefunds(); // Refresh with only pending batches
                 setSelectedRefundId('');
             }
 
@@ -149,7 +199,7 @@ const MovementForm = ({ shiftId, onMovementAdded }) => {
 
                 {formData.type === 'cash_in' && (
                     <div className="form-group animate-fade-in">
-                        <label className="text-green-500 font-bold">Authorized Refund Batches (Optional)</label>
+                        <label className="text-green-600 font-medium">Authorized Refund Batches (Optional)</label>
                         <select
                             value={selectedRefundId}
                             onChange={handleRefundSelect}
@@ -167,7 +217,7 @@ const MovementForm = ({ shiftId, onMovementAdded }) => {
 
                 {formData.type === 'cash_out' && (
                     <div className="form-group animate-fade-in">
-                        <label className="text-yellow-500 font-bold">Authorized Supplier Payouts (Optional)</label>
+                        <label className="text-yellow-600 font-medium">Authorized Supplier Payouts (Optional)</label>
                         <select
                             value={selectedPayoutId}
                             onChange={handlePayoutSelect}
