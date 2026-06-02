@@ -258,14 +258,14 @@ const InventoryPage = ({ onNavigate }) => {
                                                 <div className="flex items-center justify-end gap-2">
                                                     <button
                                                         onClick={() => handleViewDetails(item.id)}
-                                                        className="inventory-action-btn"
+                                                        className="p-0.5 bg-white text-black border border-white hover:bg-gray-100 hover:shadow-md rounded-lg transition-all"
                                                         title="View Details"
                                                     >
                                                         <FileText className="w-4.5 h-4.5" />
                                                     </button>
                                                     <button
                                                         onClick={() => handleEdit(item)}
-                                                        className="inventory-action-btn"
+                                                        className="p-0.5 bg-white text-black border border-white hover:bg-gray-100 hover:shadow-md rounded-lg transition-all"
                                                         title="Edit"
                                                     >
                                                         <Edit className="w-4.5 h-4.5" />

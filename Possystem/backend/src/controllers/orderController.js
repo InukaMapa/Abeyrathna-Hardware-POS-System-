@@ -238,6 +238,11 @@ export const fetchAllOrders = async (req, res) => {
             `)
             .order('created_at', { ascending: false });
 
+        // Filter by user role (Cashiers only see their own orders)
+        if (req.user?.role === 'CASHIER') {
+            query = query.eq('staff_id', req.user.userId);
+        }
+
         // Filter by status if provided
         if (status) {
             query = query.eq('status', status);
@@ -653,6 +658,7 @@ export const getOrderById = async (req, res) => {
                 status,
                 customer_phone,
                 created_at,
+                staff_id,
                 order_items (
                     order_item_id,
                     item_id,
@@ -667,6 +673,11 @@ export const getOrderById = async (req, res) => {
 
         if (error || !order) {
             return res.status(404).json({ error: 'Order not found' });
+        }
+
+        // Restrict Cashiers to only view their own orders
+        if (req.user?.role === 'CASHIER' && order.staff_id !== req.user?.userId) {
+            return res.status(403).json({ error: 'Access denied. You can only view your own orders.' });
         }
 
         res.status(200).json(order);

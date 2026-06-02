@@ -39,6 +39,15 @@ const SupplierPage = ({ onNavigate, focusSection }) => {
     const [supplierPagePaymentDate, setSupplierPagePaymentDate] = useState('NEWEST');
     const [supplierPagePaymentSupplier, setSupplierPagePaymentSupplier] = useState('ALL');
 
+    // Add effect to toggle body class when modal is open
+    useEffect(() => {
+        if (selectedSupplier) {
+            document.body.classList.add('modal-open');
+        } else {
+            document.body.classList.remove('modal-open');
+        }
+    }, [selectedSupplier]);
+
     const fetchBatches = async () => {
         try {
             const response = await axios.get(`${API_BASE_URL}/inventory/batches`, {

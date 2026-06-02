@@ -1,7 +1,8 @@
 import { useAuth } from '../../context/AuthContext';
 import '../../styles/dashboard.css';
 import logo from '../../assets/logo.jpeg';
-import { Banknote, BarChart3, Boxes, LayoutDashboard, RotateCcw, Truck, ClipboardList } from 'lucide-react';
+import { API_BASE_URL } from '../../config/api';
+import { Banknote, BarChart3, Boxes, LayoutDashboard, RotateCcw, Truck, ClipboardList, Users } from 'lucide-react';
 
 const Sidebar = ({ onNavigate, activePage }) => {
     const { userRole } = useAuth();
@@ -13,6 +14,7 @@ const Sidebar = ({ onNavigate, activePage }) => {
         { id: 'reports', name: 'Reports', icon: BarChart3, roles: ['ADMIN'] },
         { id: 'supplier-returns', name: 'Returns', icon: RotateCcw, roles: ['ADMIN'] },
         { id: 'cash-management', name: 'Cash Counter', icon: Banknote, roles: ['ADMIN'] },
+        { id: 'staff-management', name: 'Staff Management', icon: Users, roles: ['ADMIN'] },
     ];
 
     const cashierMenuItems = [

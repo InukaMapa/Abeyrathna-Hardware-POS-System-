@@ -22,6 +22,7 @@ import SupplierPage from './pages/admin/supplier/SupplierPage';
 import SupplierReturnsPage from './pages/admin/supplier/SupplierReturnsPage';
 import ReturnManagementPage from './pages/admin/supplier/ReturnManagementPage';
 import ReportsPage from './pages/admin/ReportsPage';
+import StaffManagementPage from './pages/admin/StaffManagementPage';
 import './styles/dashboard.css';
 
 function AppContent() {
@@ -112,6 +113,11 @@ function AppContent() {
       {currentPage === 'return-management' && (
         <ProtectedRoute allowedRoles={['ADMIN']} onNavigate={navigateTo}>
           <ReturnManagementPage onNavigate={navigateTo} returnId={selectedReturnId} />
+        </ProtectedRoute>
+      )}
+      {currentPage === 'staff-management' && (
+        <ProtectedRoute allowedRoles={['ADMIN']} onNavigate={navigateTo}>
+          <StaffManagementPage onNavigate={navigateTo} />
         </ProtectedRoute>
       )}
 

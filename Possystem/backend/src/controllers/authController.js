@@ -41,6 +41,12 @@ export const login = async (req, res) => {
             return res.status(401).json({ message: 'Invalid username or password.' });
         }
 
+        // Check if user is active
+        if (user.status && user.status.toUpperCase() === 'INACTIVE') {
+            console.log(`[AUTH] Login blocked for deactivated user: ${user.username}`);
+            return res.status(403).json({ message: 'Your account is deactivated. Please contact your administrator.' });
+        }
+
         // DEBUG: Log user role before JWT generation
         console.log('🔍 DEBUG - User login:', {
             userId: user.id,
