@@ -2,6 +2,22 @@ import React, { useState, useEffect } from 'react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { API_BASE_URL } from '../../config/api';
 import ShiftReportModal from '../../components/cash/ShiftReportModal';
+import { Eye, RefreshCw } from 'lucide-react';
+
+const formatCurrency = (value) => {
+    const amount = Number.parseFloat(value);
+    if (!Number.isFinite(amount)) return '-';
+    return `Rs. ${amount.toLocaleString()}`;
+};
+
+const formatStatus = (status = '') => status.replace(/_/g, ' ');
+
+const getStatusClass = (status) => {
+    if (status === 'PENDING_APPROVAL') return 'pending';
+    if (status === 'OPEN' || status === 'REPORT_SUBMITTED') return 'open';
+    if (status === 'CLOSED') return 'closed';
+    return 'default';
+};
 
 const CashManagementPage = ({ onNavigate }) => {
     const [shifts, setShifts] = useState([]);
@@ -31,7 +47,8 @@ const CashManagementPage = ({ onNavigate }) => {
 
     const filteredShifts = shifts.filter(shift => {
         const matchesDate = !filter.date || shift.start_time.includes(filter.date);
-        const matchesCashier = !filter.cashier || shift.cashier_name.toLowerCase().includes(filter.cashier.toLowerCase());
+        const cashierName = shift.cashier_name || '';
+        const matchesCashier = !filter.cashier || cashierName.toLowerCase().includes(filter.cashier.toLowerCase());
         return matchesDate && matchesCashier;
     });
 
@@ -42,83 +59,91 @@ const CashManagementPage = ({ onNavigate }) => {
                     <div>
                         <h1 className="section-title mb-0">Cash Management & Shift History</h1>
                     </div>
-                    <button className="inventory-outline-btn cash-management-btn" onClick={fetchShifts}>Refresh Data</button>
+                    <button className="inventory-outline-btn cash-management-btn cash-management-refresh" onClick={fetchShifts} disabled={loading}>
+                        <RefreshCw size={16} />
+                        {loading ? 'Refreshing' : 'Refresh Data'}
+                    </button>
                 </div>
 
-                <div className="bg-white rounded-2xl border border-[#D7E7DC] shadow-sm px-7 py-7 mb-6">
+                <div className="cash-management-filter-card">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                        <label className="text-[0.9rem] font-medium text-slate-700">Filter by Date</label>
-                        <input
-                            type="date"
-                            className="w-full h-[42px] rounded-xl border border-[#D7E7DC] bg-white px-4 text-[0.9rem] font-normal text-slate-700 outline-none transition-all focus:border-emerald-400 focus:ring-4 focus:ring-emerald-500/10"
-                            value={filter.date}
-                            onChange={(e) => setFilter({ ...filter, date: e.target.value })}
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <label className="text-[0.9rem] font-medium text-slate-700">Filter by Cashier</label>
-                        <input
-                            type="text"
-                            className="w-full h-[42px] rounded-xl border border-[#D7E7DC] bg-white px-4 text-[0.9rem] font-normal text-slate-700 outline-none transition-all focus:border-emerald-400 focus:ring-4 focus:ring-emerald-500/10"
-                            placeholder="Type cashier name..."
-                            value={filter.cashier}
-                            onChange={(e) => setFilter({ ...filter, cashier: e.target.value })}
-                        />
-                    </div>
+                        <div className="cash-management-field">
+                            <label>Filter by Date</label>
+                            <input
+                                type="date"
+                                value={filter.date}
+                                onChange={(e) => setFilter({ ...filter, date: e.target.value })}
+                            />
+                        </div>
+                        <div className="cash-management-field">
+                            <label>Filter by Cashier</label>
+                            <input
+                                type="text"
+                                placeholder="Type cashier name..."
+                                value={filter.cashier}
+                                onChange={(e) => setFilter({ ...filter, cashier: e.target.value })}
+                            />
+                        </div>
                     </div>
                 </div>
 
-                <div className="bg-white rounded-2xl border border-[#D7E7DC] shadow-sm p-7 overflow-hidden">
-                    <table className="orders-table">
-                        <thead>
-                            <tr>
-                                <th>Date/Time</th>
-                                <th>Cashier</th>
-                                <th>Counter</th>
-                                <th>Opening</th>
-                                <th>Expected</th>
-                                <th>Actual</th>
-                                <th>Difference</th>
-                                <th>Status</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filteredShifts.map(shift => (
-                                <tr key={shift.shift_id}>
-                                    <td>{new Date(shift.start_time).toLocaleString()}</td>
-                                    <td>{shift.cashier_name}</td>
-                                    <td>{shift.counter_number}</td>
-                                    <td>Rs. {parseFloat(shift.opening_cash).toLocaleString()}</td>
-                                    <td>Rs. {shift.expected_cash ? parseFloat(shift.expected_cash).toLocaleString() : '-'}</td>
-                                    <td>Rs. {shift.actual_cash ? parseFloat(shift.actual_cash).toLocaleString() : '-'}</td>
-                                    <td className="text-slate-700 font-medium">
-                                        {shift.difference !== null ? `Rs. ${parseFloat(shift.difference).toLocaleString()}` : '-'}
-                                    </td>
-                                    <td>
-                                        <span className={`status-badge cash-management-status ${shift.status === 'OPEN' ? 'status-leave' :
-                                                shift.status === 'PENDING_APPROVAL' ? 'status-in-progress' :
-                                                    'status-active'
-                                            }`} style={{ background: shift.status === 'PENDING_APPROVAL' ? '#FEF3C7' : '' }}>
-                                            {shift.status.replace('_', ' ')}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <button
-                                            className="inventory-outline-btn cash-management-btn"
-                                            onClick={() => {
-                                                setSelectedShift(shift);
-                                                setIsReportModalOpen(true);
-                                            }}
-                                        >
-                                            {shift.status === 'PENDING_APPROVAL' ? 'Review & Approve' : 'View Report'}
-                                        </button>
-                                    </td>
+                <div className="cash-management-table-card">
+                    <div className="cash-management-table-wrap">
+                        <table className="orders-table cash-management-table">
+                            <thead>
+                                <tr>
+                                    <th>Date/Time</th>
+                                    <th>Cashier</th>
+                                    <th>Counter</th>
+                                    <th>Opening</th>
+                                    <th>Expected</th>
+                                    <th>Actual</th>
+                                    <th>Difference</th>
+                                    <th>Status</th>
+                                    <th className="cash-management-actions-heading">Action</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                {loading ? (
+                                    <tr>
+                                        <td colSpan="9" className="cash-management-empty-cell">Loading shift history...</td>
+                                    </tr>
+                                ) : filteredShifts.length === 0 ? (
+                                    <tr>
+                                        <td colSpan="9" className="cash-management-empty-cell">No shift records match the selected filters.</td>
+                                    </tr>
+                                ) : filteredShifts.map(shift => (
+                                    <tr key={shift.shift_id}>
+                                        <td className="cash-management-date-cell">{new Date(shift.start_time).toLocaleString()}</td>
+                                        <td className="cash-management-cashier-cell">{shift.cashier_name || '-'}</td>
+                                        <td>{shift.counter_number || '-'}</td>
+                                        <td className="cash-management-money-cell">{formatCurrency(shift.opening_cash)}</td>
+                                        <td className="cash-management-money-cell">{formatCurrency(shift.expected_cash)}</td>
+                                        <td className="cash-management-money-cell">{formatCurrency(shift.actual_cash)}</td>
+                                        <td className="cash-management-money-cell">{formatCurrency(shift.difference)}</td>
+                                        <td>
+                                            <span className={`cash-management-status ${getStatusClass(shift.status)}`}>
+                                                {formatStatus(shift.status)}
+                                            </span>
+                                        </td>
+                                        <td className="cash-management-actions-cell">
+                                            <button
+                                                className="inventory-outline-btn cash-management-btn cash-management-review-btn"
+                                                onClick={() => {
+                                                    setSelectedShift(shift);
+                                                    setIsReportModalOpen(true);
+                                                }}
+                                                aria-label={shift.status === 'PENDING_APPROVAL' ? 'Review and approve shift report' : 'View shift report'}
+                                                title={shift.status === 'PENDING_APPROVAL' ? 'Review and approve shift report' : 'View shift report'}
+                                            >
+                                                <Eye size={15} />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
 
                 <ShiftReportModal

@@ -11,7 +11,7 @@ const findOpenShiftForCashier = async (req) => {
         .from('cash_shifts')
         .select('shift_id, cashier_name, status')
         .eq('cashier_name', cashierName)
-        .eq('status', 'OPEN')
+        .in('status', ['OPEN', 'REPORT_SUBMITTED'])
         .limit(1)
         .maybeSingle();
 
@@ -339,7 +339,7 @@ export const updateOrderStatus = async (req, res) => {
             const { data: activeShift } = await supabase
                 .from('cash_shifts')
                 .select('shift_id')
-                .eq('status', 'OPEN')
+                .in('status', ['OPEN', 'REPORT_SUBMITTED'])
                 .limit(1)
                 .single();
 
@@ -394,7 +394,7 @@ export const closeOrder = async (req, res) => {
         const { data: activeShift } = await supabase
             .from('cash_shifts')
             .select('shift_id')
-            .eq('status', 'OPEN')
+            .in('status', ['OPEN', 'REPORT_SUBMITTED'])
             .limit(1)
             .maybeSingle();
 

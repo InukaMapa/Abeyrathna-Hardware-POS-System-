@@ -22,17 +22,25 @@ const DashboardPage = ({ onNavigate }) => {
     const [, setLoading] = useState(true);
 
     const fetchStats = async () => {
-        if (userRole !== 'ADMIN') {
+        if (!['ADMIN', 'CASHIER'].includes(userRole)) {
             setLoading(false);
             return;
         }
         try {
             const token = localStorage.getItem('token');
-            const response = await fetch(`${API_BASE_URL}/admin/stats`, {
+            const endpoint = userRole === 'ADMIN' ? '/admin/stats' : '/cashier/stats';
+            const response = await fetch(`${API_BASE_URL}${endpoint}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const data = await response.json();
-            if (response.ok) setStats(data);
+            if (response.ok) {
+                setStats(prev => ({
+                    ...prev,
+                    ...data,
+                    lowInventory: data.lowInventory || [],
+                    outOfStock: data.outOfStock || []
+                }));
+            }
         } catch (err) {
             console.error('Failed to fetch dashboard stats', err);
         } finally {
@@ -41,7 +49,7 @@ const DashboardPage = ({ onNavigate }) => {
     };
 
     useEffect(() => {
-        if (userRole === 'ADMIN') {
+        if (['ADMIN', 'CASHIER'].includes(userRole)) {
             fetchStats();
             // Refresh every 2 minutes
             const interval = setInterval(fetchStats, 120000);
@@ -66,7 +74,7 @@ const DashboardPage = ({ onNavigate }) => {
                 const cashierName = user?.full_name || user?.name || user?.username;
                 const activeShift = shifts.find(shift => {
                     const isCurrentCashier = !cashierName || shift.cashier_name === cashierName;
-                    return isCurrentCashier && shift.status === 'OPEN';
+                    return isCurrentCashier && ['OPEN', 'REPORT_SUBMITTED'].includes(shift.status);
                 });
                 setHasOpenShift(Boolean(activeShift));
             } catch (err) {
@@ -170,6 +178,8 @@ const DashboardPage = ({ onNavigate }) => {
                     </div>
 
                     <QuickActions onNavigate={onNavigate} />
+
+                    <LowInventoryTable items={stats.lowInventory} outOfStockItems={stats.outOfStock} />
                 </>
             )}
         </DashboardLayout>
