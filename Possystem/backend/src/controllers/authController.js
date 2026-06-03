@@ -222,8 +222,32 @@ export const forgotPassword = async (req, res) => {
 
         await sendEmail({
             to: email,
-            subject: 'Password Reset OTP',
-            text: `Your OTP is: ${otp}. It expires in 10 minutes.`
+            subject: 'Abeyrathna Trade Center Password Reset OTP',
+            text: [
+                'Abeyrathna Trade Center password reset request',
+                '',
+                `Your one-time password is: ${otp}`,
+                'This code expires in 10 minutes.',
+                '',
+                'If you did not request this password reset, please ignore this email or contact Abeyrathna Trade Center support.',
+                '',
+                'Abeyrathna Trade Center'
+            ].join('\n'),
+            html: `
+                <div style="font-family: Arial, sans-serif; color: #1f2937; max-width: 560px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
+                    <div style="background: #111827; color: #ffffff; padding: 20px 24px;">
+                        <h1 style="margin: 0; font-size: 20px; line-height: 1.3;">Abeyrathna Trade Center</h1>
+                        <p style="margin: 6px 0 0; color: #d1d5db; font-size: 14px;">Password reset verification</p>
+                    </div>
+                    <div style="padding: 24px;">
+                        <p style="margin: 0 0 16px;">We received a request to reset the password for your account.</p>
+                        <p style="margin: 0 0 8px; font-size: 14px; color: #4b5563;">Your one-time password is:</p>
+                        <div style="font-size: 30px; font-weight: 700; letter-spacing: 6px; color: #111827; background: #f3f4f6; border-radius: 8px; padding: 16px 20px; text-align: center;">${otp}</div>
+                        <p style="margin: 16px 0 0; color: #4b5563;">This code expires in 10 minutes.</p>
+                        <p style="margin: 20px 0 0; color: #6b7280; font-size: 13px;">If you did not request this password reset, please ignore this email or contact Abeyrathna Trade Center support.</p>
+                    </div>
+                </div>
+            `
         });
 
         res.json({ message: 'OTP sent to email' });
