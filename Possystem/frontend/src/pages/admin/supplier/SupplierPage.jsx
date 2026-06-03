@@ -8,11 +8,11 @@ import {
     FileText, CreditCard, RefreshCcw, LayoutDashboard,
     TrendingUp, AlertCircle, CheckCircle2, MoreHorizontal,
     Eye, Filter, ArrowUpRight, ArrowLeft, ArrowRight, DollarSign, Package, Printer, MapPin, X,
-    Receipt, Landmark, Activity, Download
+    Receipt, Landmark, Activity, Download, Save
 } from 'lucide-react';
 import { API_BASE_URL, ENDPOINTS } from '../../../config/api';
 import '../../../styles/dashboard.css';
-import { deleteSupplier } from '../../../services/supplierService';
+import { deleteSupplier, updateSupplier } from '../../../services/supplierService';
 
 const SupplierPage = ({ onNavigate, focusSection }) => {
     const [suppliers, setSuppliers] = useState([]);
@@ -32,6 +32,13 @@ const SupplierPage = ({ onNavigate, focusSection }) => {
     const [profileReturns, setProfileReturns] = useState([]);
     const [batchItems, setBatchItems] = useState({});
     const [isGlobalPaymentsOpen, setGlobalPaymentsOpen] = useState(false);
+    const [isEditingBankDetails, setIsEditingBankDetails] = useState(false);
+    const [bankDetailsForm, setBankDetailsForm] = useState({
+        bank_name: '',
+        bank_account_no: '',
+        bank_branch: ''
+    });
+    const [isSavingBankDetails, setIsSavingBankDetails] = useState(false);
 
     // Payment Page Filters
     const [supplierPagePaymentSearch, setSupplierPagePaymentSearch] = useState('');
@@ -303,9 +310,42 @@ const SupplierPage = ({ onNavigate, focusSection }) => {
             setNoteDate("15 May 24");
             setActiveProfileTab('Overview');
             setSelectedTransaction(null);
+            setIsEditingBankDetails(false);
+            setBankDetailsForm({
+                bank_name: selectedSupplier.bank_name || '',
+                bank_account_no: selectedSupplier.bank_account_no || '',
+                bank_branch: selectedSupplier.bank_branch || ''
+            });
             fetchReturnsForSupplier(selectedSupplier.id);
         }
     }, [selectedSupplier]);
+
+    const handleBankDetailsChange = (e) => {
+        const { name, value } = e.target;
+        setBankDetailsForm(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleSaveBankDetails = async () => {
+        if (!selectedSupplier?.id) return;
+        try {
+            setIsSavingBankDetails(true);
+            const updatedSupplier = await updateSupplier(selectedSupplier.id, {
+                bank_name: bankDetailsForm.bank_name.trim(),
+                bank_account_no: bankDetailsForm.bank_account_no.trim(),
+                bank_branch: bankDetailsForm.bank_branch.trim()
+            });
+
+            const nextSupplier = { ...selectedSupplier, ...updatedSupplier };
+            setSelectedSupplier(nextSupplier);
+            setSuppliers(prev => prev.map(s => s.id === nextSupplier.id ? nextSupplier : s));
+            setIsEditingBankDetails(false);
+        } catch (err) {
+            console.error('Error saving supplier bank details:', err);
+            alert(err.message || 'Failed to save bank details. Please try again.');
+        } finally {
+            setIsSavingBankDetails(false);
+        }
+    };
 
     const fetchReturnsForSupplier = async (supplierId) => {
         try {
@@ -897,16 +937,7 @@ const SupplierPage = ({ onNavigate, focusSection }) => {
                                                 setGlobalPaymentsOpen(true);
                                             }
                                         },
-                                        { label: 'Return Items', sub: 'Inventory damage', icon: RefreshCcw, color: '#ff5252', onClick: () => onNavigate('supplier-returns') },
-                                        { label: 'Ledger Audit', sub: 'Account history', icon: LayoutDashboard, color: '#2196f3', onClick: () => {
-                                            if (suppliers.length > 0) {
-                                                setSelectedSupplier(suppliers[0]);
-                                                setActiveProfileTab('Ledger');
-                                                setShowProfile(true);
-                                            } else {
-                                                alert('No suppliers available to view ledger.');
-                                            }
-                                        } }
+                                        { label: 'Return Items', sub: 'Inventory damage', icon: RefreshCcw, color: '#ff5252', onClick: () => onNavigate('supplier-returns') }
                                     ].map((act, i) => (
                                         <button key={i} onClick={act.onClick} className="supplier-quick-action">
                                             <div style={{ backgroundColor: `rgba(255, 255, 255, 0.1)`, color: 'white' }} className="p-3 rounded-xl transition-all">
@@ -927,7 +958,10 @@ const SupplierPage = ({ onNavigate, focusSection }) => {
                                     <h3 className="text-[10px] font-black text-green-900 uppercase tracking-[0.2em] flex items-center gap-2">
                                         <Package className="w-4 h-4 text-green-700" /> Recent purchases
                                     </h3>
-                                    <button className="supplier-small-action">
+                                    <button
+                                        className="supplier-small-action"
+                                        onClick={() => onNavigate('supplier-recent-purchases')}
+                                    >
                                         Live
                                     </button>
                                 </div>
@@ -951,9 +985,6 @@ const SupplierPage = ({ onNavigate, focusSection }) => {
                                         </div>
                                     ))}
                                 </div>
-                                <button className="supplier-small-action supplier-log-action">
-                                    Explore Full Warehouse Log
-                                </button>
                             </div>
 
                             {/* Financial Registry: Unpaid */}
@@ -977,8 +1008,11 @@ const SupplierPage = ({ onNavigate, focusSection }) => {
                                             </div>
                                         </div>
                                     ))}
-                                    <button className="supplier-settlement-action">
-                                        Global Batch Settlement
+                                    <button
+                                        className="supplier-settlement-action"
+                                        onClick={() => setGlobalPaymentsOpen(true)}
+                                    >
+                                        All Payments
                                     </button>
                                 </div>
                             </div>
@@ -1140,24 +1174,106 @@ const SupplierPage = ({ onNavigate, focusSection }) => {
                                                                 </div>
                                                             </div>
                                                         </div>
-                                                        <div className="space-y-4">
-                                                            <h4 className="text-[9px] font-bold text-gray-400 uppercase tracking-[0.3em] flex items-center gap-2">
-                                                                Banking Details
-                                                            </h4>
-                                                            <div className="space-y-3">
-                                                                <div className="flex justify-between items-center text-[11px]">
-                                                                    <span className="text-gray-500">Bank</span>
-                                                                    <span className="font-semibold text-gray-700">BOC / SAMPATH</span>
-                                                                </div>
-                                                                <div className="flex justify-between items-center text-[11px]">
-                                                                    <span className="text-gray-500">Account No</span>
-                                                                    <span className="font-semibold text-gray-700 tracking-tighter">882910442302</span>
-                                                                </div>
-                                                                <div className="flex justify-between items-center text-[11px] border-t border-gray-200 pt-3">
-                                                                    <span className="text-gray-500">Branch</span>
-                                                                    <span className="font-semibold text-gray-700 uppercase text-[9px]">Colombo Central</span>
-                                                                </div>
+                                                        <div className="supplier-bank-profile-card space-y-4">
+                                                            <div className="flex items-center justify-between gap-3">
+                                                                <h4 className="text-[9px] font-bold text-gray-400 uppercase tracking-[0.3em] flex items-center gap-2">
+                                                                    Banking Details
+                                                                </h4>
+                                                                {!isEditingBankDetails ? (
+                                                                    <button
+                                                                        type="button"
+                                                                        className="supplier-profile-inline-btn"
+                                                                        onClick={() => {
+                                                                            setBankDetailsForm({
+                                                                                bank_name: selectedSupplier.bank_name || '',
+                                                                                bank_account_no: selectedSupplier.bank_account_no || '',
+                                                                                bank_branch: selectedSupplier.bank_branch || ''
+                                                                            });
+                                                                            setIsEditingBankDetails(true);
+                                                                        }}
+                                                                    >
+                                                                        <Edit className="w-3.5 h-3.5" />
+                                                                        Edit
+                                                                    </button>
+                                                                ) : (
+                                                                    <div className="supplier-bank-edit-actions">
+                                                                        <button
+                                                                            type="button"
+                                                                            className="supplier-profile-inline-btn"
+                                                                            onClick={() => {
+                                                                                setBankDetailsForm({
+                                                                                    bank_name: selectedSupplier.bank_name || '',
+                                                                                    bank_account_no: selectedSupplier.bank_account_no || '',
+                                                                                    bank_branch: selectedSupplier.bank_branch || ''
+                                                                                });
+                                                                                setIsEditingBankDetails(false);
+                                                                            }}
+                                                                            disabled={isSavingBankDetails}
+                                                                        >
+                                                                            <X className="w-3.5 h-3.5" />
+                                                                            Cancel
+                                                                        </button>
+                                                                        <button
+                                                                            type="button"
+                                                                            className="supplier-profile-inline-btn supplier-bank-save-btn"
+                                                                            onClick={handleSaveBankDetails}
+                                                                            disabled={isSavingBankDetails}
+                                                                        >
+                                                                            {isSavingBankDetails ? <RefreshCcw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                                                                            Save
+                                                                        </button>
+                                                                    </div>
+                                                                )}
                                                             </div>
+                                                            {!isEditingBankDetails ? (
+                                                                <div className="space-y-3">
+                                                                    <div className="flex justify-between items-center text-[11px]">
+                                                                        <span className="text-gray-500">Bank</span>
+                                                                        <span className="font-semibold text-gray-700">{selectedSupplier.bank_name || 'Not recorded'}</span>
+                                                                    </div>
+                                                                    <div className="flex justify-between items-center text-[11px]">
+                                                                        <span className="text-gray-500">Account No</span>
+                                                                        <span className="font-semibold text-gray-700 tracking-tighter">{selectedSupplier.bank_account_no || 'Not recorded'}</span>
+                                                                    </div>
+                                                                    <div className="flex justify-between items-center text-[11px] border-t border-gray-200 pt-3">
+                                                                        <span className="text-gray-500">Branch</span>
+                                                                        <span className="font-semibold text-gray-700 uppercase text-[9px]">{selectedSupplier.bank_branch || 'Not recorded'}</span>
+                                                                    </div>
+                                                                </div>
+                                                            ) : (
+                                                                <div className="supplier-bank-edit-form">
+                                                                    <label>
+                                                                        <span>Bank Name</span>
+                                                                        <input
+                                                                            type="text"
+                                                                            name="bank_name"
+                                                                            value={bankDetailsForm.bank_name}
+                                                                            onChange={handleBankDetailsChange}
+                                                                            placeholder="Bank name"
+                                                                        />
+                                                                    </label>
+                                                                    <label>
+                                                                        <span>Account Number</span>
+                                                                        <input
+                                                                            type="text"
+                                                                            name="bank_account_no"
+                                                                            value={bankDetailsForm.bank_account_no}
+                                                                            onChange={handleBankDetailsChange}
+                                                                            placeholder="Account number"
+                                                                        />
+                                                                    </label>
+                                                                    <label>
+                                                                        <span>Branch</span>
+                                                                        <input
+                                                                            type="text"
+                                                                            name="bank_branch"
+                                                                            value={bankDetailsForm.bank_branch}
+                                                                            onChange={handleBankDetailsChange}
+                                                                            placeholder="Bank branch"
+                                                                        />
+                                                                    </label>
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     </div>
                                                     <div className="grid grid-cols-2 gap-10">

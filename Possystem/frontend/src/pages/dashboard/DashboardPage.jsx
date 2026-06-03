@@ -5,7 +5,7 @@ import QuickActions from '../../components/dashboard/QuickActions';
 import LowInventoryTable from '../../components/dashboard/LowInventoryTable';
 import { API_BASE_URL } from '../../config/api';
 import { useAuth } from '../../context/AuthContext';
-import { Activity, PackageCheck, RefreshCw, UsersRound } from 'lucide-react';
+import { Activity, AlertCircle, PackageCheck, RefreshCw, UsersRound } from 'lucide-react';
 import '../../styles/dashboard.css';
 
 const DashboardPage = ({ onNavigate }) => {
@@ -14,8 +14,11 @@ const DashboardPage = ({ onNavigate }) => {
         salesToday: 0,
         mostOrderedDish: { name: 'None', quantity: 0 },
         onlineCashiers: { count: 0, names: [] },
-        lowInventory: []
+        lowInventory: [],
+        outOfStock: []
     });
+    const [hasOpenShift, setHasOpenShift] = useState(true);
+    const [shiftNoticeLoading, setShiftNoticeLoading] = useState(false);
     const [, setLoading] = useState(true);
 
     const fetchStats = async () => {
@@ -47,6 +50,35 @@ const DashboardPage = ({ onNavigate }) => {
             setLoading(false);
         }
     }, [userRole]);
+
+    useEffect(() => {
+        if (userRole !== 'CASHIER') return;
+
+        const fetchCashierShift = async () => {
+            try {
+                setShiftNoticeLoading(true);
+                const token = localStorage.getItem('token');
+                const response = await fetch(`${API_BASE_URL}/cash/admin/shifts`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await response.json();
+                const shifts = Array.isArray(data) ? data : [];
+                const cashierName = user?.full_name || user?.name || user?.username;
+                const activeShift = shifts.find(shift => {
+                    const isCurrentCashier = !cashierName || shift.cashier_name === cashierName;
+                    return isCurrentCashier && shift.status === 'OPEN';
+                });
+                setHasOpenShift(Boolean(activeShift));
+            } catch (err) {
+                console.error('Failed to fetch cashier shift status', err);
+                setHasOpenShift(true);
+            } finally {
+                setShiftNoticeLoading(false);
+            }
+        };
+
+        fetchCashierShift();
+    }, [userRole, user?.full_name, user?.name, user?.username]);
 
     return (
         <DashboardLayout onNavigate={onNavigate} activePage="dashboard">
@@ -91,29 +123,46 @@ const DashboardPage = ({ onNavigate }) => {
 
                     <QuickActions onNavigate={onNavigate} />
 
-                    <LowInventoryTable items={stats.lowInventory} />
+                    <LowInventoryTable items={stats.lowInventory} outOfStockItems={stats.outOfStock} />
                 </>
             ) : (
                 <>
-                    <div className="bg-white rounded-2xl border border-[#D7E7DC] p-8 mb-8 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
+                    {!shiftNoticeLoading && !hasOpenShift && (
+                        <div className="cashier-shift-notice">
+                            <div className="cashier-shift-notice-icon">
+                                <AlertCircle size={18} />
+                            </div>
+                            <div>
+                                <h3>Shift not started</h3>
+                                <p>Please start your shift before creating cashier orders.</p>
+                            </div>
+                            <button type="button" onClick={() => onNavigate('cash-counter')}>
+                                Start Shift
+                            </button>
+                        </div>
+                    )}
+
+                    <div className="cashier-welcome-card">
                         <div>
-                            <h2 className="text-2xl font-black text-slate-800 uppercase tracking-tight m-0 mb-2">
+                            <h2>
                                 Welcome Back, {user?.full_name || user?.username}!
                             </h2>
-                            <p className="text-slate-600 font-medium m-0">
+                            <p>
                                 Access cashier operations using the quick actions below. Start a shift in the Cash Counter or create a new sales invoice.
                             </p>
                         </div>
-                        <div className="flex gap-4">
+                        <div className="cashier-welcome-actions">
                             <button
-                                onClick={() => onNavigate('create-order')}
-                                className="flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold uppercase tracking-wider rounded-xl transition-all shadow-lg shadow-emerald-600/20 active:scale-95 text-sm"
+                                type="button"
+                                onClick={() => onNavigate('cashier-new-order')}
+                                className="cashier-welcome-btn"
                             >
                                 POS Sales
                             </button>
                             <button
+                                type="button"
                                 onClick={() => onNavigate('cash-counter')}
-                                className="flex items-center gap-2 px-6 py-3 bg-slate-700 hover:bg-slate-800 text-white font-bold uppercase tracking-wider rounded-xl transition-all shadow-lg active:scale-95 text-sm"
+                                className="cashier-welcome-btn"
                             >
                                 Cash Session
                             </button>

@@ -1,17 +1,21 @@
 import React, { useEffect,  useState } from 'react';
-import { X, Save, User, Building, Phone, RefreshCw, Bookmark, AlertCircle, Mail, MapPin } from 'lucide-react';
+import { X, Save, User, Building, Phone, RefreshCw, Bookmark, AlertCircle, Mail, MapPin, Landmark, CreditCard } from 'lucide-react';
 import '../../../styles/menu.css';
 import { createSupplier, updateSupplier } from '../../../services/supplierService';
 
 const AddSupplierModal = ({ onClose, onSuccess, initialData }) => {
     const isEditing = !!initialData;
-    const [formData, setFormData] = useState(initialData || {
+    const [formData, setFormData] = useState({
         supplier_id: `SUP-${Math.floor(1000 + Math.random() * 9000).toString()}`, // Auto-generated ID
         supplier_name: '',
         company_name: '',
         phone_number: '',
         email: '',
-        address: ''
+        address: '',
+        bank_name: '',
+        bank_account_no: '',
+        bank_branch: '',
+        ...(initialData || {})
     });
     const [loading, setLoading] = useState(false);
 
@@ -166,6 +170,61 @@ const AddSupplierModal = ({ onClose, onSuccess, initialData }) => {
                                         rows="2"
                                         className="w-full bg-white border border-green-200 rounded-xl pl-12 pr-4 py-3 text-sm text-gray-800 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 transition-all resize-none font-medium"
                                     ></textarea>
+                                </div>
+                            </div>
+
+                            <div className="supplier-form-bank-section md:col-span-2">
+                                <div className="supplier-form-section-title">
+                                    <Landmark className="w-4 h-4" />
+                                    <div>
+                                        <span>Bank Details</span>
+                                        <p>Used for supplier settlement payments.</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="text-[11px] font-bold text-green-800 mb-2 block">Bank Name</label>
+                                <div className="relative group">
+                                    <Landmark className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-green-600 transition-colors w-5 h-5" />
+                                    <input
+                                        type="text"
+                                        name="bank_name"
+                                        value={formData.bank_name || ''}
+                                        onChange={handleChange}
+                                        placeholder="Bank name"
+                                        className="w-full bg-white border border-green-200 rounded-xl pl-12 pr-4 py-3 text-sm text-gray-800 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 transition-all font-medium"
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="text-[11px] font-bold text-green-800 mb-2 block">Account Number</label>
+                                <div className="relative group">
+                                    <CreditCard className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-green-600 transition-colors w-5 h-5" />
+                                    <input
+                                        type="text"
+                                        name="bank_account_no"
+                                        value={formData.bank_account_no || ''}
+                                        onChange={handleChange}
+                                        placeholder="Account number"
+                                        className="w-full bg-white border border-green-200 rounded-xl pl-12 pr-4 py-3 text-sm text-gray-800 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 transition-all font-medium"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="md:col-span-2">
+                                <label className="text-[11px] font-bold text-green-800 mb-2 block">Branch</label>
+                                <div className="relative group">
+                                    <Building className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-green-600 transition-colors w-5 h-5" />
+                                    <input
+                                        type="text"
+                                        name="bank_branch"
+                                        value={formData.bank_branch || ''}
+                                        onChange={handleChange}
+                                        placeholder="Bank branch"
+                                        className="w-full bg-white border border-green-200 rounded-xl pl-12 pr-4 py-3 text-sm text-gray-800 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 transition-all font-medium"
+                                    />
                                 </div>
                             </div>
                         </div>

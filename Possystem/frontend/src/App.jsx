@@ -20,6 +20,7 @@ import CashCounterPage from './pages/dashboard/CashCounterPage';
 import CashManagementPage from './pages/admin/CashManagementPage';
 import SupplierPage from './pages/admin/supplier/SupplierPage';
 import SupplierReturnsPage from './pages/admin/supplier/SupplierReturnsPage';
+import RecentPurchasesPage from './pages/admin/supplier/RecentPurchasesPage';
 import ReturnManagementPage from './pages/admin/supplier/ReturnManagementPage';
 import ReportsPage from './pages/admin/ReportsPage';
 import StaffManagementPage from './pages/admin/StaffManagementPage';
@@ -121,6 +122,11 @@ function AppContent() {
       {currentPage === 'supplier-returns' && (
         <ProtectedRoute allowedRoles={['ADMIN']} onNavigate={navigateTo}>
           <SupplierReturnsPage onNavigate={navigateTo} />
+        </ProtectedRoute>
+      )}
+      {currentPage === 'supplier-recent-purchases' && (
+        <ProtectedRoute allowedRoles={['ADMIN']} onNavigate={navigateTo}>
+          <RecentPurchasesPage onNavigate={navigateTo} />
         </ProtectedRoute>
       )}
       {currentPage === 'return-management' && (

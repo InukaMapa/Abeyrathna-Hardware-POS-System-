@@ -43,7 +43,8 @@ const CashCounterPage = ({ onNavigate }) => {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 const data = await response.json();
-                const active = data.find(s => s.status === 'OPEN');
+                const shifts = Array.isArray(data) ? data : [];
+                const active = shifts.find(s => ['OPEN', 'REPORT_SUBMITTED'].includes(s.status));
                 if (active) setCurrentShift(active);
             } catch (err) {
                 console.error('Failed to fetch active shift', err);

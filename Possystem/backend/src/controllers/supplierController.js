@@ -25,7 +25,17 @@ export const fetchSuppliers = async (req, res) => {
  */
 export const addSupplier = async (req, res) => {
     try {
-        const { supplier_id, supplier_name, company_name, phone_number, email, address } = req.body;
+        const {
+            supplier_id,
+            supplier_name,
+            company_name,
+            phone_number,
+            email,
+            address,
+            bank_name,
+            bank_account_no,
+            bank_branch
+        } = req.body;
 
         if (!supplier_id || !supplier_name || !phone_number) {
             return res.status(400).json({ message: 'Supplier ID, Name, and Phone Number are required.' });
@@ -39,7 +49,10 @@ export const addSupplier = async (req, res) => {
                 company_name,
                 phone_number,
                 email,
-                address
+                address,
+                bank_name,
+                bank_account_no,
+                bank_branch
             }])
             .select()
             .single();
@@ -47,6 +60,14 @@ export const addSupplier = async (req, res) => {
         if (error) {
             if (error.code === '23505') {
                 return res.status(400).json({ message: 'Supplier ID already exists.' });
+            }
+            if (
+                ['PGRST204', '42703'].includes(error.code)
+                || /bank_(name|account_no|branch)|column/i.test(error.message || '')
+            ) {
+                return res.status(400).json({
+                    message: 'Supplier bank detail columns are missing. Run backend/sql/add_supplier_bank_details.sql in Supabase, then try again.'
+                });
             }
             throw error;
         }
@@ -65,7 +86,22 @@ export const addSupplier = async (req, res) => {
 export const updateSupplier = async (req, res) => {
     try {
         const { id } = req.params;
-        const updates = req.body;
+        const allowedFields = [
+            'supplier_name',
+            'company_name',
+            'phone_number',
+            'email',
+            'address',
+            'bank_name',
+            'bank_account_no',
+            'bank_branch'
+        ];
+        const updates = allowedFields.reduce((acc, field) => {
+            if (Object.prototype.hasOwnProperty.call(req.body, field)) {
+                acc[field] = req.body[field];
+            }
+            return acc;
+        }, {});
 
         const { data, error } = await supabase
             .from('suppliers')
@@ -74,7 +110,17 @@ export const updateSupplier = async (req, res) => {
             .select()
             .single();
 
-        if (error) throw error;
+        if (error) {
+            if (
+                ['PGRST204', '42703'].includes(error.code)
+                || /bank_(name|account_no|branch)|column/i.test(error.message || '')
+            ) {
+                return res.status(400).json({
+                    message: 'Supplier bank detail columns are missing. Run backend/sql/add_supplier_bank_details.sql in Supabase, then try again.'
+                });
+            }
+            throw error;
+        }
         res.status(200).json(data);
     } catch (err) {
         console.error('Error updating supplier:', err);
