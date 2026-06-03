@@ -19,7 +19,7 @@ export const config = {
         port: process.env.SMTP_PORT,
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS,
-        from: process.env.SMTP_FROM || '"Chill Grand Support" <no-reply@chillgrand.com>'
+        from: process.env.SMTP_FROM || '"Abeyrathna Trade Center Support" <no-reply@abeyrathnatradecenter.com>'
     },
     aws: {
         accessKeyId: process.env.AWS_ACCESS_KEY_ID,
