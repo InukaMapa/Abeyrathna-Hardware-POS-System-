@@ -1,6 +1,24 @@
 import { supabase } from '../config/db.js';
 import { addOrderItem as addOrderItemService, getOrderItemWithVariants } from '../services/orderService.js';
 
+const findOpenShiftForCashier = async (req) => {
+    if (req.user?.role !== 'CASHIER') return { allowed: true, shift: null };
+
+    const cashierName = req.user?.username;
+    if (!cashierName) return { allowed: false, shift: null };
+
+    const { data, error } = await supabase
+        .from('cash_shifts')
+        .select('shift_id, cashier_name, status')
+        .eq('cashier_name', cashierName)
+        .eq('status', 'OPEN')
+        .limit(1)
+        .maybeSingle();
+
+    if (error) throw error;
+    return { allowed: Boolean(data), shift: data || null };
+};
+
 /**
  * Create a new order from a table
  * @route POST /api/orders
@@ -19,6 +37,13 @@ export const createOrder = async (req, res) => {
 
         // Extract staff_id from JWT (populated by protect middleware)
         const staffId = req.user?.userId;
+
+        const shiftCheck = await findOpenShiftForCashier(req);
+        if (!shiftCheck.allowed) {
+            return res.status(403).json({
+                error: 'Please start your shift in the Cash Counter before creating orders.'
+            });
+        }
 
         // Basic validation
         if (!items || !Array.isArray(items) || items.length === 0) {
@@ -680,6 +705,26 @@ export const getOrderById = async (req, res) => {
             return res.status(403).json({ error: 'Access denied. You can only view your own orders.' });
         }
 
+        const itemIds = (order.order_items || []).map(item => item.item_id).filter(Boolean);
+        if (itemIds.length > 0) {
+            const { data: inventoryItems, error: inventoryError } = await supabase
+                .from('inventory')
+                .select('id, buying_price')
+                .in('id', itemIds);
+
+            if (inventoryError) throw inventoryError;
+
+            const buyingPriceById = new Map((inventoryItems || []).map(item => [
+                item.id,
+                Number(item.buying_price || 0)
+            ]));
+
+            order.order_items = (order.order_items || []).map(item => ({
+                ...item,
+                buying_price: buyingPriceById.get(item.item_id) || 0
+            }));
+        }
+
         res.status(200).json(order);
     } catch (error) {
         console.error('Error fetching order by ID:', error);
@@ -695,6 +740,13 @@ export const updateOrderCart = async (req, res) => {
     try {
         const { id } = req.params;
         const { items, customer_phone } = req.body; // array of items: { id, quantity }
+
+        const shiftCheck = await findOpenShiftForCashier(req);
+        if (!shiftCheck.allowed) {
+            return res.status(403).json({
+                error: 'Please start your shift in the Cash Counter before updating orders.'
+            });
+        }
 
         if (!items || !Array.isArray(items)) {
             return res.status(400).json({ error: 'Items array is required' });

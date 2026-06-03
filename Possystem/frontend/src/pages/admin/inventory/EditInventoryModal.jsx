@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Save, RefreshCw } from 'lucide-react';
 import axios from 'axios';
 import { API_BASE_URL } from '../../../config/api';
@@ -57,11 +58,7 @@ const EditInventoryModal = ({ onClose, onSuccess, categories = [], batches = [],
                 ingredient_name: formData.ingredient_name,
                 item_code: formData.item_code,
                 category: formData.category,
-                quantity: formData.quantity,
-                unit: formData.unit,
                 reorder_level: formData.reorder_level,
-                batch_id: formData.batch_id,
-                buying_price: formData.buying_price,
                 selling_price: formData.selling_price,
                 storage_location: formData.storage_location
             };
@@ -79,7 +76,7 @@ const EditInventoryModal = ({ onClose, onSuccess, categories = [], batches = [],
         }
     };
 
-    return (
+    return createPortal(
         <div className="edit-inventory-overlay">
             <div className="edit-inventory-modal">
                 <div className="edit-inventory-header">
@@ -140,12 +137,14 @@ const EditInventoryModal = ({ onClose, onSuccess, categories = [], batches = [],
                                         type="number" step="0.01" required name="quantity"
                                         value={formData.quantity} onChange={handleChange}
                                         placeholder="0.00"
+                                        disabled
                                     />
                                 </div>
                                 <div className="form-group">
                                     <label>Unit</label>
                                     <select
                                         name="unit" value={formData.unit} onChange={handleChange}
+                                        disabled
                                     >
                                         {units.map(u => <option key={u} value={u}>{u}</option>)}
                                     </select>
@@ -165,6 +164,7 @@ const EditInventoryModal = ({ onClose, onSuccess, categories = [], batches = [],
                                         type="number" step="0.01" required name="buying_price"
                                         value={formData.buying_price} onChange={handleChange}
                                         placeholder="Cost Price"
+                                        disabled
                                     />
                                 </div>
                                 <div className="form-group">
@@ -191,6 +191,7 @@ const EditInventoryModal = ({ onClose, onSuccess, categories = [], batches = [],
                                     required
                                     value={formData.batch_id}
                                     onChange={handleChange}
+                                    disabled
                                 >
                                     <option value="">-- Change Active Batch --</option>
                                     {batches.map(b => (
@@ -220,7 +221,8 @@ const EditInventoryModal = ({ onClose, onSuccess, categories = [], batches = [],
                     </button>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };
 

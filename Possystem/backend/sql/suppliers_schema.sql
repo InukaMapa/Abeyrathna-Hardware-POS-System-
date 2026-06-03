@@ -10,6 +10,9 @@ CREATE TABLE IF NOT EXISTS public.suppliers (
     phone_number TEXT NOT NULL,
     email TEXT,
     address TEXT,
+    bank_name TEXT,
+    bank_account_no TEXT,
+    bank_branch TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

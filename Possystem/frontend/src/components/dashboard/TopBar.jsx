@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { Bell, ChevronDown, LogOut, Search, Settings, User } from 'lucide-react';
+import { ChevronDown, LogOut, Search, Settings, User } from 'lucide-react';
 import { API_BASE_URL } from '../../config/api';
 import '../../styles/dashboard.css';
 
@@ -16,7 +16,8 @@ const TopBar = ({ onNavigate }) => {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const data = await response.json();
-            const activeShift = data.find(s => s.status === 'OPEN' || s.status === 'REPORT_SUBMITTED');
+            const shifts = Array.isArray(data) ? data : [];
+            const activeShift = shifts.find(s => ['OPEN', 'REPORT_SUBMITTED'].includes(s.status));
             return !activeShift;
         } catch (err) {
             console.error('Failed to check shift status', err);
@@ -27,7 +28,7 @@ const TopBar = ({ onNavigate }) => {
     const handleLogout = async () => {
         const canLogout = await checkActiveShift();
         if (!canLogout) {
-            alert('❌ Please END your shift in the Cash Counter before logging out.');
+            alert('Please end your active shift in the Cash Counter before logging out.');
             if (onNavigate) onNavigate('cash-counter');
             return;
         }
@@ -45,9 +46,6 @@ const TopBar = ({ onNavigate }) => {
                 <input type="text" placeholder="Search orders, inventory, customers..." className="search-input" />
             </div>
             <div className="user-actions flex items-center gap-4">
-                <button className="icon-btn notification-btn" type="button" title="Notifications" aria-label="Notifications">
-                    <Bell size={19} />
-                </button>
                 <div
                     className="user-menu-trigger"
                     onClick={() => setShowDropdown(!showDropdown)}

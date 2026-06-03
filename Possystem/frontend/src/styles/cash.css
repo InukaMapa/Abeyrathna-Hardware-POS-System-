@@ -392,13 +392,13 @@
 .shift-start-button,
 .cash-action-button {
     border: 0;
-    border-radius: 14px;
-    min-height: 48px;
-    padding: 0 18px;
-    font-size: 0.76rem;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
+    border-radius: 8px;
+    min-height: 40px;
+    padding: 0 16px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    letter-spacing: 0;
+    text-transform: none;
     cursor: pointer;
     transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, border-color 0.18s ease;
 }
@@ -1445,4 +1445,70 @@
 .dashboard-layout .cash-counter-container button.cash-submit-confirm.cash-submit-confirm:disabled {
     opacity: 0.55 !important;
     cursor: not-allowed !important;
+}
+
+/* Cash counter start screen: compact official theme */
+.cash-page-header,
+.shift-details-card,
+.shift-start-card {
+    border-radius: 8px;
+}
+
+.cash-page-title-group h2,
+.shift-start-header h2 {
+    font-weight: 500;
+    text-transform: none;
+}
+
+.shift-details-header h2 {
+    font-weight: 500;
+}
+
+.shift-start-card {
+    padding: 24px;
+}
+
+.shift-start-header {
+    margin-bottom: 22px;
+}
+
+.shift-start-icon {
+    width: 46px;
+    height: 46px;
+    min-width: 46px;
+    border-radius: 8px;
+}
+
+.shift-start-icon svg {
+    width: 22px;
+    height: 22px;
+}
+
+.shift-input {
+    min-height: 42px;
+    border-radius: 8px;
+    font-weight: 400;
+}
+
+.shift-input.money {
+    min-height: 44px;
+    font-weight: 400;
+}
+
+.dashboard-layout .cash-counter-container button.shift-start-button.shift-start-button,
+.dashboard-layout .cash-counter-container button.cash-action-button.cash-action-button {
+    min-height: 40px !important;
+    border-radius: 8px !important;
+    padding: 0 16px !important;
+    font-size: 0.8rem !important;
+    font-weight: 500 !important;
+    letter-spacing: 0 !important;
+    text-transform: none !important;
+    box-shadow: none !important;
+}
+
+.dashboard-layout .cash-counter-container button.shift-start-button.shift-start-button:hover,
+.dashboard-layout .cash-counter-container button.cash-action-button.cash-action-button:hover {
+    transform: none !important;
+    box-shadow: 0 0 0 3px rgba(207, 224, 212, 0.42) !important;
 }

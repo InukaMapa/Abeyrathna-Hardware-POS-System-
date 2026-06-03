@@ -490,30 +490,12 @@ const ReportsPage = ({ onNavigate }) => {
                         {/* Export Menu */}
                         <div className="bg-white rounded-2xl p-5 shadow-sm border border-emerald-50 text-slate-700">
                             <h3 className="text-[11px] font-semibold text-slate-600 uppercase tracking-[0.2em] mb-4">Export Options</h3>
-                            <div className="grid grid-cols-2 gap-3">
-                                <button onClick={() => handleExport('pdf')} className="inventory-outline-btn report-export-btn flex flex-col items-center justify-center p-4 rounded-2xl transition-all group">
-                                    <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-                                        <FileText className="w-5 h-5 text-red-500" />
-                                    </div>
-                                    <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-600">PDF</span>
-                                </button>
+                            <div className="grid grid-cols-1 gap-3">
                                 <button onClick={() => handleExport('excel')} className="inventory-outline-btn report-export-btn flex flex-col items-center justify-center p-4 rounded-2xl transition-all group">
                                     <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
                                         <BarChart2 className="w-5 h-5 text-green-500" />
                                     </div>
                                     <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-600">Excel</span>
-                                </button>
-                                <button onClick={() => handleExport('csv')} className="inventory-outline-btn report-export-btn flex flex-col items-center justify-center p-4 rounded-2xl transition-all group">
-                                    <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-                                        <FileText className="w-5 h-5 text-blue-500" />
-                                    </div>
-                                    <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-600">CSV</span>
-                                </button>
-                                <button onClick={() => handleExport('image')} className="inventory-outline-btn report-export-btn flex flex-col items-center justify-center p-4 rounded-2xl transition-all group">
-                                    <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-                                        <Download className="w-5 h-5 text-yellow-500" />
-                                    </div>
-                                    <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-600">Image</span>
                                 </button>
                             </div>
                         </div>
