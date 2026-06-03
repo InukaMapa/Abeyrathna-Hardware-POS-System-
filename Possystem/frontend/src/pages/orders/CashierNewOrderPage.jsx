@@ -67,7 +67,7 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
                 const cashierName = user?.full_name || user?.name || user?.username;
                 const openShift = shifts.find(shift => {
                     const isCurrentCashier = !cashierName || shift.cashier_name === cashierName;
-                    return isCurrentCashier && shift.status === 'OPEN';
+                    return isCurrentCashier && ['OPEN', 'REPORT_SUBMITTED'].includes(shift.status);
                 });
                 setHasOpenShift(Boolean(openShift));
                 setCheckingShift(false);

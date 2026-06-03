@@ -504,11 +504,15 @@ const BillOpenPage = ({ orderId, onNavigate }) => {
                                 </button>
                             </div>
 
-                            {/* Balance block */}
-                            <div className={`p-4 rounded-xl border ${balance >= 0 ? 'bg-emerald-900/10 border-emerald-500/20 text-emerald-400' : 'bg-red-900/10 border-red-500/20 text-red-400'}`}>
-                                <div className="flex justify-between items-center text-sm font-bold uppercase tracking-widest">
-                                    <span>{balance >= 0 ? 'Change To Give' : 'Balance Due'}</span>
-                                    <span className="text-xl tabular-nums font-mono">Rs. {Math.abs(balance).toFixed(2)}</span>
+                            {/* Balance summary */}
+                            <div className="bill-balance-summary pt-4 mt-3 border-t border-[#333]">
+                                <div className="flex justify-between items-baseline gap-4">
+                                    <span className="bill-balance-label text-xs font-black text-gray-500 uppercase tracking-widest">
+                                        {balance >= 0 ? 'Change To Give' : 'Balance Due'}
+                                    </span>
+                                    <span className={`bill-balance-amount text-lg tabular-nums font-mono font-black ${balance >= 0 ? 'is-change text-emerald-500' : 'text-gray-900'}`}>
+                                        Rs. {Math.abs(balance).toFixed(2)}
+                                    </span>
                                 </div>
                             </div>
                         </div>

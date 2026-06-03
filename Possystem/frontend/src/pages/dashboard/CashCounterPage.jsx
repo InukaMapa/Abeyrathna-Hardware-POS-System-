@@ -7,6 +7,7 @@ import MovementForm from '../../components/cash/MovementForm';
 import ShiftSummaryPanel from '../../components/cash/ShiftSummaryPanel';
 import ShiftReportModal from '../../components/cash/ShiftReportModal';
 import { API_BASE_URL } from '../../config/api';
+import { CreditCard, Landmark, UserRound, X } from 'lucide-react';
 import '../../styles/cash.css';
 
 const CashCounterPage = ({ onNavigate }) => {
@@ -21,6 +22,15 @@ const CashCounterPage = ({ onNavigate }) => {
     const [activeCashTab, setActiveCashTab] = useState('counter');
     const [selectedCountForSubmit, setSelectedCountForSubmit] = useState(null);
     const [showSubmitModal, setShowSubmitModal] = useState(false);
+    const [showCashierProfile, setShowCashierProfile] = useState(false);
+    const [electronicPayments, setElectronicPayments] = useState({
+        bank_total: 0,
+        card_total: 0,
+        total: 0,
+        count: 0,
+        payments: []
+    });
+    const [electronicPaymentsLoading, setElectronicPaymentsLoading] = useState(false);
 
     // For historical report pop-up
     const [historyReportCount, setHistoryReportCount] = useState(null);
@@ -32,6 +42,7 @@ const CashCounterPage = ({ onNavigate }) => {
 
     // For tracking latest values without triggering prop loops
     const liveCounts = React.useRef({});
+    const isActiveWorkingShift = currentShift && ['OPEN', 'REPORT_SUBMITTED'].includes(currentShift.status);
 
     useEffect(() => {
         // Find active shift on mount
@@ -57,11 +68,17 @@ const CashCounterPage = ({ onNavigate }) => {
     }, []);
 
     useEffect(() => {
-        if (currentShift && currentShift.status === 'OPEN') {
+        if (isActiveWorkingShift) {
             fetchLatestCount();
             fetchHistory();
         }
-    }, [currentShift]);
+    }, [currentShift?.shift_id, currentShift?.status]);
+
+    useEffect(() => {
+        if (isActiveWorkingShift && activeCashTab === 'electronic') {
+            fetchElectronicPayments();
+        }
+    }, [currentShift?.shift_id, currentShift?.status, activeCashTab]);
 
     const fetchHistory = async () => {
         try {
@@ -92,6 +109,30 @@ const CashCounterPage = ({ onNavigate }) => {
             }
         } catch (err) {
             console.error('Failed to fetch latest count', err);
+        }
+    };
+
+    const fetchElectronicPayments = async () => {
+        try {
+            setElectronicPaymentsLoading(true);
+            const token = localStorage.getItem('token');
+            const response = await fetch(`${API_BASE_URL}/cash/shift-electronic-payments/${currentShift.shift_id}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await response.json();
+            if (response.ok) {
+                setElectronicPayments({
+                    bank_total: Number(data.bank_total || 0),
+                    card_total: Number(data.card_total || 0),
+                    total: Number(data.total || 0),
+                    count: Number(data.count || 0),
+                    payments: Array.isArray(data.payments) ? data.payments : []
+                });
+            }
+        } catch (err) {
+            console.error('Failed to fetch bank and card payments', err);
+        } finally {
+            setElectronicPaymentsLoading(false);
         }
     };
 
@@ -205,7 +246,11 @@ const CashCounterPage = ({ onNavigate }) => {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
-                body: JSON.stringify({ shift_id: currentShift.shift_id })
+                body: JSON.stringify({
+                    shift_id: currentShift.shift_id,
+                    actual_cash: actualTotal,
+                    expected_cash: summaryData?.expected_cash || 0
+                })
             });
 
             const data = await response.json();
@@ -252,7 +297,21 @@ const CashCounterPage = ({ onNavigate }) => {
                     <ShiftStartForm onShiftStarted={handleShiftStarted} />
                 ) : (
                     <>
-                        <CashierProfileCard />
+                        <div className="cashier-profile-dock">
+                            <button
+                                type="button"
+                                className="cashier-profile-toggle"
+                                onClick={() => setShowCashierProfile(true)}
+                                title="View cashier profile"
+                                aria-label="View cashier profile"
+                            >
+                                <UserRound size={20} />
+                            </button>
+                            <div className="cashier-profile-dock-text">
+                                <span>Cashier profile</span>
+                                <strong>Shift details available</strong>
+                            </div>
+                        </div>
 
                         <div className="cash-workspace-tabs">
                             <button
@@ -264,6 +323,14 @@ const CashCounterPage = ({ onNavigate }) => {
                             </button>
                             <button
                                 type="button"
+                                className={`inventory-outline-btn cash-workspace-tab ${activeCashTab === 'electronic' ? 'active' : ''}`}
+                                onClick={() => setActiveCashTab('electronic')}
+                            >
+                                Bank & Card Payments
+                                <span>{electronicPayments.count}</span>
+                            </button>
+                            <button
+                                type="button"
                                 className={`inventory-outline-btn cash-workspace-tab ${activeCashTab === 'documents' ? 'active' : ''}`}
                                 onClick={() => setActiveCashTab('documents')}
                             >
@@ -272,7 +339,7 @@ const CashCounterPage = ({ onNavigate }) => {
                             </button>
                         </div>
 
-                        {activeCashTab === 'counter' ? (
+                        {activeCashTab === 'counter' && (
                             <div className="active-shift-layout">
                                 <div className="denomination-column">
                                     <DenominationCounter
@@ -331,14 +398,14 @@ const CashCounterPage = ({ onNavigate }) => {
                                             <button
                                                 className="cash-action-button primary"
                                                 onClick={handleOpenSubmitModal}
-                                                disabled={savingCount || currentShift.status === 'REPORT_SUBMITTED'}
+                                                disabled={savingCount}
                                             >
                                                 {currentShift.status === 'REPORT_SUBMITTED' ? (
                                                     <span className="flex items-center justify-center gap-2">
                                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                                                         </svg>
-                                                        Report Sent
+                                                        Send Updated Report
                                                     </span>
                                                 ) : 'Submit to Admin'}
                                             </button>
@@ -365,7 +432,103 @@ const CashCounterPage = ({ onNavigate }) => {
                                     </div>
                                 </div>
                             </div>
-                        ) : (
+                        )}
+
+                        {activeCashTab === 'electronic' && (
+                            <div className="electronic-payments-panel">
+                                <div className="electronic-payments-header">
+                                    <div>
+                                        <span>Non-cash settlement register</span>
+                                        <h3>Bank & Card Payments</h3>
+                                        <p>Review all bank transfer and card payment records closed during this active shift.</p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        className="inventory-outline-btn electronic-refresh-btn"
+                                        onClick={fetchElectronicPayments}
+                                    >
+                                        Refresh
+                                    </button>
+                                </div>
+
+                                <div className="electronic-totals-grid">
+                                    <div className="electronic-total-card">
+                                        <div className="electronic-total-icon">
+                                            <Landmark size={20} />
+                                        </div>
+                                        <div>
+                                            <span>Bank Transfer Total</span>
+                                            <strong>Rs. {electronicPayments.bank_total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+                                        </div>
+                                    </div>
+                                    <div className="electronic-total-card">
+                                        <div className="electronic-total-icon">
+                                            <CreditCard size={20} />
+                                        </div>
+                                        <div>
+                                            <span>Card Payments Total</span>
+                                            <strong>Rs. {electronicPayments.card_total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+                                        </div>
+                                    </div>
+                                    <div className="electronic-total-card electronic-total-card-muted">
+                                        <div>
+                                            <span>Combined Non-cash Total</span>
+                                            <strong>Rs. {electronicPayments.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="electronic-table-card">
+                                    <div className="electronic-table-title">
+                                        <h4>Payment Details</h4>
+                                        <span>{electronicPayments.count} Records</span>
+                                    </div>
+
+                                    {electronicPaymentsLoading ? (
+                                        <div className="electronic-empty-state">Loading bank and card payment details...</div>
+                                    ) : electronicPayments.payments.length === 0 ? (
+                                        <div className="electronic-empty-state">
+                                            No bank transfer or card payments recorded for this shift yet.
+                                        </div>
+                                    ) : (
+                                        <div className="electronic-table-wrap">
+                                            <table className="electronic-payments-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Order ID</th>
+                                                        <th>Payment Type</th>
+                                                        <th>Method</th>
+                                                        <th>Closed Time</th>
+                                                        <th>Order Total</th>
+                                                        <th>Transfer / Card Amount</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {electronicPayments.payments.map((payment, index) => (
+                                                        <tr key={`${payment.order_id}-${payment.method}-${index}`}>
+                                                            <td>#{payment.order_id}</td>
+                                                            <td>
+                                                                <span className={`electronic-method-pill ${payment.type === 'Card' ? 'is-card' : 'is-bank'}`}>
+                                                                    {payment.type}
+                                                                </span>
+                                                            </td>
+                                                            <td>{payment.method}</td>
+                                                            <td>{payment.closed_at ? new Date(payment.closed_at).toLocaleString() : '-'}</td>
+                                                            <td>Rs. {Number(payment.order_total || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                                            <td className="electronic-amount-cell">
+                                                                Rs. {Number(payment.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {activeCashTab === 'documents' && (
                             <div className="saved-documents-panel">
                                 <div className="saved-documents-header">
                                     <div>
@@ -450,6 +613,29 @@ const CashCounterPage = ({ onNavigate }) => {
                 shift={currentShift}
                 selectedCount={historyReportCount}
             />
+
+            {showCashierProfile && (
+                <div className="modal-overlay cashier-profile-modal-overlay" onClick={() => setShowCashierProfile(false)}>
+                    <div className="cashier-profile-modal" onClick={e => e.stopPropagation()}>
+                        <div className="cashier-profile-modal-header">
+                            <div>
+                                <span>Cashier details</span>
+                                <h2>Profile Information</h2>
+                            </div>
+                            <button
+                                type="button"
+                                className="cashier-profile-close"
+                                onClick={() => setShowCashierProfile(false)}
+                                title="Close profile"
+                                aria-label="Close profile"
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+                        <CashierProfileCard />
+                    </div>
+                </div>
+            )}
 
             {/* Submit Selection Modal */}
             {showSubmitModal && (
