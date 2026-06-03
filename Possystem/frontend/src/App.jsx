@@ -43,13 +43,6 @@ function AppContent() {
   const [editOrderData, setEditOrderData] = useState(null);
   const [supplierFocusSection, setSupplierFocusSection] = useState(null);
 
-  // Check authentication on mount and stay on dashboard if authenticated
-  useEffect(() => {
-    if (!initializing && isAuthenticated) {
-      setCurrentPage('dashboard');
-    }
-  }, [isAuthenticated, initializing]);
-
   // Don't render anything until auth is initialized
   if (initializing) {
     return null;
@@ -57,6 +50,11 @@ function AppContent() {
 
   const navigateTo = (page, params = {}) => {
     setCurrentPage(page);
+    try {
+      localStorage.setItem('lastPage', page);
+    } catch (e) {
+      // ignore
+    }
     // Optional: update URL
     if (page === 'login') window.history.pushState({}, '', '/');
 
@@ -77,6 +75,30 @@ function AppContent() {
       setSupplierFocusSection(params.focusSection || null);
     }
   };
+
+  // Restore last page after auth initializes
+  useEffect(() => {
+    if (initializing) return;
+
+    // If user is authenticated, try to restore last page or go to dashboard
+    try {
+      const last = localStorage.getItem('lastPage');
+      if (isAuthenticated) {
+        if (last && last !== 'login' && last !== 'forgot-password' && last !== 'reset-password' && last !== 'verify-email' && last !== 'unauthorized') {
+          setCurrentPage(last);
+          return;
+        }
+        setCurrentPage('dashboard');
+        return;
+      }
+
+      // Not authenticated: default to login
+      setCurrentPage('login');
+    } catch (err) {
+      if (isAuthenticated) setCurrentPage('dashboard');
+      else setCurrentPage('login');
+    }
+  }, [initializing, isAuthenticated]);
 
   return (
     <>
