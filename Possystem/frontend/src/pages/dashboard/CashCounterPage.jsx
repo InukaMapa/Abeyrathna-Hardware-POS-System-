@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import ShiftStartForm from '../../components/cash/ShiftStartForm';
+import CashierProfileCard from '../../components/cash/CashierProfileCard';
 import DenominationCounter from '../../components/cash/DenominationCounter';
 import MovementForm from '../../components/cash/MovementForm';
 import ShiftSummaryPanel from '../../components/cash/ShiftSummaryPanel';
@@ -250,6 +251,8 @@ const CashCounterPage = ({ onNavigate }) => {
                     <ShiftStartForm onShiftStarted={handleShiftStarted} />
                 ) : (
                     <>
+                        <CashierProfileCard />
+
                         <div className="cash-workspace-tabs">
                             <button
                                 type="button"

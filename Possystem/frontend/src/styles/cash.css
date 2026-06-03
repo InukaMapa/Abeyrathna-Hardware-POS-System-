@@ -249,6 +249,12 @@
     font-weight: 500;
 }
 
+.cashier-profile-card {
+    margin: 0 auto 24px;
+    width: min(680px, 100%);
+    max-width: 100%;
+}
+
 .shift-start-card {
     padding: 28px;
 }
