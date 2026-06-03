@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { fetchInventoryCategories, fetchInventoryItems } from '../../services/menuService';
 import { createOrder } from '../../services/orderService';
+import { useAuth } from '../../context/AuthContext';
 
 /* ───────────────────────────── helpers ───────────────────────────── */
 const API_BASE = '/api';
@@ -15,6 +16,7 @@ const getAuthHeaders = () => {
 /* ───────────────────────────── component ───────────────────────────── */
 
 const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
+    const { user } = useAuth();
     /* ── data state ── */
     const [categories, setCategories] = useState([]);
     const [inventoryItems, setInventoryItems] = useState([]);
@@ -31,6 +33,8 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
     const [customerPhone, setCustomerPhone] = useState(editOrder?.customer_phone || '');
     const [barcodeInput, setBarcodeInput] = useState('');
     const [barcodeError, setBarcodeError] = useState(null);
+    const [checkingShift, setCheckingShift] = useState(true);
+    const [hasOpenShift, setHasOpenShift] = useState(false);
 
     // Initialize cart from editOrder if present
     useEffect(() => {
@@ -39,6 +43,7 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
                 id: item.item_id,
                 name: item.item_name,
                 price: parseFloat(item.item_price) || 0,
+                buyingPrice: parseFloat(item.buying_price || item.buying_price_at_time || 0),
                 // image is not in order_items but will be merged or handled
                 quantity: item.quantity
             }));
@@ -52,6 +57,26 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
             try {
                 setLoading(true);
                 setError(null);
+                setCheckingShift(true);
+
+                const shiftResponse = await fetch(`${API_BASE}/cash/admin/shifts`, {
+                    headers: getAuthHeaders()
+                });
+                const shiftData = await shiftResponse.json();
+                const shifts = Array.isArray(shiftData) ? shiftData : [];
+                const cashierName = user?.full_name || user?.name || user?.username;
+                const openShift = shifts.find(shift => {
+                    const isCurrentCashier = !cashierName || shift.cashier_name === cashierName;
+                    return isCurrentCashier && shift.status === 'OPEN';
+                });
+                setHasOpenShift(Boolean(openShift));
+                setCheckingShift(false);
+
+                if (!openShift) {
+                    setLoading(false);
+                    return;
+                }
+
                 const [cats, items] = await Promise.all([
                     fetchInventoryCategories(),
                     fetchInventoryItems(),
@@ -65,6 +90,7 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
                     id: item.id,
                     name: item.ingredient_name,
                     price: parseFloat(item.selling_price || 0),
+                    buyingPrice: parseFloat(item.buying_price || 0),
                     category: item.category,
                     image: item.image || null,
                     unit: item.unit,
@@ -76,12 +102,13 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
             } catch (err) {
                 console.error('Failed to load inventory/categories:', err);
                 setError('Failed to load products. Please refresh.');
+                setCheckingShift(false);
             } finally {
                 setLoading(false);
             }
         };
         load();
-    }, []);
+    }, [user?.full_name, user?.name, user?.username]);
 
     /* ── derived: filtered + searched items ── */
     const filteredItems = useMemo(() => {
@@ -125,6 +152,7 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
                 id: item.id,
                 name: item.name,
                 price: parseFloat(item.price) || 0,
+                buyingPrice: parseFloat(item.buyingPrice || 0),
                 image: item.image,
                 quantity: 1,
             }];
@@ -177,6 +205,10 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
 
     /* ── submit order ── */
     const handleSubmit = async () => {
+        if (!hasOpenShift) {
+            setSubmitError('Please start your shift in the Cash Counter before creating orders.');
+            return;
+        }
         if (cartItems.length === 0) return;
         setSubmitting(true);
         setSubmitError(null);
@@ -223,6 +255,46 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
     /* ── category display name helper ── */
     const getCategoryDisplay = (cat) =>
         cat.name || cat.category_name || cat.label || '';
+
+    if (checkingShift || loading) {
+        return (
+            <DashboardLayout onNavigate={onNavigate} activePage="orders">
+                <div className="cashier-new-order-page min-h-screen px-4 py-6 md:px-8">
+                    <div className="orders-state-card flex flex-col items-center justify-center py-20">
+                        <div className="orders-spinner mb-4"></div>
+                        <p>{checkingShift ? 'Checking shift status...' : 'Loading order workspace...'}</p>
+                    </div>
+                </div>
+            </DashboardLayout>
+        );
+    }
+
+    if (!hasOpenShift) {
+        return (
+            <DashboardLayout onNavigate={onNavigate} activePage="orders">
+                <div className="cashier-new-order-page min-h-screen px-4 py-6 md:px-8">
+                    <div className="cashier-shift-block">
+                        <div className="cashier-shift-block-icon">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3A9 9 0 113 12a9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                        <p className="cashier-shift-block-kicker">Cashier shift required</p>
+                        <h2>Start your shift first</h2>
+                        <span>You cannot create or update orders until an active cash shift is started in the Cash Counter.</span>
+                        <div className="cashier-shift-block-actions">
+                            <button type="button" onClick={() => onNavigate('cash-counter')}>
+                                Start Shift
+                            </button>
+                            <button type="button" onClick={() => onNavigate('orders')}>
+                                Back to Orders
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </DashboardLayout>
+        );
+    }
 
     /* ╔══════════════════════════════════════════════════╗
        ║                    RENDER                        ║
@@ -607,6 +679,9 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
                                             {/* Info */}
                                             <div className="flex-1 min-w-0">
                                                 <p className="font-bold text-white text-xs leading-tight truncate mb-1">{item.name}</p>
+                                                <p className="text-[10px] text-gray-500 font-medium mb-1">
+                                                    Buying price: Rs. {(parseFloat(item.buyingPrice || 0)).toFixed(2)}
+                                                </p>
                                                 <p className="text-red-500 font-black text-xs mb-2">
                                                     Rs. {(item.price * item.quantity).toFixed(2)}
                                                 </p>

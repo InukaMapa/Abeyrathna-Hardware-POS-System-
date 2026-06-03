@@ -30,7 +30,7 @@ const QuickActions = ({ onNavigate }) => {
                             key={index}
                             className="action-card"
                             onClick={() => {
-                                if (action.name === 'New Order') onNavigate('create-order');
+                                if (action.name === 'New Order') onNavigate('cashier-new-order');
                                 else if (action.name === 'Cash Counter') {
                                     // Specific logic for Cash Counter based on role
                                     if (userRole === 'ADMIN') onNavigate('cash-management');

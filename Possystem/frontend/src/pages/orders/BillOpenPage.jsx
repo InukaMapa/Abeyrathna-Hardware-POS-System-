@@ -54,6 +54,7 @@ const BillOpenPage = ({ orderId, onNavigate }) => {
             const mappedItems = (orderData.order_items || []).map(item => ({
                 ...item,
                 editablePrice: parseFloat(item.item_price) || 0,
+                buyingPrice: parseFloat(item.buying_price || item.buying_price_at_time || 0),
                 itemDiscount: 0,
                 editableQty: item.quantity
             }));
@@ -294,7 +295,16 @@ const BillOpenPage = ({ orderId, onNavigate }) => {
                 {/* 1. HEADER SECTION */}
                 <div className="bg-[#1E1E1E] border border-[#333] rounded-2xl shadow-xl p-6 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6">
                     <div className="flex items-center gap-4">
-                        <button onClick={() => onNavigate('order-details', { orderId })} className="bill-open-back-btn p-3 bg-white/5 border border-white/10 hover:bg-white/10 rounded-xl transition-all"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg></button>
+                        <button
+                            onClick={() => onNavigate('order-details', { orderId })}
+                            className="bill-open-back-btn"
+                            title="Back to order details"
+                            aria-label="Back to order details"
+                        >
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                            </svg>
+                        </button>
                         <div>
                             <h2 className="text-2xl font-black uppercase tracking-tight m-0 text-emerald-500">Invoice #{order.order_id}</h2>
                             <div className="flex items-center gap-4 mt-2 font-mono text-gray-400 text-xs">
@@ -349,6 +359,7 @@ const BillOpenPage = ({ orderId, onNavigate }) => {
                                         <th className="px-4 py-3">SKU / Unit</th>
                                         <th className="px-4 py-3 text-center">Qty</th>
                                         <th className="px-4 py-3 text-right">Unit Price</th>
+                                        <th className="px-4 py-3 text-right">Buying Price</th>
                                         <th className="px-4 py-3 text-right">Discount</th>
                                         <th className="px-4 py-3 text-right border-l border-[#333]">Net Total</th>
                                     </tr>
@@ -369,6 +380,9 @@ const BillOpenPage = ({ orderId, onNavigate }) => {
                                                     <span className="font-mono text-gray-300 font-bold">{parseFloat(item.editablePrice).toFixed(2)}</span>
                                                 </td>
                                                 <td className="px-4 py-3 text-right">
+                                                    <span className="bill-buying-price-label">Rs. {parseFloat(item.buyingPrice || 0).toFixed(2)}</span>
+                                                </td>
+                                                <td className="px-4 py-3 text-right">
                                                     <input
                                                         type="number"
                                                         min="0" step="0.01"
@@ -386,7 +400,7 @@ const BillOpenPage = ({ orderId, onNavigate }) => {
                                     })}
                                     {items.length === 0 && (
                                         <tr>
-                                            <td colSpan="6" className="text-center py-12 text-gray-600 font-bold uppercase tracking-widest text-xs">No items in the cart</td>
+                                            <td colSpan="7" className="text-center py-12 text-gray-600 font-bold uppercase tracking-widest text-xs">No items in the cart</td>
                                         </tr>
                                     )}
                                 </tbody>

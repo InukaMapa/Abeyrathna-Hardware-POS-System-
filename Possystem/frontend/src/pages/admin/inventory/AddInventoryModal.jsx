@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Save, ScanLine, Type, RefreshCw } from 'lucide-react';
 import axios from 'axios';
 import { API_BASE_URL } from '../../../config/api';
@@ -12,6 +13,7 @@ const AddInventoryModal = ({ onClose, onSuccess, onScanBillClick, categories = [
         category: categories.length > 0 ? categories[0].name : '', // Default to first category
         quantity: '',
         unit: 'kg',
+        reorder_level: '10',
         batch_id: '',
         buying_price: '',
         selling_price: '',
@@ -79,7 +81,7 @@ const AddInventoryModal = ({ onClose, onSuccess, onScanBillClick, categories = [
         }
     };
 
-    return (
+    return createPortal(
         <div className="add-inventory-overlay">
             <div className="add-inventory-modal animate-slide-up">
                 
@@ -136,6 +138,7 @@ const AddInventoryModal = ({ onClose, onSuccess, onScanBillClick, categories = [
                                                     category: inv?.category || categories[0]?.name || '',
                                                     quantity: ret?.quantity || '',
                                                     unit: inv?.unit || 'kg',
+                                                    reorder_level: inv?.reorder_level || '10',
                                                     batch_id: b.id,
                                                     buying_price: inv?.buying_price || '',
                                                     selling_price: inv?.selling_price || '',
@@ -179,7 +182,7 @@ const AddInventoryModal = ({ onClose, onSuccess, onScanBillClick, categories = [
                                         <input
                                             type="text" required name="ingredient_name"
                                             value={formData.ingredient_name} onChange={handleChange}
-                                            placeholder="e.g. Tomatoes"
+                                            placeholder="Item Name"
                                         />
                                     </div>
                                     <div>
@@ -236,6 +239,14 @@ const AddInventoryModal = ({ onClose, onSuccess, onScanBillClick, categories = [
                                                 {units.map(u => <option key={u} value={u}>{u}</option>)}
                                             </select>
                                         </div>
+                                    </div>
+                                    <div>
+                                        <label>Low Inventory Level</label>
+                                        <input
+                                            type="number" step="0.01" min="0" name="reorder_level"
+                                            value={formData.reorder_level} onChange={handleChange}
+                                            placeholder="Low Inventory Level"
+                                        />
                                     </div>
                                     <div className="add-inventory-split add-inventory-full">
                                         <div>
@@ -311,7 +322,8 @@ const AddInventoryModal = ({ onClose, onSuccess, onScanBillClick, categories = [
                     )}
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };
 
