@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, Package, Edit, FileText, AlertTriangle, AlertCircle, Loader, Settings, ScanLine, X } from 'lucide-react';
+import { Search, Plus, Package, PackagePlus, Edit, FileText, AlertTriangle, AlertCircle, Loader, Settings, X } from 'lucide-react';
 import axios from 'axios';
 import AddInventoryModal from './AddInventoryModal';
+import ReceiveInventoryModal from './ReceiveInventoryModal';
 import EditInventoryModal from './EditInventoryModal';
 import CategoryManagerModal from './CategoryManagerModal';
 import ScanBillModal from './ScanBillModal';
@@ -22,6 +23,7 @@ const InventoryPage = ({ onNavigate }) => {
 
     // Modals
     const [showAddModal, setShowAddModal] = useState(false);
+    const [showReceiveModal, setShowReceiveModal] = useState(false);
     const [showScanModal, setShowScanModal] = useState(false);
     const [showCategoryModal, setShowCategoryModal] = useState(false);
     const [showBatchModal, setShowBatchModal] = useState(false);
@@ -114,6 +116,30 @@ const InventoryPage = ({ onNavigate }) => {
         setEditingItem(item);
     };
 
+    const renderPriceTiers = (item) => {
+        const tiers = item.stock_price_tiers || [];
+        if (tiers.length === 0) {
+            return (
+                <div className="inventory-price">
+                    Rs. {parseFloat(item.selling_price || 0).toFixed(2)}
+                </div>
+            );
+        }
+
+        return (
+            <div className="inventory-price-tier-list">
+                {tiers.slice(0, 2).map((tier, index) => (
+                    <div key={`${tier.selling_price}-${index}`} className="inventory-price-tier">
+                        {tier.quantity_remaining} {item.unit} @ Rs. {parseFloat(tier.selling_price || 0).toFixed(2)}
+                    </div>
+                ))}
+                {tiers.length > 2 && (
+                    <div className="inventory-price-tier muted">+{tiers.length - 2} more</div>
+                )}
+            </div>
+        );
+    };
+
     return (
         <DashboardLayout activePage="inventory" onNavigate={onNavigate}>
             <div className="menu-management-container inventory-page animate-fade-in custom-scrollbar">
@@ -148,6 +174,14 @@ const InventoryPage = ({ onNavigate }) => {
                             >
                                 <Plus size={15} />
                                 Add Inventory
+                            </button>
+                            <button
+                                title="Update Inventory"
+                                onClick={() => setShowReceiveModal(true)}
+                                className="inventory-outline-btn"
+                            >
+                                <PackagePlus size={15} />
+                                Update Inventory
                             </button>
                         </div>
                     </div>
@@ -252,7 +286,7 @@ const InventoryPage = ({ onNavigate }) => {
                                                 </span>
                                             </td>
                                             <td className="p-4 text-right inventory-price">
-                                                Rs. {parseFloat(item.selling_price || 0).toFixed(2)}
+                                                {renderPriceTiers(item)}
                                             </td>
                                             <td className="p-4 text-right">
                                                 <div className="flex items-center justify-end gap-2">
@@ -303,6 +337,18 @@ const InventoryPage = ({ onNavigate }) => {
                         onSuccess={() => {
                             setShowAddModal(false);
                             fetchInventory();
+                        }}
+                    />
+                )}
+
+                {showReceiveModal && (
+                    <ReceiveInventoryModal
+                        onClose={() => setShowReceiveModal(false)}
+                        batches={batches}
+                        onSuccess={() => {
+                            setShowReceiveModal(false);
+                            fetchInventory();
+                            fetchBatches();
                         }}
                     />
                 )}

@@ -25,6 +25,42 @@ const formatDate = (value) => {
     });
 };
 
+const getPurchaseDate = (batch) => {
+    const rawDate = batch.batch_date || batch.created_at;
+    if (!rawDate) return null;
+
+    const date = new Date(rawDate);
+    return Number.isNaN(date.getTime()) ? null : date;
+};
+
+const isSameDay = (date, comparisonDate) => (
+    date.getFullYear() === comparisonDate.getFullYear()
+    && date.getMonth() === comparisonDate.getMonth()
+    && date.getDate() === comparisonDate.getDate()
+);
+
+const matchesDateFilter = (date, filter) => {
+    if (filter === 'all') return true;
+    if (!date) return false;
+
+    const today = new Date();
+
+    if (filter === 'today') {
+        return isSameDay(date, today);
+    }
+
+    if (filter === 'month') {
+        return date.getFullYear() === today.getFullYear()
+            && date.getMonth() === today.getMonth();
+    }
+
+    if (filter === 'year') {
+        return date.getFullYear() === today.getFullYear();
+    }
+
+    return true;
+};
+
 const getBatchItems = (batch) => {
     const grouped = (batch.inventory_batch_items || []).reduce((acc, item) => {
         const key = item.inventory_id || item.inventory?.ingredient_name || item.id;
@@ -54,6 +90,8 @@ const RecentPurchasesPage = ({ onNavigate }) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [search, setSearch] = useState('');
+    const [dateFilter, setDateFilter] = useState('all');
+    const [sortOrder, setSortOrder] = useState('newest');
 
     const fetchPurchases = async () => {
         try {
@@ -95,6 +133,7 @@ const RecentPurchasesPage = ({ onNavigate }) => {
                     paidAmount,
                     dueAmount,
                     items,
+                    purchaseDate: getPurchaseDate(batch),
                     paymentStatus: status,
                     batchStatus: batch.calc_status || batch.status || 'PENDING'
                 };
@@ -109,8 +148,14 @@ const RecentPurchasesPage = ({ onNavigate }) => {
                     batch.batchStatus,
                     itemText
                 ].join(' ').toLowerCase().includes(normalizedSearch);
+            })
+            .filter((batch) => matchesDateFilter(batch.purchaseDate, dateFilter))
+            .sort((firstBatch, secondBatch) => {
+                const firstDate = firstBatch.purchaseDate?.getTime() || 0;
+                const secondDate = secondBatch.purchaseDate?.getTime() || 0;
+                return sortOrder === 'oldest' ? firstDate - secondDate : secondDate - firstDate;
             });
-    }, [batches, search]);
+    }, [batches, dateFilter, search, sortOrder]);
 
     const totals = useMemo(() => rows.reduce((acc, batch) => ({
         purchases: acc.purchases + 1,
@@ -161,15 +206,40 @@ const RecentPurchasesPage = ({ onNavigate }) => {
                             <p>Purchase Details</p>
                             <span>Supplier name and full batch item details are shown below.</span>
                         </div>
-                        <label className="recent-purchases-search">
-                            <Search size={18} />
-                            <input
-                                type="text"
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                placeholder="Search supplier, batch, item..."
-                            />
-                        </label>
+                        <div className="recent-purchases-controls">
+                            <label className="recent-purchases-select">
+                                <CalendarDays size={18} />
+                                <select
+                                    value={dateFilter}
+                                    onChange={(e) => setDateFilter(e.target.value)}
+                                    aria-label="Filter purchases by date"
+                                >
+                                    <option value="all">All time</option>
+                                    <option value="today">Today</option>
+                                    <option value="month">This month</option>
+                                    <option value="year">This year</option>
+                                </select>
+                            </label>
+                            <label className="recent-purchases-select">
+                                <select
+                                    value={sortOrder}
+                                    onChange={(e) => setSortOrder(e.target.value)}
+                                    aria-label="Sort purchases"
+                                >
+                                    <option value="newest">Newest first</option>
+                                    <option value="oldest">Oldest first</option>
+                                </select>
+                            </label>
+                            <label className="recent-purchases-search">
+                                <Search size={18} />
+                                <input
+                                    type="text"
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                    placeholder="Search supplier, batch, item..."
+                                />
+                            </label>
+                        </div>
                     </div>
 
                     {error && <div className="recent-purchases-message error">{error}</div>}

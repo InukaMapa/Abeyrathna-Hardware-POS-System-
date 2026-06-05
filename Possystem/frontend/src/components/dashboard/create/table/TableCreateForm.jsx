@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import QRCode from "qrcode";
 import { createTable } from "../../../../services/tableService";
 import { getAllPlaces } from "../../../../services/placeService";
+import { QR_ORDER_BASE_URL } from "../../../../config/api";
 
 /* ---------------- HELPERS ---------------- */
 const normalizePlaceName = (name) =>
@@ -70,7 +71,7 @@ const TableCreateForm = ({ onTableCreated }) => {
         const uniqueKey = `${place.place_name}-${Date.now()}`;
 
         /* ✅ YOUR LINK ADDED HERE */
-        const url = `http://localhost:5174/landing?table=${encodeURIComponent(
+        const url = `${QR_ORDER_BASE_URL}?table=${encodeURIComponent(
             uniqueKey
         )}`;
 
@@ -110,7 +111,7 @@ const TableCreateForm = ({ onTableCreated }) => {
             }
 
             setFormData({ place_id: "", seats: 4 });
-        } catch (err) {
+        } catch {
             setError("Failed to create table");
         } finally {
             setLoading(false);

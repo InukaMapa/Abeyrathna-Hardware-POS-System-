@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import { ArrowLeft, Package, Clock, Calendar, Truck, Layers, Loader, Info, X, Printer } from 'lucide-react';
 import JsBarcode from 'jsbarcode';
@@ -87,29 +87,30 @@ const InventoryDetailPage = ({ inventoryId, onNavigate }) => {
         printWindow.document.close();
     };
 
-    useEffect(() => {
+    const fetchDetails = useCallback(async () => {
         if (!inventoryId) {
             onNavigate('inventory');
             return;
         }
 
-        const fetchDetails = async () => {
-            try {
-                const token = localStorage.getItem('token');
-                const response = await axios.get(`${API_BASE_URL}/inventory/${inventoryId}`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-                setItem(response.data);
-            } catch (error) {
-                console.error('Error fetching details:', error);
-                alert('Failed to load item details');
-                onNavigate('inventory');
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchDetails();
+        try {
+            const token = localStorage.getItem('token');
+            const response = await axios.get(`${API_BASE_URL}/inventory/${inventoryId}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setItem(response.data);
+        } catch (error) {
+            console.error('Error fetching details:', error);
+            alert('Failed to load item details');
+            onNavigate('inventory');
+        } finally {
+            setLoading(false);
+        }
     }, [inventoryId, onNavigate]);
+
+    useEffect(() => {
+        fetchDetails();
+    }, [fetchDetails]);
 
     if (loading) return (
         <DashboardLayout activePage="inventory" onNavigate={onNavigate}>
@@ -181,11 +182,11 @@ const InventoryDetailPage = ({ inventoryId, onNavigate }) => {
                                     <div className="detail-metric-value">{item.reorder_level}</div>
                                 </div>
                                 <div className="detail-metric">
-                                    <div className="detail-metric-label">Buying Price</div>
+                                    <div className="detail-metric-label">Latest Buying Price</div>
                                     <div className="detail-metric-value detail-price">Rs. {parseFloat(item.buying_price || 0).toFixed(2)}</div>
                                 </div>
                                 <div className="detail-metric">
-                                    <div className="detail-metric-label">Selling Price</div>
+                                    <div className="detail-metric-label">Latest Selling Price</div>
                                     <div className="detail-metric-value detail-price">Rs. {parseFloat(item.selling_price || 0).toFixed(2)}</div>
                                 </div>
                                 <div className="detail-metric">
@@ -234,11 +235,11 @@ const InventoryDetailPage = ({ inventoryId, onNavigate }) => {
                             </div>
                         </div>
 
-                        {/* Stock Batches */}
+                        {/* Supplier Order Batches */}
                         <div className="detail-card detail-table-card">
                             <div className="detail-card-header">
                                 <h3>
-                                    <Calendar className="w-4 h-4 text-[#D32F2F]" /> Active Batches
+                                    <Calendar className="w-4 h-4 text-[#D32F2F]" /> Supplier Order Batches
                                 </h3>
                             </div>
                             <div className="overflow-x-auto">
@@ -246,7 +247,12 @@ const InventoryDetailPage = ({ inventoryId, onNavigate }) => {
                                     <thead>
                                         <tr>
                                             <th className="p-3 font-medium">Batch Code</th>
-                                            <th className="p-3 font-medium">Quantity</th>
+                                            <th className="p-3 font-medium">Supplier</th>
+                                            <th className="p-3 font-medium">Added</th>
+                                            <th className="p-3 font-medium">Remaining</th>
+                                            <th className="p-3 font-medium">Buying</th>
+                                            <th className="p-3 font-medium">Selling</th>
+                                            <th className="p-3 font-medium">Location</th>
                                             <th className="p-3 font-medium">Received</th>
                                             <th className="p-3 font-medium">Expiry</th>
                                         </tr>
@@ -255,7 +261,12 @@ const InventoryDetailPage = ({ inventoryId, onNavigate }) => {
                                         {item.batches?.length > 0 ? item.batches.map(batch => (
                                             <tr key={batch.id}>
                                                 <td className="p-3 font-mono text-[#BBB]">{batch.batch_code}</td>
+                                                <td className="p-3 text-[#888]">{batch.supplier?.supplier_name || '-'}</td>
                                                 <td className="p-3 font-semibold text-[#E0E0E0]">{batch.quantity}</td>
+                                                <td className="p-3 font-semibold text-[#E0E0E0]">{batch.quantity_remaining}</td>
+                                                <td className="p-3 text-[#888]">Rs. {parseFloat(batch.buying_price || 0).toFixed(2)}</td>
+                                                <td className="p-3 text-[#888]">Rs. {parseFloat(batch.selling_price || 0).toFixed(2)}</td>
+                                                <td className="p-3 text-[#888]">{batch.storage_location || '-'}</td>
                                                 <td className="p-3 text-[#888]">{new Date(batch.received_date).toLocaleDateString()}</td>
                                                 <td className="p-3">
                                                     {batch.expiry_date ? (
@@ -266,7 +277,7 @@ const InventoryDetailPage = ({ inventoryId, onNavigate }) => {
                                                 </td>
                                             </tr>
                                         )) : (
-                                            <tr><td colSpan="4" className="p-4 text-center text-[#666] italic">No specific batch info</td></tr>
+                                            <tr><td colSpan="9" className="p-4 text-center text-[#666] italic">No supplier order batch info</td></tr>
                                         )}
                                     </tbody>
                                 </table>

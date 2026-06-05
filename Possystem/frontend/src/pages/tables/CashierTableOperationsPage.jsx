@@ -3,6 +3,7 @@ import DashboardLayout from '../../components/layout/DashboardLayout';
 import CashierTableCard from '../../components/tables/CashierTableCard';
 import { fetchCashierTables, getMockCashierTables } from '../../services/cashierTableService';
 import { useAuth } from '../../context/AuthContext';
+import { API_BASE_URL } from '../../config/api';
 
 /**
  * CashierTableOperationsPage
@@ -39,7 +40,7 @@ const CashierTableOperationsPage = ({ onNavigate }) => {
 
             // Handle different error types
             if (err.message === 'NETWORK_ERROR') {
-                setError('Cannot connect to backend server. Make sure the backend is running on http://localhost:5000');
+                setError(`Cannot connect to backend server. Make sure the backend is running and reachable at ${API_BASE_URL}`);
             } else if (err.message === 'BACKEND_NOT_READY') {
                 setError('Backend endpoint not implemented. Use demo data to explore the UI.');
             } else if (err.message === 'No authentication token found') {
@@ -152,7 +153,7 @@ const CashierTableOperationsPage = ({ onNavigate }) => {
                                 <p className="text-sm text-blue-900 font-semibold mb-2">🔍 Troubleshooting Steps:</p>
                                 <ul className="text-xs text-blue-800 space-y-1 list-disc list-inside">
                                     <li>Verify backend server is running</li>
-                                    <li>Check backend is on http://localhost:5000</li>
+                                    <li>Check backend API URL: {API_BASE_URL}</li>
                                     <li>Open browser DevTools → Network tab</li>
                                     <li>Look for failed /api/cashier/tables request</li>
                                     <li>Restart both frontend and backend</li>
