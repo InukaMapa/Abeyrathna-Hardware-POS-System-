@@ -2,6 +2,7 @@ import express from 'express';
 import {
     fetchInventoryList,
     updateInventoryItem,
+    receiveInventoryStock,
     addInventoryItem,
     fetchInventoryItemDetails,
     deleteInventoryItem,
@@ -11,6 +12,7 @@ import {
     fetchInventoryBatches,
     createInventoryBatch,
     updateInventoryBatch,
+    updateInventoryBatchItem,
     settleBatchPayment,
     fetchPayoutRequests,
     completePayoutRequest,
@@ -37,6 +39,7 @@ router.delete('/categories/:id', protect, authorize('ADMIN'), deleteInventoryCat
 router.get('/batches', protect, authorize('ADMIN', 'CASHIER'), fetchInventoryBatches);
 router.post('/batches', protect, authorize('ADMIN'), createInventoryBatch);
 router.put('/batches/:id', protect, authorize('ADMIN'), updateInventoryBatch);
+router.put('/batch-items/:id', protect, authorize('ADMIN'), updateInventoryBatchItem);
 router.post('/batches/:id/pay', protect, authorize('ADMIN'), settleBatchPayment);
 router.get('/payout-requests', protect, authorize('ADMIN', 'CASHIER'), fetchPayoutRequests);
 router.post('/payout-requests/:id/complete', protect, authorize('CASHIER'), completePayoutRequest);
@@ -52,6 +55,7 @@ router.post('/returns/:id/resolve', protect, authorize('ADMIN'), resolveReturn);
 // ADMIN-only routes for inventory management
 router.post('/', protect, authorize('ADMIN'), addInventoryItem); // Add new or add stock
 router.get('/', protect, authorize('ADMIN', 'CASHIER'), fetchInventoryList);
+router.post('/:id/receive', protect, authorize('ADMIN'), receiveInventoryStock); // Receive stock for existing item
 router.get('/:id', protect, authorize('ADMIN', 'CASHIER'), fetchInventoryItemDetails); // Get details
 router.put('/:id', protect, authorize('ADMIN'), updateInventoryItem); // Edit details
 router.delete('/:id', protect, authorize('ADMIN'), deleteInventoryItem); // Delete

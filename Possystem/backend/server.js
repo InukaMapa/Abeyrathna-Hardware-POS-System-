@@ -22,9 +22,21 @@ const app = express();
 // Middleware
 app.use(express.json());
 
+const allowedOrigins = (process.env.CORS_ORIGINS || '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
 // Enhanced CORS configuration
 app.use(cors({
-    origin: '*', // Allow all origins (configure stricter in production)
+    origin: (origin, callback) => {
+        if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+            callback(null, true);
+            return;
+        }
+
+        callback(new Error(`CORS blocked origin: ${origin}`));
+    },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true
@@ -51,6 +63,15 @@ app.use('/api/ocr', ocrRoutes);
 // Health Check
 app.get('/', (req, res) => {
     res.send('Chill Grand Restaurant API is running...');
+});
+
+app.get('/api/health', (req, res) => {
+    res.json({
+        ok: true,
+        service: 'abeyrathna-pos-api',
+        env: config.env,
+        timestamp: new Date().toISOString()
+    });
 });
 
 // 404 Handler - Route not found

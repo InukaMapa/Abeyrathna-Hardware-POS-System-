@@ -1,6 +1,75 @@
 import { supabase } from '../config/db.js';
 import * as inventoryService from '../services/inventoryService.js';
 
+const buildLedgerEntry = ({
+    batch_id,
+    inventory_id,
+    quantity,
+    buying_price,
+    selling_price,
+    storage_location,
+    expiry_date,
+    notes
+}) => ({
+    batch_id,
+    inventory_id,
+    quantity_added: parseFloat(quantity),
+    quantity_remaining: parseFloat(quantity),
+    buying_price_at_time: parseFloat(buying_price || 0),
+    selling_price_at_time: parseFloat(selling_price || 0),
+    storage_location: storage_location || null,
+    expiry_date: expiry_date || null,
+    notes: notes || null
+});
+
+const insertBatchLedger = async (ledgerEntry) => {
+    const { error } = await supabase.from('inventory_batch_items').insert([ledgerEntry]);
+
+    if (!error) return;
+
+    const missingLedgerColumn = error.code === 'PGRST204' || /column|schema cache/i.test(error.message || '');
+    if (!missingLedgerColumn) throw error;
+
+    const fallbackEntry = {
+        batch_id: ledgerEntry.batch_id,
+        inventory_id: ledgerEntry.inventory_id,
+        quantity_added: ledgerEntry.quantity_added,
+        quantity_remaining: ledgerEntry.quantity_remaining,
+        buying_price_at_time: ledgerEntry.buying_price_at_time
+    };
+    const { error: fallbackError } = await supabase.from('inventory_batch_items').insert([fallbackEntry]);
+    if (fallbackError) throw fallbackError;
+};
+
+const backfillMissingBatchPrices = async (inventoryId, existingItem) => {
+    const previousSellingPrice = parseFloat(existingItem?.selling_price || 0);
+    const previousBuyingPrice = parseFloat(existingItem?.buying_price || 0);
+
+    if (previousSellingPrice > 0) {
+        const { error } = await supabase
+            .from('inventory_batch_items')
+            .update({ selling_price_at_time: previousSellingPrice })
+            .eq('inventory_id', inventoryId)
+            .or('selling_price_at_time.is.null,selling_price_at_time.eq.0');
+
+        if (error && error.code !== 'PGRST204') {
+            console.warn('Could not backfill previous selling prices:', error.message);
+        }
+    }
+
+    if (previousBuyingPrice > 0) {
+        const { error } = await supabase
+            .from('inventory_batch_items')
+            .update({ buying_price_at_time: previousBuyingPrice })
+            .eq('inventory_id', inventoryId)
+            .or('buying_price_at_time.is.null,buying_price_at_time.eq.0');
+
+        if (error && error.code !== 'PGRST204') {
+            console.warn('Could not backfill previous buying prices:', error.message);
+        }
+    }
+};
+
 /**
  * Fetch all inventory items with optional filters.
  * @route GET /api/inventory
@@ -15,7 +84,7 @@ export const fetchInventoryList = async (req, res) => {
             .order('ingredient_name', { ascending: true });
 
         if (search) {
-            query = query.or(`ingredient_name.ilike.%${search}%,item_code.eq.${search}`);
+            query = query.or(`ingredient_name.ilike.%${search}%,item_code.ilike.%${search}%`);
         }
         if (category && category !== 'All') {
             query = query.eq('category', category);
@@ -44,6 +113,52 @@ export const fetchInventoryList = async (req, res) => {
             }
         }
 
+        const itemIds = (data || []).map(item => item.id);
+        let fifoPriceByItemId = new Map();
+        let priceTiersByItemId = new Map();
+
+        if (itemIds.length > 0) {
+            const { data: stockBatches } = await supabase
+                .from('inventory_batch_items')
+                .select('inventory_id, quantity_remaining, selling_price_at_time, buying_price_at_time, created_at')
+                .in('inventory_id', itemIds)
+                .gt('quantity_remaining', 0)
+                .order('created_at', { ascending: true });
+
+            const itemPriceById = new Map((data || []).map(item => [item.id, parseFloat(item.selling_price || 0)]));
+            const itemBuyingPriceById = new Map((data || []).map(item => [item.id, parseFloat(item.buying_price || 0)]));
+            fifoPriceByItemId = (stockBatches || []).reduce((map, batch) => {
+                if (!map.has(batch.inventory_id)) {
+                    const batchPrice = parseFloat(batch.selling_price_at_time || 0);
+                    map.set(batch.inventory_id, batchPrice > 0 ? batchPrice : itemPriceById.get(batch.inventory_id) || 0);
+                }
+                return map;
+            }, new Map());
+
+            priceTiersByItemId = (stockBatches || []).reduce((map, batch) => {
+                const sellingPrice = parseFloat(batch.selling_price_at_time || 0) || itemPriceById.get(batch.inventory_id) || 0;
+                const buyingPrice = parseFloat(batch.buying_price_at_time || 0) || itemBuyingPriceById.get(batch.inventory_id) || 0;
+                const quantityRemaining = parseFloat(batch.quantity_remaining || 0);
+                const key = `${sellingPrice}-${buyingPrice}`;
+                const existing = map.get(batch.inventory_id) || [];
+                const tier = existing.find(entry => entry.key === key);
+
+                if (tier) {
+                    tier.quantity_remaining += quantityRemaining;
+                } else {
+                    existing.push({
+                        key,
+                        selling_price: sellingPrice,
+                        buying_price: buyingPrice,
+                        quantity_remaining: quantityRemaining
+                    });
+                }
+
+                map.set(batch.inventory_id, existing);
+                return map;
+            }, new Map());
+        }
+
         // Client-side status filtering if needed, though better in DB if possible
         // For 'status' filter: 'low_stock', 'out_of_stock'
         let filteredData = data.map(item => {
@@ -53,6 +168,8 @@ export const fetchInventoryList = async (req, res) => {
 
             return {
                 ...item,
+                fifo_selling_price: fifoPriceByItemId.get(item.id) || parseFloat(item.selling_price || 0),
+                stock_price_tiers: (priceTiersByItemId.get(item.id) || []).map(({ key, ...tier }) => tier),
                 status: stockStatus
             };
         });
@@ -107,7 +224,8 @@ export const fetchInventoryItemDetails = async (req, res) => {
         const { data: batchItems, error: batchError } = await supabase
             .from('inventory_batch_items')
             .select('*, inventory_batches(batch_number, batch_date, suppliers(supplier_name, company_name, phone_number, email, address))')
-            .eq('inventory_id', id);
+            .eq('inventory_id', id)
+            .order('created_at', { ascending: false });
 
         if (batchError && batchError.code !== 'PGRST116') throw batchError;
 
@@ -115,8 +233,13 @@ export const fetchInventoryItemDetails = async (req, res) => {
             id: bi.id,
             batch_code: bi.inventory_batches?.batch_number || 'N/A',
             quantity: bi.quantity_added,
+            quantity_remaining: bi.quantity_remaining ?? bi.quantity_added,
             received_date: bi.inventory_batches?.batch_date || bi.created_at,
-            expiry_date: null,
+            buying_price: parseFloat(bi.buying_price_at_time || 0) || parseFloat(item.buying_price || 0),
+            selling_price: parseFloat(bi.selling_price_at_time || 0) || parseFloat(item.selling_price || 0),
+            storage_location: bi.storage_location,
+            expiry_date: bi.expiry_date,
+            notes: bi.notes,
             supplier: bi.inventory_batches?.suppliers || null
         }));
 
@@ -187,7 +310,7 @@ export const addInventoryItem = async (req, res) => {
 
         const { data: existing } = await supabase
             .from('inventory')
-            .select('id, quantity')
+            .select('id, quantity, batch_id, buying_price, selling_price, storage_location')
             .or(orQuery)
             .maybeSingle();
 
@@ -197,11 +320,16 @@ export const addInventoryItem = async (req, res) => {
             startQty = existing.quantity;
             const newQty = parseFloat(startQty) + parseFloat(quantity);
 
+            await backfillMissingBatchPrices(itemId, existing);
+
             const { error: updateError } = await supabase
                 .from('inventory')
                 .update({
                     quantity: newQty,
                     batch_id: batch_id || existing.batch_id, // Link to the new batch
+                    buying_price: buying_price || existing.buying_price || 0,
+                    selling_price: selling_price || existing.selling_price || 0,
+                    storage_location: storage_location || existing.storage_location || null,
                     last_updated: new Date()
                 })
                 .eq('id', itemId);
@@ -265,10 +393,15 @@ export const addInventoryItem = async (req, res) => {
                     batch_id,
                     inventory_id: itemId,
                     quantity_added: parseFloat(quantity),
-                    buying_price_at_time: parseFloat(buying_price || 0)
+                    quantity_remaining: parseFloat(quantity),
+                    buying_price_at_time: parseFloat(buying_price || 0),
+                    selling_price_at_time: parseFloat(selling_price || 0),
+                    storage_location: storage_location || null,
+                    expiry_date: expiry_date || null,
+                    notes: existing ? 'Added stock to existing item' : 'Created new item'
                 };
 
-                await supabase.from('inventory_batch_items').insert([ledgerEntry]);
+                await insertBatchLedger(ledgerEntry);
 
                 const { data: batch } = await supabase
                     .from('inventory_batches')
@@ -292,6 +425,119 @@ export const addInventoryItem = async (req, res) => {
     } catch (err) {
         console.error('Error adding inventory:', err);
         res.status(500).json({ message: 'Internal server error while adding inventory.' });
+    }
+};
+
+/**
+ * Receive a new supplier order for an existing inventory item.
+ * @route POST /api/inventory/:id/receive
+ */
+export const receiveInventoryStock = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const {
+            quantity,
+            batch_id,
+            buying_price,
+            selling_price,
+            storage_location,
+            expiry_date,
+            method,
+            admin_name,
+            notes
+        } = req.body;
+
+        const receivedQty = parseFloat(quantity);
+        if (!Number.isFinite(receivedQty) || receivedQty <= 0) {
+            return res.status(400).json({ message: 'Quantity to add must be greater than zero.' });
+        }
+
+        if (!batch_id) {
+            return res.status(400).json({ message: 'Supplier batch is required.' });
+        }
+
+        const { data: existing, error: fetchError } = await supabase
+            .from('inventory')
+            .select('*')
+            .eq('id', id)
+            .single();
+
+        if (fetchError || !existing) {
+            return res.status(404).json({ message: 'Inventory item not found.' });
+        }
+
+        await backfillMissingBatchPrices(id, existing);
+
+        const { data: batch, error: batchError } = await supabase
+            .from('inventory_batches')
+            .select('id, supplier_id, batch_type')
+            .eq('id', batch_id)
+            .single();
+
+        if (batchError || !batch) {
+            return res.status(400).json({ message: 'Selected supplier batch was not found.' });
+        }
+
+        const previousQty = parseFloat(existing.quantity || 0);
+        const newQty = previousQty + receivedQty;
+
+        const updateData = {
+            quantity: newQty,
+            batch_id,
+            buying_price: buying_price || existing.buying_price || 0,
+            selling_price: selling_price || existing.selling_price || 0,
+            storage_location: storage_location || existing.storage_location || null,
+            supplier_id: batch.supplier_id || existing.supplier_id || null,
+            last_updated: new Date()
+        };
+
+        const { data: updatedItem, error: updateError } = await supabase
+            .from('inventory')
+            .update(updateData)
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (updateError) throw updateError;
+
+        await supabase.from('stock_history').insert([{
+            inventory_id: id,
+            action: 'ADDED',
+            quantity: receivedQty,
+            previous_quantity: previousQty,
+            new_quantity: newQty,
+            method: method || 'SUPPLIER',
+            admin_name: admin_name || 'Admin',
+            notes: notes || 'Received new supplier order'
+        }]);
+
+        await insertBatchLedger(buildLedgerEntry({
+            batch_id,
+            inventory_id: id,
+            quantity: receivedQty,
+            buying_price,
+            selling_price,
+            storage_location,
+            expiry_date,
+            notes: notes || 'Received new supplier order'
+        }));
+
+        if (batch.batch_type === 'REPLACEMENT') {
+            await supabase
+                .from('inventory_batches')
+                .update({ status: 'COMPLETED' })
+                .eq('id', batch_id);
+        }
+
+        await inventoryService.updateInventoryQuantity(id, newQty);
+
+        res.status(200).json({
+            message: 'Inventory stock received successfully.',
+            item: updatedItem
+        });
+    } catch (err) {
+        console.error('Error receiving inventory stock:', err);
+        res.status(500).json({ message: 'Internal server error while receiving stock.' });
     }
 };
 
@@ -535,6 +781,46 @@ export const updateInventoryBatch = async (req, res) => {
     } catch (err) {
         console.error('Error updating batch:', err);
         res.status(500).json({ message: 'Internal server error updating batch.' });
+    }
+};
+
+/**
+ * Update per-item supplier order batch details.
+ * @route PUT /api/inventory/batch-items/:id
+ */
+export const updateInventoryBatchItem = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const {
+            buying_price,
+            selling_price,
+            quantity_remaining,
+            storage_location,
+            expiry_date,
+            notes
+        } = req.body;
+
+        const updateData = {};
+        if (buying_price !== undefined) updateData.buying_price_at_time = parseFloat(buying_price) || 0;
+        if (selling_price !== undefined) updateData.selling_price_at_time = parseFloat(selling_price) || 0;
+        if (quantity_remaining !== undefined) updateData.quantity_remaining = parseFloat(quantity_remaining) || 0;
+        if (storage_location !== undefined) updateData.storage_location = storage_location || null;
+        if (expiry_date !== undefined) updateData.expiry_date = expiry_date || null;
+        if (notes !== undefined) updateData.notes = notes || null;
+
+        const { data, error } = await supabase
+            .from('inventory_batch_items')
+            .update(updateData)
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        res.status(200).json(data);
+    } catch (err) {
+        console.error('Error updating inventory batch item:', err);
+        res.status(500).json({ message: 'Internal server error updating supplier order item.' });
     }
 };
 /**

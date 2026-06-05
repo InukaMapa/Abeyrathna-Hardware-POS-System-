@@ -1,5 +1,5 @@
 // src/services/liveMenuService.js
-const API_BASE_URL = '/api';
+import { API_BASE_URL } from '../config/api';
 
 /**
  * Fetch live menu items (public)

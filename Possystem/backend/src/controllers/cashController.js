@@ -76,6 +76,91 @@ const fetchClosedCashOrdersForShift = async (shift) => {
         .values();
 };
 
+const getPaymentRows = (order) => {
+    if (Array.isArray(order.payment_details) && order.payment_details.length > 0) {
+        return order.payment_details
+            .map(payment => ({
+                method: String(payment?.method || '').trim(),
+                amount: Number.parseFloat(payment?.amount) || 0
+            }))
+            .filter(payment => payment.method && payment.amount > 0);
+    }
+
+    const paymentMethod = String(order.payment_method || '').trim();
+    const totalAmount = Number.parseFloat(order.total_amount) || 0;
+    const cashAmount = Number.parseFloat(order.cash_amount) || 0;
+    const nonCashAmount = Math.max(totalAmount - cashAmount, 0);
+
+    if (!paymentMethod || paymentMethod.toLowerCase() === 'cash') return [];
+
+    return [{
+        method: paymentMethod,
+        amount: nonCashAmount || totalAmount
+    }];
+};
+
+const getElectronicPaymentType = (method) => {
+    const normalized = String(method || '').trim().toLowerCase();
+    if (normalized.includes('card')) return 'Card';
+    if (normalized.includes('bank') || normalized.includes('transfer')) return 'Bank Transfer';
+    return null;
+};
+
+const fetchClosedOrdersForShift = async (shift) => {
+    const orderSelect = 'order_id, total_amount, cash_amount, payment_method, payment_details, closed_at';
+    const legacyOrderSelect = 'order_id, total_amount, cash_amount, payment_method, closed_at';
+    const endTime = shift.end_time || new Date().toISOString();
+
+    let { data: shiftOrders, error } = await supabase
+        .from('orders')
+        .select(orderSelect)
+        .eq('status', 'CLOSED')
+        .eq('shift_id', shift.shift_id);
+
+    if (error?.code === 'PGRST204' && (
+        error.message?.includes('cash_amount') ||
+        error.message?.includes('payment_method') ||
+        error.message?.includes('payment_details')
+    )) {
+        ({ data: shiftOrders, error } = await supabase
+            .from('orders')
+            .select(legacyOrderSelect)
+            .eq('status', 'CLOSED')
+            .eq('shift_id', shift.shift_id));
+    }
+
+    if (error) throw error;
+
+    let { data: timedOrders, error: timedError } = await supabase
+        .from('orders')
+        .select(orderSelect)
+        .eq('status', 'CLOSED')
+        .gte('closed_at', shift.start_time)
+        .lte('closed_at', endTime);
+
+    if (timedError?.code === 'PGRST204' && (
+        timedError.message?.includes('cash_amount') ||
+        timedError.message?.includes('payment_method') ||
+        timedError.message?.includes('payment_details')
+    )) {
+        ({ data: timedOrders, error: timedError } = await supabase
+            .from('orders')
+            .select(legacyOrderSelect)
+            .eq('status', 'CLOSED')
+            .gte('closed_at', shift.start_time)
+            .lte('closed_at', endTime));
+    }
+
+    if (timedError) throw timedError;
+
+    return Array.from([...(shiftOrders || []), ...(timedOrders || [])]
+        .reduce((uniqueOrders, order) => {
+            if (!uniqueOrders.has(order.order_id)) uniqueOrders.set(order.order_id, order);
+            return uniqueOrders;
+        }, new Map())
+        .values());
+};
+
 /**
  * Start a new cashier shift
  * @route POST /api/cash/start-shift
@@ -93,7 +178,7 @@ export const startShift = async (req, res) => {
             .from('cash_shifts')
             .select('shift_id')
             .eq('counter_number', counter_number)
-            .eq('status', 'OPEN')
+            .in('status', ['OPEN', 'REPORT_SUBMITTED'])
             .single();
 
         if (openShift) {
@@ -171,6 +256,21 @@ export const getShiftSummary = async (req, res) => {
         const cashSales = cashOrders.reduce((sum, order) => sum + getOrderCashAmount(order), 0);
         const cashSalesCount = cashOrders.length;
 
+        const closedOrders = await fetchClosedOrdersForShift(shift);
+        const electronicPayments = closedOrders.flatMap(order => getPaymentRows(order)
+            .map(payment => ({
+                type: getElectronicPaymentType(payment.method),
+                amount: payment.amount
+            }))
+            .filter(payment => payment.type)
+        );
+        const bankTransferTotal = electronicPayments
+            .filter(payment => payment.type === 'Bank Transfer')
+            .reduce((sum, payment) => sum + payment.amount, 0);
+        const cardPaymentTotal = electronicPayments
+            .filter(payment => payment.type === 'Card')
+            .reduce((sum, payment) => sum + payment.amount, 0);
+
         // 3. Get Cash In/Out movements
         const { data: movements, error: movementsError } = await supabase
             .from('cash_movements')
@@ -187,15 +287,21 @@ export const getShiftSummary = async (req, res) => {
             });
         }
 
-        const expectedCash = parseFloat(shift.opening_cash) + cashSales + cashIn - cashOut;
+        const openingCash = parseFloat(shift.opening_cash) || 0;
+        const expectedCash = openingCash + cashSales + cashIn - cashOut;
+        const fullTotal = openingCash + cashSales + bankTransferTotal + cardPaymentTotal + cashIn - cashOut;
 
         res.status(200).json({
             opening_cash: shift.opening_cash,
             cash_sales: cashSales,
             cash_sales_count: cashSalesCount,
+            bank_transfer_total: bankTransferTotal,
+            card_payment_total: cardPaymentTotal,
+            electronic_payment_total: bankTransferTotal + cardPaymentTotal,
             cash_in: cashIn,
             cash_out: cashOut,
-            expected_cash: expectedCash
+            expected_cash: expectedCash,
+            full_total: fullTotal
         });
     } catch (error) {
         console.error('[CASH] Get Summary Error:', error);
@@ -356,7 +462,7 @@ export const submitShiftReport = async (req, res) => {
  */
 export const endShift = async (req, res) => {
     try {
-        const { shift_id } = req.body;
+        const { shift_id, actual_cash, expected_cash } = req.body;
 
         if (!shift_id) {
             return res.status(400).json({ error: 'Missing shift_id' });
@@ -376,7 +482,16 @@ export const endShift = async (req, res) => {
             return res.status(400).json({ error: 'You must submit a report to admin before ending shift.' });
         }
 
-        if (parseFloat(shift.difference) !== 0) {
+        const submittedActualCash = actual_cash !== undefined ? Number.parseFloat(actual_cash) : Number.parseFloat(shift.actual_cash);
+        const submittedExpectedCash = expected_cash !== undefined ? Number.parseFloat(expected_cash) : Number.parseFloat(shift.expected_cash);
+
+        if (!Number.isFinite(submittedActualCash) || !Number.isFinite(submittedExpectedCash)) {
+            return res.status(400).json({ error: 'Missing valid cash totals for ending shift.' });
+        }
+
+        const difference = submittedActualCash - submittedExpectedCash;
+
+        if (Math.abs(difference) > 0.01) {
             return res.status(400).json({ error: 'Shift cannot be ended unless cash is balanced (Difference must be 0).' });
         }
 
@@ -384,6 +499,9 @@ export const endShift = async (req, res) => {
         const { data, error } = await supabase
             .from('cash_shifts')
             .update({
+                actual_cash: submittedActualCash,
+                expected_cash: submittedExpectedCash,
+                difference: 0,
                 status: 'PENDING_APPROVAL',
                 end_time: new Date().toISOString()
             })
@@ -594,6 +712,55 @@ export const getShiftMovements = async (req, res) => {
         res.status(200).json(movements);
     } catch (error) {
         console.error('[CASH] Get Shift Movements Error:', error);
+        res.status(500).json({ error: error.message });
+    }
+};
+
+/**
+ * Get bank transfer and card payment details for a specific shift
+ * @route GET /api/cash/shift-electronic-payments/:shiftId
+ */
+export const getShiftElectronicPayments = async (req, res) => {
+    try {
+        const { shiftId } = req.params;
+
+        const { data: shift, error: shiftError } = await supabase
+            .from('cash_shifts')
+            .select('*')
+            .eq('shift_id', shiftId)
+            .single();
+
+        if (shiftError || !shift) return res.status(404).json({ error: 'Shift not found' });
+
+        const orders = await fetchClosedOrdersForShift(shift);
+        const payments = orders.flatMap(order => getPaymentRows(order)
+            .map(payment => ({
+                order_id: order.order_id,
+                closed_at: order.closed_at,
+                order_total: Number.parseFloat(order.total_amount) || 0,
+                method: payment.method,
+                type: getElectronicPaymentType(payment.method),
+                amount: payment.amount
+            }))
+            .filter(payment => payment.type)
+        ).sort((a, b) => new Date(b.closed_at) - new Date(a.closed_at));
+
+        const bankTotal = payments
+            .filter(payment => payment.type === 'Bank Transfer')
+            .reduce((sum, payment) => sum + payment.amount, 0);
+        const cardTotal = payments
+            .filter(payment => payment.type === 'Card')
+            .reduce((sum, payment) => sum + payment.amount, 0);
+
+        res.status(200).json({
+            bank_total: bankTotal,
+            card_total: cardTotal,
+            total: bankTotal + cardTotal,
+            count: payments.length,
+            payments
+        });
+    } catch (error) {
+        console.error('[CASH] Get Electronic Payments Error:', error);
         res.status(500).json({ error: error.message });
     }
 };

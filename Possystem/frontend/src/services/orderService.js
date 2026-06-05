@@ -1,5 +1,5 @@
 // src/services/orderService.js
-const API_BASE_URL = '/api';
+import { API_BASE_URL } from '../config/api';
 
 const getAuthHeaders = () => {
     const token = localStorage.getItem('token');

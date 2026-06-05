@@ -1,6 +1,5 @@
 // src/services/menuService.js
-
-const API_BASE_URL = '/api'; // Use proxy to avoid CORS issues and rely on vite.config.js target
+import { API_BASE_URL } from '../config/api';
 
 const getAuthHeaders = () => {
     const token = localStorage.getItem('token');
@@ -115,7 +114,7 @@ export const fetchMenuStats = async () => {
         });
         if (!response.ok) return { totalItems: 0, available: 0, outOfStock: 0, bestSelling: 'N/A' };
         return await response.json();
-    } catch (error) {
+    } catch {
         return { totalItems: 0, available: 0, outOfStock: 0, bestSelling: 'N/A' };
     }
 };

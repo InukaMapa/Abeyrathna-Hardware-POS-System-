@@ -1,7 +1,9 @@
 // API Configuration
-// Use relative URL to leverage Vite proxy in development
-// Vite proxy forwards /api -> http://localhost:5000/api
-export const API_BASE_URL = '/api';
+// Local dev defaults to /api so Vite can proxy to the backend.
+// Production builds should set VITE_API_BASE_URL to the hosted backend API URL.
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+export const APP_BASE_URL = import.meta.env.VITE_APP_BASE_URL || window.location.origin;
+export const QR_ORDER_BASE_URL = import.meta.env.VITE_QR_ORDER_BASE_URL || `${APP_BASE_URL}/landing`;
 
 export const ENDPOINTS = {
     LOGIN: '/auth/login',

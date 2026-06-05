@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import QRCode from "qrcode";
+import { QR_ORDER_BASE_URL } from "../../../../config/api";
 
 const TableEditModal = ({ table, places = [], onClose, onUpdate }) => {
   const [formData, setFormData] = useState({
@@ -61,7 +62,7 @@ const TableEditModal = ({ table, places = [], onClose, onUpdate }) => {
       const placeName = selectedPlace?.place_name || "table";
       const uniqueKey = `${placeName}-${table?.table_id}-${Date.now()}`;
 
-      const url = `http://localhost:5174/landing?table=${encodeURIComponent(
+      const url = `${QR_ORDER_BASE_URL}?table=${encodeURIComponent(
         uniqueKey
       )}`;
 
@@ -74,7 +75,7 @@ const TableEditModal = ({ table, places = [], onClose, onUpdate }) => {
 
       setQrImage(qr);
       setError("");
-    } catch (err) {
+    } catch {
       setError("Failed to generate QR");
     }
   };

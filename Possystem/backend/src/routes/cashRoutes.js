@@ -8,6 +8,7 @@ import {
     getAllShifts,
     getShiftOrders,
     getShiftMovements,
+    getShiftElectronicPayments,
     getLatestCashCount,
     submitShiftReport,
     approveShiftReport,
@@ -36,6 +37,7 @@ router.post('/end-shift', protect, authorize('CASHIER'), endShift);
 router.get('/admin/shifts', protect, authorize('ADMIN', 'CASHIER'), getAllShifts);
 router.get('/shift-orders/:shiftId', protect, authorize('ADMIN', 'CASHIER'), getShiftOrders);
 router.get('/shift-movements/:shiftId', protect, authorize('ADMIN', 'CASHIER'), getShiftMovements);
+router.get('/shift-electronic-payments/:shiftId', protect, authorize('ADMIN', 'CASHIER'), getShiftElectronicPayments);
 router.post('/approve-shift/:shiftId', protect, authorize('ADMIN'), approveShiftReport);
 
 export default router;

@@ -3082,64 +3082,258 @@ button[class*="bg-[#6A5ACD]"] {
 }
 
 .dashboard-layout button.cash-management-btn.inventory-outline-btn {
-    min-height: 36px !important;
-    padding: 0 13px !important;
-    font-size: 0.8rem !important;
+    min-height: 38px !important;
+    padding: 0 14px !important;
+    font-size: 0.82rem !important;
     font-weight: 500 !important;
     border-radius: 8px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    white-space: nowrap !important;
 }
 
-.cash-management-page .orders-table {
+.dashboard-layout button.cash-management-btn.inventory-outline-btn svg {
+    width: 15px;
+    height: 15px;
+    flex: 0 0 auto;
+}
+
+.dashboard-layout button.cash-management-refresh.inventory-outline-btn {
+    min-width: 142px !important;
+}
+
+.cash-management-filter-card,
+.cash-management-table-card {
+    background: #FFFFFF;
+    border: 1px solid #D7E7DC;
+    border-radius: 8px;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+}
+
+.cash-management-filter-card {
+    padding: 24px;
+    margin-bottom: 24px;
+}
+
+.cash-management-field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.cash-management-field label {
+    color: #334155;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.cash-management-field input {
     width: 100%;
+    height: 44px;
+    padding: 0 14px;
+    color: #132238;
+    background: #FFFFFF;
+    border: 1px solid #D7E7DC;
+    border-radius: 8px;
+    outline: none;
+    font-size: 0.92rem;
+    font-weight: 400;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.cash-management-field input:focus {
+    border-color: rgba(22, 163, 74, 0.5);
+    box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.08);
+}
+
+.cash-management-table-card {
+    padding: 14px;
+    overflow: hidden;
+}
+
+.cash-management-table-wrap {
+    width: 100%;
+    overflow: hidden;
+    border: 1px solid #EAF1EC;
+    border-radius: 8px;
+}
+
+.cash-management-page .cash-management-table {
+    width: 100%;
+    min-width: 0;
+    table-layout: fixed;
     border-collapse: separate;
     border-spacing: 0;
 }
 
-.cash-management-page .orders-table thead th {
-    padding: 16px 20px;
+.cash-management-page .cash-management-table th:nth-child(1),
+.cash-management-page .cash-management-table td:nth-child(1) {
+    width: 12%;
+}
+
+.cash-management-page .cash-management-table th:nth-child(2),
+.cash-management-page .cash-management-table td:nth-child(2) {
+    width: 13%;
+}
+
+.cash-management-page .cash-management-table th:nth-child(3),
+.cash-management-page .cash-management-table td:nth-child(3) {
+    width: 7%;
+}
+
+.cash-management-page .cash-management-table th:nth-child(4),
+.cash-management-page .cash-management-table td:nth-child(4),
+.cash-management-page .cash-management-table th:nth-child(5),
+.cash-management-page .cash-management-table td:nth-child(5),
+.cash-management-page .cash-management-table th:nth-child(6),
+.cash-management-page .cash-management-table td:nth-child(6),
+.cash-management-page .cash-management-table th:nth-child(7),
+.cash-management-page .cash-management-table td:nth-child(7) {
+    width: 10%;
+}
+
+.cash-management-page .cash-management-table th:nth-child(8),
+.cash-management-page .cash-management-table td:nth-child(8) {
+    width: 15%;
+}
+
+.cash-management-page .cash-management-table th:nth-child(9),
+.cash-management-page .cash-management-table td:nth-child(9) {
+    width: 6%;
+}
+
+.cash-management-page .cash-management-table thead th {
+    padding: 12px 8px;
     background: #F8FCFA;
     color: #166534;
-    font-size: 0.78rem;
+    font-size: 0.62rem;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.12em;
+    letter-spacing: 0.06em;
+    line-height: 1.25;
     border-bottom: 1px solid #D7E7DC;
 }
 
-.cash-management-page .orders-table thead th:first-child {
-    border-top-left-radius: 12px;
-}
-
-.cash-management-page .orders-table thead th:last-child {
-    border-top-right-radius: 12px;
-}
-
-.cash-management-page .orders-table tbody td {
-    padding: 18px 20px;
-    color: #334155;
-    font-size: 0.95rem;
+.cash-management-page .cash-management-table tbody td {
+    height: 68px;
+    padding: 11px 8px;
+    color: #26384D;
+    background: #FFFFFF;
+    font-size: 0.78rem;
     font-weight: 400;
+    line-height: 1.35;
     border-bottom: 1px solid #EAF1EC;
     vertical-align: middle;
+    overflow-wrap: normal;
 }
 
-.cash-management-page .orders-table tbody tr:hover td {
+.cash-management-page .cash-management-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.cash-management-page .cash-management-table tbody tr:hover td {
     background: #FCFEFD;
+}
+
+.cash-management-date-cell,
+.cash-management-money-cell {
+    font-variant-numeric: tabular-nums;
+}
+
+.cash-management-money-cell {
+    white-space: nowrap;
+}
+
+.cash-management-cashier-cell {
+    color: #102A43 !important;
+    font-weight: 600 !important;
+    overflow-wrap: anywhere !important;
+}
+
+.cash-management-actions-heading,
+.cash-management-actions-cell {
+    text-align: center !important;
+}
+
+.cash-management-actions-cell {
+    background: #FFFFFF !important;
+}
+
+.cash-management-page .cash-management-table tbody tr:hover .cash-management-actions-cell {
+    background: #FCFEFD !important;
+}
+
+.cash-management-page .cash-management-review-btn {
+    width: 36px !important;
+    min-width: 36px !important;
+    height: 34px !important;
+    min-height: 34px !important;
+    padding: 0 !important;
+    color: #14532D !important;
+    border-color: #BFD9C9 !important;
+    background: #FFFFFF !important;
+}
+
+.cash-management-page .cash-management-review-btn:hover,
+.cash-management-page .cash-management-review-btn:focus {
+    color: #FFFFFF !important;
+    background: #166534 !important;
+    border-color: #166534 !important;
 }
 
 .cash-management-page .cash-management-status {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-height: 30px;
-    padding: 0 12px;
+    width: 100%;
+    min-height: 26px;
+    padding: 0 7px;
     border-radius: 999px;
-    font-size: 0.72rem;
+    font-size: 0.6rem;
     font-weight: 600;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.04em;
     text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.cash-management-page .cash-management-status.pending {
     color: #A16207;
     background: #FEF3C7;
+}
+
+.cash-management-page .cash-management-status.open {
+    color: #166534;
+    background: #DCFCE7;
+}
+
+.cash-management-page .cash-management-status.closed {
+    color: #475569;
+    background: #E2E8F0;
+}
+
+.cash-management-page .cash-management-status.default {
+    color: #1D4ED8;
+    background: #DBEAFE;
+}
+
+.cash-management-empty-cell {
+    height: 160px !important;
+    text-align: center;
+    color: #64748B !important;
+    background: #FFFFFF !important;
+}
+
+@media (max-width: 900px) {
+    .cash-management-page .section-title {
+        font-size: 1.2rem !important;
+    }
+
+    .cash-management-filter-card,
+    .cash-management-table-card {
+        padding: 16px;
+    }
 }
 
 .inventory-filters {
@@ -7366,6 +7560,29 @@ button[class*="bg-[#6A5ACD]"] {
     letter-spacing: 0 !important;
 }
 
+.bill-open-page .bill-balance-summary {
+    background: transparent !important;
+    border-color: #D7E7DC !important;
+}
+
+.bill-open-page .bill-balance-label {
+    color: #64748B !important;
+    font-size: 0.72rem !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.08em !important;
+}
+
+.bill-open-page .bill-balance-amount {
+    color: #102033 !important;
+    font-size: 1.1rem !important;
+    font-weight: 600 !important;
+    letter-spacing: 0 !important;
+}
+
+.bill-open-page .bill-balance-amount.is-change {
+    color: #059669 !important;
+}
+
 .dashboard-layout .bill-open-page button:not(.bill-open-back-btn) {
     min-height: 38px !important;
     border-radius: 8px !important;
@@ -8030,6 +8247,14 @@ body > .edit-inventory-overlay button.edit-inventory-btn:disabled {
     font-size: 13px;
 }
 
+.recent-purchases-controls {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    width: min(760px, 100%);
+}
+
 .recent-purchases-search {
     display: flex;
     align-items: center;
@@ -8043,6 +8268,19 @@ body > .edit-inventory-overlay button.edit-inventory-btn:disabled {
     color: #16A34A;
 }
 
+.recent-purchases-select {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 154px;
+    height: 46px;
+    padding: 0 12px;
+    color: #16A34A;
+    background: #FFFFFF;
+    border: 1px solid #CFE4D5;
+    border-radius: 8px;
+}
+
 .recent-purchases-search input {
     width: 100%;
     border: 0;
@@ -8050,6 +8288,17 @@ body > .edit-inventory-overlay button.edit-inventory-btn:disabled {
     color: #122033;
     font-size: 14px;
     background: transparent;
+}
+
+.recent-purchases-select select {
+    width: 100%;
+    border: 0;
+    outline: 0;
+    color: #122033;
+    background: transparent;
+    font-size: 14px;
+    font-family: inherit;
+    cursor: pointer;
 }
 
 .recent-purchases-table-wrap {
@@ -8202,6 +8451,17 @@ body > .edit-inventory-overlay button.edit-inventory-btn:disabled {
     .recent-purchases-toolbar {
         flex-direction: column;
         align-items: stretch;
+    }
+
+    .recent-purchases-controls {
+        flex-direction: column;
+        align-items: stretch;
+        width: 100%;
+    }
+
+    .recent-purchases-search,
+    .recent-purchases-select {
+        width: 100%;
     }
 
     .recent-purchases-stats {

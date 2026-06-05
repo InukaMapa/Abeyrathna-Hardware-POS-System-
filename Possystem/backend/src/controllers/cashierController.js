@@ -174,6 +174,19 @@ export const getCashierStats = async (req, res) => {
         stats.occupiedTables = stats.totalActive;
         stats.availableTables = stats.totalTables - stats.occupiedTables;
 
+        const { data: allInventory, error: inventoryError } = await supabase
+            .from('inventory')
+            .select('*');
+
+        if (inventoryError) {
+            console.error('[ERROR] Failed to fetch inventory alerts:', inventoryError);
+            throw inventoryError;
+        }
+
+        const inventoryItems = allInventory || [];
+        stats.lowInventory = inventoryItems.filter(item => Number(item.quantity) > 0 && Number(item.quantity) <= Number(item.reorder_level));
+        stats.outOfStock = inventoryItems.filter(item => Number(item.quantity) <= 0);
+
         console.log('[SUCCESS] Stats:', stats);
         return res.status(200).json(stats);
 

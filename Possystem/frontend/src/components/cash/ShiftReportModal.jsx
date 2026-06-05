@@ -10,6 +10,10 @@ const ShiftReportModal = ({ isOpen, onClose, shift, onApproved, selectedCount = 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [approving, setApproving] = useState(false);
+    const [detailModal, setDetailModal] = useState({ isOpen: false, type: null, title: '' });
+    const [detailLoading, setDetailLoading] = useState(false);
+    const [detailRows, setDetailRows] = useState([]);
+    const [expandedDetailOrder, setExpandedDetailOrder] = useState(null);
 
     useEffect(() => {
         if (isOpen && shift) {
@@ -73,6 +77,58 @@ const ShiftReportModal = ({ isOpen, onClose, shift, onApproved, selectedCount = 
         }
     };
 
+    const openFinancialDetail = async (type, title) => {
+        setDetailModal({ isOpen: true, type, title });
+        setDetailLoading(true);
+        setDetailRows([]);
+        setExpandedDetailOrder(null);
+
+        try {
+            const token = localStorage.getItem('token');
+            let response;
+            let data;
+
+            if (type === 'cash_sales') {
+                response = await fetch(`${API_BASE_URL}/cash/shift-orders/${shift.shift_id}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Failed to fetch cash sales details');
+                setDetailRows(Array.isArray(data) ? data : []);
+                return;
+            }
+
+            if (type === 'cash_in' || type === 'cash_out') {
+                response = await fetch(`${API_BASE_URL}/cash/shift-movements/${shift.shift_id}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Failed to fetch cash movement details');
+                setDetailRows((Array.isArray(data) ? data : []).filter(movement => movement.type === type));
+                return;
+            }
+
+            response = await fetch(`${API_BASE_URL}/cash/shift-electronic-payments/${shift.shift_id}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Failed to fetch payment details');
+            const paymentType = type === 'bank' ? 'Bank Transfer' : 'Card';
+            setDetailRows((Array.isArray(data.payments) ? data.payments : []).filter(payment => payment.type === paymentType));
+        } catch (err) {
+            console.error('Failed to fetch report detail data', err);
+            setDetailRows([]);
+        } finally {
+            setDetailLoading(false);
+        }
+    };
+
+    const closeFinancialDetail = () => {
+        setDetailModal({ isOpen: false, type: null, title: '' });
+        setDetailRows([]);
+        setExpandedDetailOrder(null);
+    };
+
     if (!isOpen || !shift) return null;
 
     const denominations = [
@@ -90,10 +146,30 @@ const ShiftReportModal = ({ isOpen, onClose, shift, onApproved, selectedCount = 
     ];
     const selectedTotal = Number(selectedCount ? selectedCount.total_cash : (shift.actual_cash || 0));
     const expectedCash = Number(selectedCount?.expected_cash || summary?.expected_cash || 0);
+    const openingCash = Number(summary?.opening_cash || 0);
+    const cashSales = Number(summary?.cash_sales || 0);
+    const cashIn = Number(summary?.cash_in || 0);
+    const cashOut = Number(summary?.cash_out || 0);
+    const bankTransferTotal = Number(summary?.bank_transfer_total || 0);
+    const cardPaymentTotal = Number(summary?.card_payment_total || 0);
+    const electronicPaymentTotal = bankTransferTotal + cardPaymentTotal;
+    const fullReportTotal = Number(summary?.full_total || (openingCash + cashIn + cashSales + electronicPaymentTotal - cashOut));
     const difference = selectedTotal - expectedCash;
     const conclusionText = Math.abs(difference) < 0.01
         ? 'Cash count is balanced with the expected cash amount for this shift.'
         : 'Cash count has a variance and should be reviewed before final approval.';
+    const formatCurrency = (value) => `Rs. ${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const getSummaryActionProps = (type, title) => ({
+        role: 'button',
+        tabIndex: 0,
+        onClick: () => openFinancialDetail(type, title),
+        onKeyDown: (event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                openFinancialDetail(type, title);
+            }
+        }
+    });
 
     return (
         <div className="modal-overlay" onClick={onClose}>
@@ -144,13 +220,64 @@ const ShiftReportModal = ({ isOpen, onClose, shift, onApproved, selectedCount = 
                             <section className="official-report-section">
                                 <h4 className="report-subtitle">Financial Summary</h4>
                                 <div className="official-summary-cards">
-                                    <div><span>Opening Cash</span><strong>Rs. {Number(summary?.opening_cash || 0).toLocaleString()}</strong></div>
-                                    <div><span>Cash Sales</span><strong>Rs. {Number(summary?.cash_sales || 0).toLocaleString()}</strong><small>{summary?.cash_sales_count || 0} orders</small></div>
-                                    <div><span>Cash In</span><strong>Rs. {Number(summary?.cash_in || 0).toLocaleString()}</strong></div>
-                                    <div><span>Cash Out</span><strong>Rs. {Number(summary?.cash_out || 0).toLocaleString()}</strong></div>
-                                    <div><span>Expected Cash</span><strong>Rs. {expectedCash.toLocaleString()}</strong></div>
-                                    <div><span>Actual Cash</span><strong>Rs. {selectedTotal.toLocaleString()}</strong></div>
+                                    <div><span>Opening Cash</span><strong>{formatCurrency(openingCash)}</strong></div>
+                                    <div className="official-summary-card is-clickable" {...getSummaryActionProps('cash_sales', 'Shift Cash Sales Details')}>
+                                        <span>Cash Sales</span><strong>{formatCurrency(cashSales)}</strong><small>{summary?.cash_sales_count || 0} orders</small>
+                                    </div>
+                                    <div className="official-summary-card is-clickable" {...getSummaryActionProps('bank', 'Bank Transfer Details')}>
+                                        <span>Bank Transfers</span><strong>{formatCurrency(bankTransferTotal)}</strong>
+                                    </div>
+                                    <div className="official-summary-card is-clickable" {...getSummaryActionProps('card', 'Card Payment Details')}>
+                                        <span>Card Payments</span><strong>{formatCurrency(cardPaymentTotal)}</strong>
+                                    </div>
+                                    <div className="official-summary-card is-clickable" {...getSummaryActionProps('cash_in', 'Cash In Details')}>
+                                        <span>Cash In</span><strong>{formatCurrency(cashIn)}</strong>
+                                    </div>
+                                    <div className="official-summary-card is-clickable" {...getSummaryActionProps('cash_out', 'Cash Out Details')}>
+                                        <span>Cash Out</span><strong>{formatCurrency(cashOut)}</strong>
+                                    </div>
+                                    <div><span>Expected Cash</span><strong>{formatCurrency(expectedCash)}</strong></div>
+                                    <div><span>Actual Cash</span><strong>{formatCurrency(selectedTotal)}</strong></div>
                                     <div className="conclusion-card"><span>Difference</span><strong className={Math.abs(difference) < 0.01 ? 'balanced' : 'variance'}>Rs. {difference.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></div>
+                                </div>
+                            </section>
+
+                            <section className="official-report-section official-formula-section">
+                                <h4 className="report-subtitle">Official Total Calculation</h4>
+                                <div className="official-formula-card">
+                                    <div className="official-formula-line">
+                                        <span>Full Total</span>
+                                        <strong>{formatCurrency(fullReportTotal)}</strong>
+                                    </div>
+                                    <div className="official-formula-expression">
+                                        <div>
+                                            <span>Opening Balance</span>
+                                            <b>{formatCurrency(openingCash)}</b>
+                                        </div>
+                                        <em>+</em>
+                                        <div>
+                                            <span>Cash In</span>
+                                            <b>{formatCurrency(cashIn)}</b>
+                                        </div>
+                                        <em>+</em>
+                                        <div>
+                                            <span>Cash Sales</span>
+                                            <b>{formatCurrency(cashSales)}</b>
+                                        </div>
+                                        <em>+</em>
+                                        <div>
+                                            <span>Bank & Card Payments</span>
+                                            <b>{formatCurrency(electronicPaymentTotal)}</b>
+                                        </div>
+                                        <em>-</em>
+                                        <div>
+                                            <span>Cash Out</span>
+                                            <b>{formatCurrency(cashOut)}</b>
+                                        </div>
+                                    </div>
+                                    <p>
+                                        Full Total = Opening Balance + Cash In + Cash Sales + Bank & Card Payments - Cash Out
+                                    </p>
                                 </div>
                             </section>
 
@@ -194,6 +321,120 @@ const ShiftReportModal = ({ isOpen, onClose, shift, onApproved, selectedCount = 
                         </div>
                     )}
                 </div>
+
+                {detailModal.isOpen && (
+                    <div className="report-detail-overlay" onClick={closeFinancialDetail}>
+                        <div className="report-detail-modal" onClick={e => e.stopPropagation()}>
+                            <div className="report-detail-header">
+                                <h3>{detailModal.title}</h3>
+                                <button type="button" className="report-detail-close" onClick={closeFinancialDetail}>&times;</button>
+                            </div>
+                            <div className="report-detail-body">
+                                {detailLoading ? (
+                                    <div className="report-detail-empty">Loading details...</div>
+                                ) : detailRows.length === 0 ? (
+                                    <div className="report-detail-empty">No records found for this section.</div>
+                                ) : detailModal.type === 'cash_sales' ? (
+                                    <div className="report-detail-list">
+                                        {detailRows.map(order => (
+                                            <div key={order.order_id} className={`report-detail-card ${expandedDetailOrder === order.order_id ? 'expanded' : ''}`}>
+                                                <div className="report-detail-card-row" onClick={() => setExpandedDetailOrder(expandedDetailOrder === order.order_id ? null : order.order_id)}>
+                                                    <div>
+                                                        <strong>Order #{order.order_id}</strong>
+                                                        <span>
+                                                            {order.closed_at ? new Date(order.closed_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
+                                                            {order.payment_method ? ` · ${order.payment_method}` : ''}
+                                                        </span>
+                                                    </div>
+                                                    <div className="report-detail-amount-group">
+                                                        <b>{formatCurrency(order.cash_amount ?? order.total_amount)}</b>
+                                                        <em>{expandedDetailOrder === order.order_id ? '-' : '+'}</em>
+                                                    </div>
+                                                </div>
+                                                {expandedDetailOrder === order.order_id && (
+                                                    <div className="report-detail-expanded">
+                                                        {Number(order.cash_amount) !== Number(order.total_amount) && (
+                                                            <p>Invoice total {formatCurrency(order.total_amount)}; cash received {formatCurrency(order.cash_amount)}.</p>
+                                                        )}
+                                                        <table className="report-detail-table">
+                                                            <thead>
+                                                                <tr>
+                                                                    <th>Item</th>
+                                                                    <th>Qty</th>
+                                                                    <th>Price</th>
+                                                                    <th>Total</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                {(order.order_items || []).map(item => (
+                                                                    <tr key={item.order_item_id}>
+                                                                        <td>{item.item_name}</td>
+                                                                        <td>{item.quantity}</td>
+                                                                        <td>{Number(item.item_price || 0).toLocaleString()}</td>
+                                                                        <td>{Number(item.subtotal || 0).toLocaleString()}</td>
+                                                                    </tr>
+                                                                ))}
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : detailModal.type === 'cash_in' || detailModal.type === 'cash_out' ? (
+                                    <div className="report-detail-table-wrap">
+                                        <table className="report-detail-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Time</th>
+                                                    <th>Reason</th>
+                                                    <th>Amount</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {detailRows.map(movement => (
+                                                    <tr key={movement.movement_id}>
+                                                        <td>{movement.time ? new Date(movement.time).toLocaleString() : '-'}</td>
+                                                        <td>{movement.reason || '-'}</td>
+                                                        <td className="report-detail-money">{formatCurrency(movement.amount)}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                ) : (
+                                    <div className="report-detail-table-wrap">
+                                        <table className="report-detail-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Order ID</th>
+                                                    <th>Method</th>
+                                                    <th>Closed Time</th>
+                                                    <th>Order Total</th>
+                                                    <th>Payment Amount</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {detailRows.map((payment, index) => (
+                                                    <tr key={`${payment.order_id}-${payment.method}-${index}`}>
+                                                        <td>#{payment.order_id}</td>
+                                                        <td>{payment.method}</td>
+                                                        <td>{payment.closed_at ? new Date(payment.closed_at).toLocaleString() : '-'}</td>
+                                                        <td>{formatCurrency(payment.order_total)}</td>
+                                                        <td className="report-detail-money">{formatCurrency(payment.amount)}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
+                            </div>
+                            <div className="report-detail-footer">
+                                <button type="button" className="shift-report-action" onClick={closeFinancialDetail}>Close</button>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 <div className="modal-footer">
                     <button className="shift-report-action" onClick={onClose}>Close</button>
@@ -271,14 +512,139 @@ const ShiftReportModal = ({ isOpen, onClose, shift, onApproved, selectedCount = 
                 .official-report-section { padding: 18px; border: 1px solid #D7E7DC; border-radius: 16px; background: #FFFFFF; }
                 .report-subtitle { color: #475569; margin: 0 0 14px; border-bottom: 1px solid #E2E8F0; padding-bottom: 9px; text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.14em; font-weight: 500; }
                 .official-report-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-                .official-report-grid div, .official-summary-cards div { border: 1px solid #E2E8F0; border-radius: 12px; padding: 12px; background: #FFFFFF; }
-                .official-report-grid span, .official-summary-cards span { display: block; color: #64748B; font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 500; margin-bottom: 6px; }
-                .official-report-grid strong, .official-summary-cards strong { color: #102033; font-size: 0.86rem; font-weight: 400; line-height: 1.35; overflow-wrap: anywhere; }
+                .official-report-grid div, .official-summary-cards div, .official-summary-card { border: 1px solid #E2E8F0; border-radius: 12px; padding: 12px; background: #FFFFFF; }
+                .official-summary-card {
+                    width: 100%;
+                    text-align: left;
+                    cursor: default;
+                    font-family: inherit;
+                    color: inherit;
+                    min-height: auto;
+                    box-shadow: none;
+                    appearance: none;
+                    -webkit-appearance: none;
+                    transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+                }
+                .shift-report-modal .official-summary-card,
+                .shift-report-modal .official-summary-card:hover,
+                .shift-report-modal .official-summary-card:focus,
+                .shift-report-modal .official-summary-card:active {
+                    background: #FFFFFF !important;
+                    color: #102033 !important;
+                    border: 1px solid #E2E8F0 !important;
+                    border-radius: 12px !important;
+                    padding: 12px !important;
+                    min-height: 0 !important;
+                    font-family: inherit !important;
+                    font-size: inherit !important;
+                    font-weight: inherit !important;
+                    letter-spacing: 0 !important;
+                    text-transform: none !important;
+                    box-shadow: none !important;
+                    transform: none !important;
+                }
+                .official-summary-card.is-clickable {
+                    cursor: pointer;
+                }
+                .shift-report-modal .official-summary-card.is-clickable:hover,
+                .shift-report-modal .official-summary-card.is-clickable:focus-visible {
+                    background: #F8FCFA !important;
+                    border-color: rgba(22, 163, 74, 0.42) !important;
+                    box-shadow: 0 8px 22px rgba(15, 23, 42, 0.045) !important;
+                    outline: none;
+                }
+                .shift-report-modal .official-summary-card span,
+                .shift-report-modal .official-summary-card strong,
+                .shift-report-modal .official-summary-card small {
+                    text-align: left !important;
+                    text-transform: none;
+                }
+                .official-report-grid span, .official-summary-cards span, .official-summary-card span { display: block; color: #64748B; font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 500; margin-bottom: 6px; }
+                .official-report-grid strong, .official-summary-cards strong, .official-summary-card strong { color: #102033; font-size: 0.86rem; font-weight: 400; line-height: 1.35; overflow-wrap: anywhere; }
                 .official-summary-cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
                 .official-summary-cards small { display: block; margin-top: 4px; color: #64748B; font-size: 0.72rem; }
                 .official-summary-cards .conclusion-card { border-color: rgba(22, 163, 74, 0.24); }
                 .official-summary-cards strong.balanced { color: #16A34A; font-weight: 500; }
                 .official-summary-cards strong.variance { color: #D4A017; font-weight: 500; }
+                .official-formula-section {
+                    border-color: rgba(22, 163, 74, 0.24);
+                    background: #FBFEFC;
+                }
+                .official-formula-card {
+                    display: grid;
+                    gap: 16px;
+                }
+                .official-formula-line {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: baseline;
+                    gap: 16px;
+                    padding: 14px 16px;
+                    border: 1px solid #D7E7DC;
+                    border-radius: 12px;
+                    background: #FFFFFF;
+                }
+                .official-formula-line span {
+                    color: #475569;
+                    font-size: 0.72rem;
+                    letter-spacing: 0.12em;
+                    text-transform: uppercase;
+                    font-weight: 600;
+                }
+                .official-formula-line strong {
+                    color: #14532D;
+                    font-size: 1.14rem;
+                    font-weight: 600;
+                    white-space: nowrap;
+                }
+                .official-formula-expression {
+                    display: flex;
+                    align-items: stretch;
+                    gap: 10px;
+                }
+                .official-formula-expression span,
+                .official-formula-expression b {
+                    display: block;
+                }
+                .official-formula-expression span {
+                    color: #64748B;
+                    font-size: 0.64rem;
+                    letter-spacing: 0.08em;
+                    text-transform: uppercase;
+                    font-weight: 500;
+                }
+                .official-formula-expression b {
+                    margin-top: 6px;
+                    color: #102033;
+                    font-size: 0.82rem;
+                    font-weight: 500;
+                }
+                .official-formula-expression > div {
+                    flex: 1;
+                    min-width: 0;
+                    min-height: 78px;
+                    padding: 12px;
+                    border: 1px solid #E2E8F0;
+                    border-radius: 12px;
+                    background: #FFFFFF;
+                }
+                .official-formula-expression em {
+                    width: 22px;
+                    min-width: 22px;
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: #64748B;
+                    font-style: normal;
+                    font-weight: 600;
+                }
+                .official-formula-card p {
+                    margin: 0;
+                    color: #475569;
+                    font-size: 0.84rem;
+                    line-height: 1.55;
+                    font-weight: 500;
+                }
                 .official-table-wrap { border: 1px solid #D7E7DC; border-radius: 14px; overflow: hidden; }
                 .official-report-table { width: 100%; border-collapse: collapse; }
                 .official-report-table th { padding: 12px 14px; background: #FFFFFF; color: #64748B; font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 500; text-align: left; border-bottom: 1px solid #D7E7DC; }
@@ -289,6 +655,223 @@ const ShiftReportModal = ({ isOpen, onClose, shift, onApproved, selectedCount = 
                 .official-signature-grid div { min-height: 62px; border-top: 1px solid #CBD5E1; display: flex; align-items: flex-end; }
                 .official-signature-grid span { color: #64748B; font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase; }
                 .modal-footer { padding: 15px 20px; border-top: 1px solid #E2E8F0; display: flex; justify-content: flex-end; gap: 10px; background: #FFFFFF; }
+                .report-detail-overlay {
+                    position: fixed;
+                    inset: 0;
+                    z-index: 2300;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 24px;
+                    background: rgba(15, 23, 42, 0.42);
+                    backdrop-filter: blur(5px);
+                }
+                .report-detail-modal {
+                    width: min(780px, calc(100vw - 32px));
+                    max-height: min(78vh, 760px);
+                    display: flex;
+                    flex-direction: column;
+                    overflow: hidden;
+                    background: #FFFFFF;
+                    color: #132238;
+                    border: 1px solid #D7E7DC;
+                    border-top: 4px solid var(--primary-green);
+                    border-radius: 10px;
+                    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.18);
+                }
+                .report-detail-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    gap: 18px;
+                    padding: 22px 30px 18px;
+                    border-bottom: 1px solid #D7E7DC;
+                }
+                .report-detail-header h3 {
+                    margin: 0;
+                    color: #132238;
+                    font-size: 1rem;
+                    font-weight: 600;
+                    line-height: 1.2;
+                }
+                .report-detail-close {
+                    width: 38px;
+                    height: 38px;
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    background: #FFFFFF !important;
+                    border: 1px solid #D7E7DC !important;
+                    border-radius: 8px;
+                    color: #334155 !important;
+                    font-size: 1.35rem;
+                    cursor: pointer;
+                    line-height: 1;
+                    box-shadow: none !important;
+                    min-height: 0 !important;
+                    padding: 0 !important;
+                    transform: none !important;
+                    transition: all 0.2s ease;
+                }
+                .report-detail-close:hover,
+                .report-detail-close:focus-visible {
+                    color: var(--primary-green) !important;
+                    background: #F8FCFA !important;
+                    border-color: rgba(22, 163, 74, 0.4) !important;
+                    box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.07) !important;
+                    outline: none;
+                }
+                .report-detail-body {
+                    flex: 1;
+                    overflow-y: auto;
+                    padding: 24px 30px;
+                    background: #FFFFFF;
+                }
+                .report-detail-list {
+                    display: grid;
+                    gap: 12px;
+                }
+                .report-detail-card {
+                    overflow: hidden;
+                    background: #FFFFFF;
+                    border: 1px solid #D7E7DC;
+                    border-radius: 8px;
+                    transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+                }
+                .report-detail-card:hover {
+                    background: #F8FCFA;
+                    border-color: rgba(22, 163, 74, 0.35);
+                    box-shadow: 0 8px 22px rgba(15, 23, 42, 0.045);
+                }
+                .report-detail-card-row {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    gap: 18px;
+                    padding: 16px 20px;
+                    cursor: pointer;
+                }
+                .report-detail-card-row strong {
+                    display: block;
+                    color: #132238;
+                    font-size: 0.9rem;
+                    font-weight: 600;
+                }
+                .report-detail-card-row span {
+                    display: block;
+                    margin-top: 4px;
+                    color: #64748B;
+                    font-size: 0.76rem;
+                    font-weight: 400;
+                }
+                .report-detail-amount-group {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 15px;
+                    white-space: nowrap;
+                }
+                .report-detail-amount-group b {
+                    color: #132238;
+                    font-size: 0.9rem;
+                    font-weight: 600;
+                }
+                .report-detail-amount-group em {
+                    width: 28px;
+                    height: 28px;
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: var(--primary-green);
+                    background: #F0FDF4;
+                    border: 1px solid #BBF7D0;
+                    border-radius: 999px;
+                    font-style: normal;
+                    font-size: 1rem;
+                    font-weight: 600;
+                }
+                .report-detail-expanded {
+                    padding: 14px 20px 18px;
+                    background: #F8FCFA;
+                    border-top: 1px solid #D7E7DC;
+                }
+                .report-detail-expanded p {
+                    margin: 0 0 12px;
+                    color: #526782;
+                    font-size: 0.8rem;
+                    line-height: 1.45;
+                }
+                .report-detail-table-wrap {
+                    width: 100%;
+                    overflow-x: auto;
+                    border: 1px solid #E5EFE9;
+                    border-radius: 8px;
+                }
+                .report-detail-table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    min-width: 520px;
+                }
+                .report-detail-table th {
+                    text-align: left;
+                    color: #526782;
+                    background: #F8FCFA;
+                    padding: 12px 14px;
+                    font-size: 0.68rem;
+                    font-weight: 600;
+                    letter-spacing: 0.08em;
+                    text-transform: uppercase;
+                    border-bottom: 1px solid #E5EFE9;
+                }
+                .report-detail-table td {
+                    padding: 13px 14px;
+                    color: #132238;
+                    border-bottom: 1px solid #EEF4F0;
+                    font-size: 0.84rem;
+                    font-weight: 400;
+                }
+                .report-detail-table tr:last-child td {
+                    border-bottom: 0;
+                }
+                .report-detail-money {
+                    color: #0F5132 !important;
+                    font-weight: 600 !important;
+                    text-align: right;
+                    white-space: nowrap;
+                }
+                .report-detail-empty {
+                    min-height: 240px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: #64748B;
+                    background: #F8FCFA;
+                    border: 1px dashed rgba(22, 163, 74, 0.28);
+                    border-radius: 8px;
+                    text-align: center;
+                    font-size: 0.88rem;
+                    font-weight: 500;
+                }
+                .report-detail-footer {
+                    display: flex;
+                    justify-content: flex-end;
+                    padding: 16px 30px 22px;
+                    border-top: 1px solid #D7E7DC;
+                    background: #FFFFFF;
+                }
+                .report-detail-footer .shift-report-action {
+                    background: #FFFFFF !important;
+                    color: #334155 !important;
+                    border: 1px solid #D7E7DC !important;
+                    box-shadow: none !important;
+                }
+                .report-detail-footer .shift-report-action:hover,
+                .report-detail-footer .shift-report-action:focus-visible {
+                    color: var(--primary-green) !important;
+                    background: #F8FCFA !important;
+                    border-color: rgba(22, 163, 74, 0.42) !important;
+                    box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.07) !important;
+                    outline: none;
+                }
                 .shift-report-action {
                     min-height: 36px;
                     display: inline-flex;
@@ -328,6 +911,14 @@ const ShiftReportModal = ({ isOpen, onClose, shift, onApproved, selectedCount = 
                     .official-summary-cards,
                     .official-signature-grid {
                         grid-template-columns: 1fr;
+                    }
+                    .official-formula-expression {
+                        flex-direction: column;
+                    }
+                    .official-formula-expression em {
+                        width: 100%;
+                        min-width: 0;
+                        min-height: 18px;
                     }
                 }
             `}</style>

@@ -255,6 +255,141 @@
     max-width: 100%;
 }
 
+.cashier-profile-dock {
+    width: min(1440px, 100%);
+    margin: 0 auto 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.cashier-profile-toggle {
+    width: 46px;
+    height: 46px;
+    min-width: 46px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    border: 1px solid rgba(22, 163, 74, 0.28);
+    background: #fff;
+    color: var(--dark-green);
+    cursor: pointer;
+    box-shadow: 0 12px 28px rgba(22, 101, 52, 0.08);
+    transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.cashier-profile-toggle:hover,
+.cashier-profile-toggle:focus-visible {
+    background: rgba(22, 163, 74, 0.08);
+    border-color: rgba(22, 163, 74, 0.42);
+    color: var(--primary-green);
+    box-shadow: 0 0 0 3px rgba(207, 224, 212, 0.42);
+    outline: none;
+}
+
+.cashier-profile-dock-text {
+    display: grid;
+    gap: 2px;
+}
+
+.cashier-profile-dock-text span {
+    color: var(--text-secondary);
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.11em;
+    line-height: 1.2;
+    text-transform: uppercase;
+}
+
+.cashier-profile-dock-text strong {
+    color: var(--text-primary);
+    font-size: 0.84rem;
+    font-weight: 500;
+    line-height: 1.2;
+}
+
+.cashier-profile-modal-overlay {
+    z-index: 12000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: rgba(15, 23, 42, 0.36);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+.cashier-profile-modal {
+    width: min(720px, calc(100vw - 32px));
+    max-height: calc(100dvh - 48px);
+    overflow: auto;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    border-top: 4px solid var(--primary-green);
+    background: #fff;
+    box-shadow: 0 28px 80px rgba(15, 23, 42, 0.22);
+}
+
+.cashier-profile-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 22px 24px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.cashier-profile-modal-header span {
+    display: block;
+    color: var(--text-secondary);
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
+}
+
+.cashier-profile-modal-header h2 {
+    margin: 4px 0 0;
+    color: var(--text-primary);
+    font-size: 1.08rem;
+    font-weight: 500;
+    line-height: 1.2;
+}
+
+.cashier-profile-close {
+    width: 38px;
+    height: 38px;
+    min-width: 38px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background: #fff;
+    color: var(--text-secondary);
+    cursor: pointer;
+    box-shadow: none;
+    transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+}
+
+.cashier-profile-close:hover,
+.cashier-profile-close:focus-visible {
+    background: rgba(22, 163, 74, 0.06);
+    border-color: rgba(22, 163, 74, 0.28);
+    color: var(--dark-green);
+    outline: none;
+}
+
+.cashier-profile-modal .cashier-profile-card {
+    width: 100%;
+    margin: 0;
+    border: 0;
+    border-top: 0;
+    border-radius: 0;
+    box-shadow: none;
+}
+
 .shift-start-card {
     padding: 28px;
 }
@@ -559,6 +694,242 @@
     border-radius: 18px;
     padding: 28px;
     box-shadow: 0 18px 44px rgba(22, 101, 52, 0.08);
+}
+
+.electronic-payments-panel {
+    width: min(1440px, 100%);
+    margin: 0 auto;
+    display: grid;
+    gap: 20px;
+}
+
+.electronic-payments-header,
+.electronic-table-card {
+    background: #fff;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: 0 18px 44px rgba(22, 101, 52, 0.08);
+}
+
+.electronic-payments-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 24px;
+    padding: 24px 28px;
+    border-left: 4px solid var(--primary-green);
+}
+
+.electronic-payments-header span {
+    display: block;
+    color: var(--text-secondary);
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
+}
+
+.electronic-payments-header h3 {
+    margin: 6px 0 4px;
+    color: var(--text-primary);
+    font-size: 1.2rem;
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+.electronic-payments-header p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.84rem;
+    font-weight: 400;
+    line-height: 1.5;
+}
+
+.dashboard-layout .cash-counter-container button.electronic-refresh-btn.electronic-refresh-btn {
+    min-height: 38px !important;
+    border-radius: 8px !important;
+    padding: 0 16px !important;
+    background: #fff !important;
+    color: var(--dark-green) !important;
+    border: 1px solid rgba(22, 163, 74, 0.28) !important;
+    box-shadow: none !important;
+    font-size: 0.78rem !important;
+    font-weight: 500 !important;
+}
+
+.electronic-totals-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.electronic-total-card {
+    min-height: 118px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 22px;
+    background: #fff;
+    border: 1px solid var(--border-color);
+    border-top: 4px solid var(--primary-green);
+    border-radius: 8px;
+    box-shadow: 0 18px 44px rgba(22, 101, 52, 0.08);
+}
+
+.electronic-total-card-muted {
+    border-top-color: var(--accent-color);
+}
+
+.electronic-total-icon {
+    width: 46px;
+    height: 46px;
+    min-width: 46px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    color: var(--primary-green);
+    background: rgba(22, 163, 74, 0.08);
+    border: 1px solid rgba(22, 163, 74, 0.16);
+}
+
+.electronic-total-card span {
+    display: block;
+    color: var(--text-secondary);
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.09em;
+    line-height: 1.35;
+    text-transform: uppercase;
+}
+
+.electronic-total-card strong {
+    display: block;
+    margin-top: 8px;
+    color: var(--text-primary);
+    font-size: 1.08rem;
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+.electronic-table-card {
+    padding: 24px;
+}
+
+.electronic-table-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 18px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 18px;
+}
+
+.electronic-table-title h4 {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.electronic-table-title span {
+    color: var(--dark-green);
+    background: rgba(22, 163, 74, 0.08);
+    border: 1px solid rgba(22, 163, 74, 0.14);
+    border-radius: 999px;
+    padding: 6px 12px;
+    font-size: 0.72rem;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.electronic-table-wrap {
+    width: 100%;
+    overflow-x: auto;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+}
+
+.electronic-payments-table {
+    width: 100%;
+    min-width: 900px;
+    border-collapse: collapse;
+    background: #fff;
+}
+
+.electronic-payments-table th,
+.electronic-payments-table td {
+    padding: 14px 16px;
+    text-align: left;
+    border-bottom: 1px solid rgba(215, 231, 220, 0.72);
+}
+
+.electronic-payments-table th {
+    color: var(--text-secondary);
+    background: var(--bg-mint);
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.electronic-payments-table td {
+    color: var(--text-primary);
+    font-size: 0.82rem;
+    font-weight: 400;
+    vertical-align: middle;
+    white-space: nowrap;
+}
+
+.electronic-payments-table tbody tr:hover {
+    background: rgba(22, 163, 74, 0.025);
+}
+
+.electronic-payments-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.electronic-method-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 28px;
+    padding: 0 11px;
+    border-radius: 999px;
+    border: 1px solid rgba(22, 163, 74, 0.18);
+    color: var(--dark-green);
+    background: rgba(22, 163, 74, 0.08);
+    font-size: 0.72rem;
+    font-weight: 500;
+}
+
+.electronic-method-pill.is-card {
+    color: #1D4ED8;
+    background: rgba(37, 99, 235, 0.08);
+    border-color: rgba(37, 99, 235, 0.14);
+}
+
+.electronic-amount-cell {
+    color: var(--dark-green) !important;
+    font-weight: 600 !important;
+    text-align: right !important;
+}
+
+.electronic-empty-state {
+    min-height: 220px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 32px;
+    color: var(--text-secondary);
+    background: var(--bg-mint);
+    border: 1px dashed rgba(22, 163, 74, 0.28);
+    border-radius: 8px;
+    text-align: center;
+    font-size: 0.88rem;
+    font-weight: 500;
 }
 
 .saved-documents-header {
@@ -1021,11 +1392,28 @@
         flex-direction: column;
     }
 
+    .cashier-profile-dock {
+        align-items: flex-start;
+    }
+
     .cash-workspace-tab {
         width: 100%;
     }
 
     .saved-documents-panel {
+        padding: 20px;
+    }
+
+    .electronic-payments-header {
+        flex-direction: column;
+        padding: 20px;
+    }
+
+    .electronic-totals-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .electronic-table-card {
         padding: 20px;
     }
 

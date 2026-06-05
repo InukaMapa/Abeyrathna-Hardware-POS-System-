@@ -3,14 +3,50 @@ import DashboardLayout from '../../components/layout/DashboardLayout';
 import { fetchInventoryCategories, fetchInventoryItems } from '../../services/menuService';
 import { createOrder } from '../../services/orderService';
 import { useAuth } from '../../context/AuthContext';
+import { API_BASE_URL } from '../../config/api';
 
 /* ───────────────────────────── helpers ───────────────────────────── */
-const API_BASE = '/api';
 const getAuthHeaders = () => {
     const token = localStorage.getItem('token');
     const h = { 'Content-Type': 'application/json' };
     if (token) h['Authorization'] = `Bearer ${token}`;
     return h;
+};
+
+const getPriceTiers = (item) => (
+    Array.isArray(item?.priceTiers) && item.priceTiers.length > 0
+        ? item.priceTiers
+        : [{
+            quantity_remaining: item?.quantity || 0,
+            selling_price: item?.price || 0,
+            buying_price: item?.buyingPrice || 0
+        }]
+);
+
+const calculateTieredLine = (item, quantity) => {
+    let remaining = quantity;
+    let total = 0;
+    const allocations = [];
+
+    for (const tier of getPriceTiers(item)) {
+        if (remaining <= 0) break;
+        const available = parseFloat(tier.quantity_remaining || 0);
+        if (available <= 0) continue;
+
+        const qty = Math.min(remaining, available);
+        const price = parseFloat(tier.selling_price || item.price || 0);
+        total += qty * price;
+        allocations.push({ quantity: qty, price });
+        remaining -= qty;
+    }
+
+    if (remaining > 0) {
+        const price = parseFloat(item.price || 0);
+        total += remaining * price;
+        allocations.push({ quantity: remaining, price });
+    }
+
+    return { total, allocations };
 };
 
 /* ───────────────────────────── component ───────────────────────────── */
@@ -59,7 +95,7 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
                 setError(null);
                 setCheckingShift(true);
 
-                const shiftResponse = await fetch(`${API_BASE}/cash/admin/shifts`, {
+                const shiftResponse = await fetch(`${API_BASE_URL}/cash/admin/shifts`, {
                     headers: getAuthHeaders()
                 });
                 const shiftData = await shiftResponse.json();
@@ -67,7 +103,7 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
                 const cashierName = user?.full_name || user?.name || user?.username;
                 const openShift = shifts.find(shift => {
                     const isCurrentCashier = !cashierName || shift.cashier_name === cashierName;
-                    return isCurrentCashier && shift.status === 'OPEN';
+                    return isCurrentCashier && ['OPEN', 'REPORT_SUBMITTED'].includes(shift.status);
                 });
                 setHasOpenShift(Boolean(openShift));
                 setCheckingShift(false);
@@ -89,8 +125,9 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
                 const mappedItems = items.map(item => ({
                     id: item.id,
                     name: item.ingredient_name,
-                    price: parseFloat(item.selling_price || 0),
+                    price: parseFloat(item.fifo_selling_price ?? item.selling_price ?? 0),
                     buyingPrice: parseFloat(item.buying_price || 0),
+                    priceTiers: item.stock_price_tiers || [],
                     category: item.category,
                     image: item.image || null,
                     unit: item.unit,
@@ -153,6 +190,7 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
                 name: item.name,
                 price: parseFloat(item.price) || 0,
                 buyingPrice: parseFloat(item.buyingPrice || 0),
+                priceTiers: item.priceTiers || [],
                 image: item.image,
                 quantity: 1,
             }];
@@ -171,7 +209,7 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
     const removeFromCart = (id) =>
         setCartItems(prev => prev.filter(c => c.id !== id));
 
-    const cartTotal = cartItems.reduce((s, c) => s + c.price * c.quantity, 0);
+    const cartTotal = cartItems.reduce((s, c) => s + calculateTieredLine(c, c.quantity).total, 0);
     const cartCount = cartItems.reduce((s, c) => s + c.quantity, 0);
 
     /* ── barcode scanner handler ── */
@@ -225,7 +263,7 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
 
             if (editOrder) {
                 // Update existing order cart
-                const response = await fetch(`${API_BASE}/orders/${editOrder.order_id}/cart`, {
+                const response = await fetch(`${API_BASE_URL}/orders/${editOrder.order_id}/cart`, {
                     method: 'PUT',
                     headers: getAuthHeaders(),
                     body: JSON.stringify(orderData)
@@ -578,6 +616,21 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
                                                             >
                                                                 Rs. {parseFloat(item.price || 0).toFixed(2)}
                                                             </p>
+                                                            {getPriceTiers(item).length > 1 && (
+                                                                <div style={{
+                                                                    marginTop: '4px',
+                                                                    color: '#64748B',
+                                                                    fontSize: '0.66rem',
+                                                                    fontWeight: 600,
+                                                                    lineHeight: 1.2
+                                                                }}>
+                                                                    {getPriceTiers(item).slice(0, 2).map((tier, index) => (
+                                                                        <div key={`${tier.selling_price}-${index}`}>
+                                                                            {tier.quantity_remaining} {item.unit} @ Rs. {parseFloat(tier.selling_price || 0).toFixed(2)}
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            )}
                                                         </div>
 
                                                         {/* Add overlay on hover */}
@@ -661,7 +714,9 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
                                 </div>
                             ) : (
                                 <div className="space-y-3 max-h-[55vh] overflow-y-auto pr-1 mb-4 custom-scrollbar">
-                                    {cartItems.map(item => (
+                                    {cartItems.map(item => {
+                                        const tieredLine = calculateTieredLine(item, item.quantity);
+                                        return (
                                         <div key={item.id} className="bg-[#161616] border border-[#2a2a2a] rounded-xl p-3 flex gap-3">
                                             {/* Thumbnail */}
                                             <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 bg-[#252525]">
@@ -683,8 +738,17 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
                                                     Buying price: Rs. {(parseFloat(item.buyingPrice || 0)).toFixed(2)}
                                                 </p>
                                                 <p className="text-red-500 font-black text-xs mb-2">
-                                                    Rs. {(item.price * item.quantity).toFixed(2)}
+                                                    Rs. {tieredLine.total.toFixed(2)}
                                                 </p>
+                                                {tieredLine.allocations.length > 1 && (
+                                                    <div className="text-[10px] text-gray-500 font-semibold mb-2">
+                                                        {tieredLine.allocations.map((allocation, index) => (
+                                                            <div key={`${allocation.price}-${index}`}>
+                                                                {allocation.quantity} @ Rs. {allocation.price.toFixed(2)}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
 
                                                 {/* Qty controls */}
                                                 <div className="flex items-center gap-2">
@@ -711,7 +775,8 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
                                                 </div>
                                             </div>
                                         </div>
-                                    ))}
+                                    );
+                                    })}
                                 </div>
                             )}
 
