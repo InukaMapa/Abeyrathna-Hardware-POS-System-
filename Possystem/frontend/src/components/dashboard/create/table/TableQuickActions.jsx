@@ -126,10 +126,10 @@ const TableQuickActions = () => {
                             d="M3 3h18v18H3zM3 9h18M9 21V9"
                         />
                     </svg>
-                    Table Management
+                    Store Area Management
                 </h1>
                 <p className="text-[#A0A0A0] mt-1">
-                    Create and manage restaurant places and tables
+                    Create and manage store sections, counters, and order areas
                 </p>
             </div>
 
@@ -183,7 +183,7 @@ const TableQuickActions = () => {
                     <div className="bg-[#1E1E1E] rounded-lg shadow-lg border border-[#333333] p-6">
                         <div className="flex items-center justify-between mb-4">
                             <h2 className="text-xl font-bold text-[#E0E0E0]">
-                                Created Tables
+                                Created Counters
                             </h2>
                             <button
                                 onClick={fetchAllData}
@@ -226,10 +226,10 @@ const TableQuickActions = () => {
                                     />
                                 </svg>
                                 <h3 className="text-lg font-medium text-[#E0E0E0] mb-2">
-                                    No Tables Yet
+                                    No Counters Yet
                                 </h3>
                                 <p className="text-[#A0A0A0]">
-                                    Create your first table to get started
+                                    Create your first counter or area to get started
                                 </p>
                             </div>
                         ) : (
@@ -267,7 +267,7 @@ const TableQuickActions = () => {
                                                 </h3>
                                                 <span className="ml-auto text-sm text-[#A0A0A0] bg-[#1E1E1E] px-3 py-1 rounded-full border border-[#333333]">
                                                     {placeTables.length}{" "}
-                                                    {placeTables.length === 1 ? "table" : "tables"}
+                                                    {placeTables.length === 1 ? "counter" : "counters"}
                                                 </span>
                                             </div>
 
@@ -295,10 +295,10 @@ const TableQuickActions = () => {
                                                                 </svg>
                                                             </div>
                                                             <p className="text-xs font-bold text-[#E0E0E0] text-center truncate w-full">
-                                                                #{table.table_id}
+                                                                Counter #{table.table_id}
                                                             </p>
                                                             <p className="text-[10px] text-[#A0A0A0] text-center">
-                                                                {table.seats} seats
+                                                                {table.seats} capacity
                                                             </p>
                                                         </div>
 
@@ -307,7 +307,7 @@ const TableQuickActions = () => {
                                                             <button
                                                                 onClick={() => setEditingTable(table)}
                                                                 className="p-1 bg-[#D32F2F] text-white rounded hover:bg-[#B71C1C] transition-colors flex items-center justify-center shrink-0"
-                                                                title="Edit table"
+                                                                title="Edit counter"
                                                             >
                                                                 <svg
                                                                     className="h-3 w-3"
@@ -326,7 +326,7 @@ const TableQuickActions = () => {
                                                             <button
                                                                 onClick={() => setDeleteConfirm(table)}
                                                                 className="p-1 bg-[#333333] text-white rounded hover:bg-[#D32F2F] transition-colors flex items-center justify-center shrink-0"
-                                                                title="Delete table"
+                                                                title="Delete counter"
                                                             >
                                                                 <svg
                                                                     className="h-3 w-3"
@@ -394,7 +394,7 @@ const TableQuickActions = () => {
                             </div>
                             <div>
                                 <h3 className="text-lg font-semibold text-gray-800">
-                                    Delete Table
+                                    Delete Counter
                                 </h3>
                                 <p className="text-sm text-gray-600">
                                     This action cannot be undone
@@ -404,7 +404,7 @@ const TableQuickActions = () => {
 
                         <p className="text-gray-700 mb-6">
                             Are you sure you want to delete{" "}
-                            <strong>Table #{deleteConfirm.table_id}</strong> from{" "}
+                            <strong>Counter #{deleteConfirm.table_id}</strong> from{" "}
                             <strong>{deleteConfirm.place_name || "Unassigned"}</strong>?
                         </p>
 
@@ -419,7 +419,7 @@ const TableQuickActions = () => {
                                 onClick={() => handleDeleteTable(deleteConfirm.table_id)}
                                 className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
                             >
-                                Delete Table
+                                Delete Counter
                             </button>
                         </div>
                     </div>

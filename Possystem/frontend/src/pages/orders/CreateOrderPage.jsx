@@ -30,8 +30,8 @@ const CreateOrderPage = ({ onNavigate, tableData }) => {
             const items = await fetchLiveMenu();
             setMenuItems(items);
         } catch (err) {
-            console.error('Failed to load menu items:', err);
-            setError('Failed to load menu items. Please try again.');
+            console.error('Failed to load product items:', err);
+            setError('Failed to load product items. Please try again.');
         } finally {
             setLoading(false);
         }
@@ -286,7 +286,7 @@ const CreateOrderPage = ({ onNavigate, tableData }) => {
                         {loading ? (
                             <div className="bg-[#1E1E1E] border border-[#333333] rounded-2xl shadow-xl p-16 text-center">
                                 <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-red-600 mx-auto mb-6"></div>
-                                <p className="text-gray-400 text-lg font-bold uppercase tracking-widest">Loading menu items...</p>
+                                <p className="text-gray-400 text-lg font-bold uppercase tracking-widest">Loading product items...</p>
                             </div>
                         ) : (
                             <div className="space-y-6">
@@ -308,7 +308,7 @@ const CreateOrderPage = ({ onNavigate, tableData }) => {
                                     <div className="flex items-center justify-between mb-8 pb-4 border-b border-[#333333]">
                                         <h2 className="text-xl font-bold text-white uppercase tracking-wider flex items-center gap-3">
                                             <span className="w-1.5 h-6 bg-red-600 rounded-full"></span>
-                                            {selectedCategory === 'all' ? 'All Menu Items' : selectedCategory}
+                                            {selectedCategory === 'all' ? 'All Product Items' : selectedCategory}
                                         </h2>
                                         <span className="text-sm font-bold text-gray-400 bg-gray-800 px-4 py-2 rounded-xl border border-[#333333]">
                                             {filteredItems.length} items
@@ -361,7 +361,7 @@ const CreateOrderPage = ({ onNavigate, tableData }) => {
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                                         </svg>
                                         <p className="text-gray-500">No items selected</p>
-                                        <p className="text-sm text-gray-400 mt-1">Tap menu items to add</p>
+                                        <p className="text-sm text-gray-400 mt-1">Tap product items to add</p>
                                     </div>
                                 ) : (
                                     selectedItems.map((item, index) => (

@@ -24,7 +24,7 @@ const MenuFilters = ({ filters, onFilterChange, onSearchChange, onRefresh, onAdd
                     <Search className="search-icon" size={20} />
                     <input
                         type="text"
-                        placeholder="Search menu items..."
+                        placeholder="Search product items..."
                         value={filters.search}
                         onChange={(e) => onSearchChange(e.target.value)}
                         className="menu-search-input"

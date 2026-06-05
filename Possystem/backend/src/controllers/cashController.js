@@ -17,47 +17,85 @@ const getOrderCashAmount = (order) => {
     return Number.isFinite(totalAmount) ? totalAmount : 0;
 };
 
-const fetchClosedCashOrdersForShift = async (shift) => {
-    const orderSelect = 'order_id, total_amount, cash_amount, payment_method, closed_at';
-    const legacyOrderSelect = 'order_id, total_amount, closed_at';
-    const endTime = shift.end_time || new Date().toISOString();
+const getShiftStaffId = async (shift) => {
+    const cashierName = String(shift?.cashier_name || '').trim();
+    if (!cashierName) return null;
 
-    let { data: shiftOrders, error } = await supabase
+    const { data: user } = await supabase
+        .from('users')
+        .select('id')
+        .eq('username', cashierName)
+        .maybeSingle();
+
+    return user?.id || null;
+};
+
+const fetchClosedCashOrdersForShift = async (shift, staffIdOverride = null) => {
+    const orderSelect = 'order_id, total_amount, cash_amount, payment_method, closed_at, staff_id';
+    const legacyOrderSelect = 'order_id, total_amount, closed_at, staff_id';
+    const endTime = shift.end_time || new Date().toISOString();
+    const shiftStaffId = staffIdOverride || await getShiftStaffId(shift);
+
+    let shiftOrdersQuery = supabase
         .from('orders')
         .select(orderSelect)
         .eq('status', 'CLOSED')
         .eq('shift_id', shift.shift_id);
 
+    if (shiftStaffId) {
+        shiftOrdersQuery = shiftOrdersQuery.eq('staff_id', shiftStaffId);
+    }
+
+    let { data: shiftOrders, error } = await shiftOrdersQuery;
+
     if (error?.code === 'PGRST204' && (
         error.message?.includes('cash_amount') ||
         error.message?.includes('payment_method')
     )) {
-        ({ data: shiftOrders, error } = await supabase
+        let legacyShiftOrdersQuery = supabase
             .from('orders')
             .select(legacyOrderSelect)
             .eq('status', 'CLOSED')
-            .eq('shift_id', shift.shift_id));
+            .eq('shift_id', shift.shift_id);
+
+        if (shiftStaffId) {
+            legacyShiftOrdersQuery = legacyShiftOrdersQuery.eq('staff_id', shiftStaffId);
+        }
+
+        ({ data: shiftOrders, error } = await legacyShiftOrdersQuery);
     }
 
     if (error) throw error;
 
-    let { data: timedOrders, error: timedError } = await supabase
+    let timedQuery = supabase
         .from('orders')
         .select(orderSelect)
         .eq('status', 'CLOSED')
         .gte('closed_at', shift.start_time)
         .lte('closed_at', endTime);
 
+    if (shiftStaffId) {
+        timedQuery = timedQuery.eq('staff_id', shiftStaffId);
+    }
+
+    let { data: timedOrders, error: timedError } = await timedQuery;
+
     if (timedError?.code === 'PGRST204' && (
         timedError.message?.includes('cash_amount') ||
         timedError.message?.includes('payment_method')
     )) {
-        ({ data: timedOrders, error: timedError } = await supabase
+        let legacyTimedQuery = supabase
             .from('orders')
             .select(legacyOrderSelect)
             .eq('status', 'CLOSED')
             .gte('closed_at', shift.start_time)
-            .lte('closed_at', endTime));
+            .lte('closed_at', endTime);
+
+        if (shiftStaffId) {
+            legacyTimedQuery = legacyTimedQuery.eq('staff_id', shiftStaffId);
+        }
+
+        ({ data: timedOrders, error: timedError } = await legacyTimedQuery);
     }
 
     if (timedError) throw timedError;
@@ -106,49 +144,74 @@ const getElectronicPaymentType = (method) => {
     return null;
 };
 
-const fetchClosedOrdersForShift = async (shift) => {
-    const orderSelect = 'order_id, total_amount, cash_amount, payment_method, payment_details, closed_at';
-    const legacyOrderSelect = 'order_id, total_amount, cash_amount, payment_method, closed_at';
+const fetchClosedOrdersForShift = async (shift, staffIdOverride = null) => {
+    const orderSelect = 'order_id, total_amount, cash_amount, payment_method, payment_details, closed_at, staff_id';
+    const legacyOrderSelect = 'order_id, total_amount, cash_amount, payment_method, closed_at, staff_id';
     const endTime = shift.end_time || new Date().toISOString();
+    const shiftStaffId = staffIdOverride || await getShiftStaffId(shift);
 
-    let { data: shiftOrders, error } = await supabase
+    let shiftOrdersQuery = supabase
         .from('orders')
         .select(orderSelect)
         .eq('status', 'CLOSED')
         .eq('shift_id', shift.shift_id);
+
+    if (shiftStaffId) {
+        shiftOrdersQuery = shiftOrdersQuery.eq('staff_id', shiftStaffId);
+    }
+
+    let { data: shiftOrders, error } = await shiftOrdersQuery;
 
     if (error?.code === 'PGRST204' && (
         error.message?.includes('cash_amount') ||
         error.message?.includes('payment_method') ||
         error.message?.includes('payment_details')
     )) {
-        ({ data: shiftOrders, error } = await supabase
+        let legacyShiftOrdersQuery = supabase
             .from('orders')
             .select(legacyOrderSelect)
             .eq('status', 'CLOSED')
-            .eq('shift_id', shift.shift_id));
+            .eq('shift_id', shift.shift_id);
+
+        if (shiftStaffId) {
+            legacyShiftOrdersQuery = legacyShiftOrdersQuery.eq('staff_id', shiftStaffId);
+        }
+
+        ({ data: shiftOrders, error } = await legacyShiftOrdersQuery);
     }
 
     if (error) throw error;
 
-    let { data: timedOrders, error: timedError } = await supabase
+    let timedQuery = supabase
         .from('orders')
         .select(orderSelect)
         .eq('status', 'CLOSED')
         .gte('closed_at', shift.start_time)
         .lte('closed_at', endTime);
 
+    if (shiftStaffId) {
+        timedQuery = timedQuery.eq('staff_id', shiftStaffId);
+    }
+
+    let { data: timedOrders, error: timedError } = await timedQuery;
+
     if (timedError?.code === 'PGRST204' && (
         timedError.message?.includes('cash_amount') ||
         timedError.message?.includes('payment_method') ||
         timedError.message?.includes('payment_details')
     )) {
-        ({ data: timedOrders, error: timedError } = await supabase
+        let legacyTimedQuery = supabase
             .from('orders')
             .select(legacyOrderSelect)
             .eq('status', 'CLOSED')
             .gte('closed_at', shift.start_time)
-            .lte('closed_at', endTime));
+            .lte('closed_at', endTime);
+
+        if (shiftStaffId) {
+            legacyTimedQuery = legacyTimedQuery.eq('staff_id', shiftStaffId);
+        }
+
+        ({ data: timedOrders, error: timedError } = await legacyTimedQuery);
     }
 
     if (timedError) throw timedError;
@@ -252,11 +315,12 @@ export const getShiftSummary = async (req, res) => {
 
         // 2. Get Cash Sales. Prefer orders linked by shift_id, and also include
         // orders closed during the shift window in case older records missed shift_id.
-        const cashOrders = Array.from(await fetchClosedCashOrdersForShift(shift));
+        const cashierStaffId = req.user?.role === 'CASHIER' ? req.user.userId : null;
+        const cashOrders = Array.from(await fetchClosedCashOrdersForShift(shift, cashierStaffId));
         const cashSales = cashOrders.reduce((sum, order) => sum + getOrderCashAmount(order), 0);
         const cashSalesCount = cashOrders.length;
 
-        const closedOrders = await fetchClosedOrdersForShift(shift);
+        const closedOrders = await fetchClosedOrdersForShift(shift, cashierStaffId);
         const electronicPayments = closedOrders.flatMap(order => getPaymentRows(order)
             .map(payment => ({
                 type: getElectronicPaymentType(payment.method),
@@ -605,6 +669,7 @@ export const getShiftOrders = async (req, res) => {
                 cash_amount,
                 payment_method,
                 closed_at,
+                staff_id,
                 order_items (
                     order_item_id,
                     item_name,
@@ -617,6 +682,7 @@ export const getShiftOrders = async (req, res) => {
                     order_id,
                     total_amount,
                     closed_at,
+                    staff_id,
                     order_items (
                         order_item_id,
                         item_name,
@@ -626,29 +692,44 @@ export const getShiftOrders = async (req, res) => {
                     )
                 `;
         const endTime = shift.end_time || new Date().toISOString();
+        const shiftStaffId = req.user?.role === 'CASHIER'
+            ? req.user.userId
+            : await getShiftStaffId(shift);
 
-        let { data: shiftOrders, error } = await supabase
+        let shiftOrdersQuery = supabase
             .from('orders')
             .select(orderSelect)
             .eq('shift_id', shiftId)
             .eq('status', 'CLOSED')
             .order('closed_at', { ascending: false });
 
+        if (shiftStaffId) {
+            shiftOrdersQuery = shiftOrdersQuery.eq('staff_id', shiftStaffId);
+        }
+
+        let { data: shiftOrders, error } = await shiftOrdersQuery;
+
         if (error?.code === 'PGRST204' && (
             error.message?.includes('cash_amount') ||
             error.message?.includes('payment_method')
         )) {
-            ({ data: shiftOrders, error } = await supabase
+            let legacyShiftOrdersQuery = supabase
                 .from('orders')
                 .select(legacyOrderSelect)
                 .eq('shift_id', shiftId)
                 .eq('status', 'CLOSED')
-                .order('closed_at', { ascending: false }));
+                .order('closed_at', { ascending: false });
+
+            if (shiftStaffId) {
+                legacyShiftOrdersQuery = legacyShiftOrdersQuery.eq('staff_id', shiftStaffId);
+            }
+
+            ({ data: shiftOrders, error } = await legacyShiftOrdersQuery);
         }
 
         if (error) throw error;
 
-        let { data: timedOrders, error: timedError } = await supabase
+        let timedQuery = supabase
             .from('orders')
             .select(orderSelect)
             .eq('status', 'CLOSED')
@@ -656,17 +737,29 @@ export const getShiftOrders = async (req, res) => {
             .lte('closed_at', endTime)
             .order('closed_at', { ascending: false });
 
+        if (shiftStaffId) {
+            timedQuery = timedQuery.eq('staff_id', shiftStaffId);
+        }
+
+        let { data: timedOrders, error: timedError } = await timedQuery;
+
         if (timedError?.code === 'PGRST204' && (
             timedError.message?.includes('cash_amount') ||
             timedError.message?.includes('payment_method')
         )) {
-            ({ data: timedOrders, error: timedError } = await supabase
+            let legacyTimedQuery = supabase
                 .from('orders')
                 .select(legacyOrderSelect)
                 .eq('status', 'CLOSED')
                 .gte('closed_at', shift.start_time)
                 .lte('closed_at', endTime)
-                .order('closed_at', { ascending: false }));
+                .order('closed_at', { ascending: false });
+
+            if (shiftStaffId) {
+                legacyTimedQuery = legacyTimedQuery.eq('staff_id', shiftStaffId);
+            }
+
+            ({ data: timedOrders, error: timedError } = await legacyTimedQuery);
         }
 
         if (timedError) throw timedError;
@@ -732,7 +825,8 @@ export const getShiftElectronicPayments = async (req, res) => {
 
         if (shiftError || !shift) return res.status(404).json({ error: 'Shift not found' });
 
-        const orders = await fetchClosedOrdersForShift(shift);
+        const cashierStaffId = req.user?.role === 'CASHIER' ? req.user.userId : null;
+        const orders = await fetchClosedOrdersForShift(shift, cashierStaffId);
         const payments = orders.flatMap(order => getPaymentRows(order)
             .map(payment => ({
                 order_id: order.order_id,

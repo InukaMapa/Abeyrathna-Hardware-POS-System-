@@ -7,7 +7,7 @@ import { API_BASE_URL } from '../../config/api';
 
 /**
  * CashierTableOperationsPage
- * Live POS table operations view for cashiers
+ * Live POS counter operations view for cashiers.
  * - Color-coded by order status
  * - Touch-friendly interface
  * - Auto-refresh capability
@@ -90,7 +90,7 @@ const CashierTableOperationsPage = ({ onNavigate }) => {
         if (table.hasActiveOrder) {
             // TODO: Open Order Details view
             console.log('📋 View order for table:', table.tableId);
-            alert(`Order Details for Table ${table.tableId}\n\nStatus: ${table.orderStatus}\nTotal: Rs. ${table.totalAmount}\n\n(Order details panel coming soon)`);
+            alert(`Order Details for Counter ${table.tableId}\n\nStatus: ${table.orderStatus}\nTotal: Rs. ${table.totalAmount}\n\n(Order details panel coming soon)`);
         } else {
             // Navigate to Create Order page
             console.log('➕ Create order for table:', table.tableId);
@@ -123,7 +123,7 @@ const CashierTableOperationsPage = ({ onNavigate }) => {
                 <div className="flex items-center justify-center h-screen">
                     <div className="text-center">
                         <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 mx-auto mb-4"></div>
-                        <p className="text-gray-600 text-lg font-semibold">Loading tables...</p>
+                        <p className="text-gray-600 text-lg font-semibold">Loading counters...</p>
                     </div>
                 </div>
             </DashboardLayout>
@@ -210,9 +210,9 @@ const CashierTableOperationsPage = ({ onNavigate }) => {
                                 d="M3 3h18v18H3zM3 9h18M9 21V9"
                             />
                         </svg>
-                        <h3 className="text-2xl font-bold text-gray-700 mb-2">No Tables Available</h3>
+                        <h3 className="text-2xl font-bold text-gray-700 mb-2">No Counters Available</h3>
                         <p className="text-gray-500 mb-6">
-                            There are no tables set up yet. Contact your administrator.
+                            There are no counters or areas set up yet. Contact your administrator.
                         </p>
                         <button
                             onClick={() => useMockData ? loadMockData() : loadTables()}
@@ -234,12 +234,12 @@ const CashierTableOperationsPage = ({ onNavigate }) => {
                 <div className="flex items-center justify-between mb-6">
                     <div>
                         <h1 className="text-3xl font-bold text-white">
-                            {userRole === 'ADMIN' ? 'Table Live Status' : 'Table Operations'}
+                            {userRole === 'ADMIN' ? 'Counter Live Status' : 'Counter Operations'}
                         </h1>
                         <p className="text-gray-400 mt-1">
                             {userRole === 'ADMIN'
-                                ? 'Monitor live table occupancy and order status'
-                                : 'Live table status • Touch to manage orders'}
+                                ? 'Monitor live counter usage and order status'
+                                : 'Live counter status - touch to manage orders'}
                             {useMockData && (
                                 <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
                                     Demo Mode
@@ -283,7 +283,7 @@ const CashierTableOperationsPage = ({ onNavigate }) => {
                         </div>
                         <input
                             type="text"
-                            placeholder="Search table number (e.g. T5)..."
+                            placeholder="Search counter number (e.g. C5)..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             className="block w-full pl-12 pr-4 py-3 bg-[#1E1E1E] border border-[#333333] rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-600/50 focus:border-red-600 transition-all font-medium"
@@ -327,7 +327,7 @@ const CashierTableOperationsPage = ({ onNavigate }) => {
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                                         </svg>
                                     </div>
-                                    <h3 className="text-xl font-bold text-white mb-2">No matching tables found</h3>
+                                    <h3 className="text-xl font-bold text-white mb-2">No matching counters found</h3>
                                     <p className="text-gray-500">Try adjusting your search query or section filter.</p>
                                     <button
                                         onClick={() => { setSearchQuery(''); setSelectedPlaceId('all'); }}
@@ -369,7 +369,7 @@ const CashierTableOperationsPage = ({ onNavigate }) => {
                                     </h2>
                                     <div className="flex items-center gap-4">
                                         <span className="text-sm font-bold text-gray-400 bg-[#252525] px-4 py-2 rounded-xl border border-[#333333]">
-                                            {place.tables.length} {place.tables.length === 1 ? 'table' : 'tables'}
+                                            {place.tables.length} {place.tables.length === 1 ? 'counter' : 'counters'}
                                         </span>
                                         <span className="text-sm font-bold text-red-500 bg-red-600/10 px-4 py-2 rounded-xl border border-red-600/20">
                                             {place.tables.filter(t => t.hasActiveOrder).length} active

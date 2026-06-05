@@ -59,7 +59,7 @@ const TableEditModal = ({ table, places = [], onClose, onUpdate }) => {
         (p) => Number(p.place_id) === Number(formData.place_id)
       );
 
-      const placeName = selectedPlace?.place_name || "table";
+      const placeName = selectedPlace?.place_name || "counter";
       const uniqueKey = `${placeName}-${table?.table_id}-${Date.now()}`;
 
       const url = `${QR_ORDER_BASE_URL}?table=${encodeURIComponent(
@@ -110,7 +110,7 @@ const TableEditModal = ({ table, places = [], onClose, onUpdate }) => {
 
       onClose();
     } catch (err) {
-      setError(err.message || "Failed to update table");
+      setError(err.message || "Failed to update counter");
     } finally {
       setLoading(false);
     }
@@ -121,7 +121,7 @@ const TableEditModal = ({ table, places = [], onClose, onUpdate }) => {
 
     const link = document.createElement("a");
     link.href = qrImage;
-    link.download = `table-${table?.table_id || "updated"}-qr.png`;
+    link.download = `counter-${table?.table_id || "updated"}-qr.png`;
     link.click();
   };
 
@@ -139,7 +139,7 @@ const TableEditModal = ({ table, places = [], onClose, onUpdate }) => {
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
         <div className="flex items-center justify-between p-6 border-b">
           <h2 className="text-xl font-semibold text-gray-800">
-            Edit Table #{table?.table_id}
+            Edit Counter #{table?.table_id}
           </h2>
           <button
             onClick={onClose}
@@ -197,7 +197,7 @@ const TableEditModal = ({ table, places = [], onClose, onUpdate }) => {
               htmlFor="seats"
               className="block text-sm font-medium text-gray-700 mb-2"
             >
-              Number of Seats
+              Capacity
             </label>
             <input
               type="number"
@@ -256,7 +256,7 @@ const TableEditModal = ({ table, places = [], onClose, onUpdate }) => {
               className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={loading || !formData.qr_url}
             >
-              {loading ? "Updating..." : "Update Table"}
+              {loading ? "Updating..." : "Update Counter"}
             </button>
           </div>
         </form>

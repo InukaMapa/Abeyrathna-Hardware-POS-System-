@@ -62,7 +62,7 @@ app.use('/api/ocr', ocrRoutes);
 
 // Health Check
 app.get('/', (req, res) => {
-    res.send('Chill Grand Restaurant API is running...');
+    res.send('Abeyrathna Hardware POS API is running...');
 });
 
 app.get('/api/health', (req, res) => {

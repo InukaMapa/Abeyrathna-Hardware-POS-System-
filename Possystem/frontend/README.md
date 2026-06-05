@@ -1,44 +1,41 @@
-# 🍽️ Chill Grand Restaurant POS - Frontend
+# Abeyrathna Hardware POS - Frontend
 
-A modern, role-based Restaurant Point of Sale (POS) system built with React, featuring comprehensive authentication and authorization for ADMIN and CASHIER roles.
+A role-based Hardware Point of Sale (POS) frontend for Abeyrathna Trade Center. The app supports ADMIN and CASHIER workflows for inventory, billing, orders, suppliers, staff, cash counter operations, reports, barcode use, and receipt printing through the browser.
 
-## ✨ Features
+## Features
 
-### 🔐 Authentication & Authorization
-- JWT-based authentication with role decoding
-- Secure token storage and management
-- Role-based access control (ADMIN / CASHIER)
-- Protected routes with automatic redirects
-- Persistent authentication across sessions
+### Authentication and Authorization
+- JWT-based login
+- ADMIN and CASHIER role access
+- Protected pages
+- Persistent login across refresh
 
-### 👨‍💼 ADMIN Features
-- **Dashboard** - Overview with KPIs and metrics
-- **Table Management** - Create, edit, and manage restaurant tables
-- **Menu Management** - Full menu CRUD operations
-- **Inventory** - Stock management (coming soon)
-- **Reports** - Analytics and reporting (coming soon)
+### Admin Features
+- Dashboard with KPIs and metrics
+- Product and inventory management
+- Barcode generation and printing
+- Supplier management
+- Supplier returns and recent purchases
+- Staff management
+- Cash management
+- Reports and analytics
 
-### 👨‍💻 CASHIER Features
-- **Order Operations** - Main interface with table grid view
-- **Color-Coded Tables** - Visual status indicators
-  - 🟦 Blue: Order Placed
-  - 🟧 Orange: Preparing
-  - 🟩 Green: Served
-  - 🟥 Red: Bill Open
-  - ⬜ Gray: Available
-- **Order Details Drawer** - Comprehensive order management
-- **Status Management** - Quick order status updates
-- **Bill Processing** - Complete bill closure
+### Cashier Features
+- Create customer orders
+- Scan or type product barcodes
+- Add products to bill
+- Edit quantities
+- Open and complete bills
+- Print receipts
+- Cash counter and shift handling
 
-### 🎨 UI/UX
-- Desktop-first POS-optimized design
-- Dynamic sidebar based on user role
-- Real-time order updates (30-second auto-refresh)
-- Smooth animations and transitions
-- Professional color scheme
-- Responsive table grid layout
+### Hardware Support
+- USB barcode scanner in HID/Keyboard mode
+- Browser-based receipt printing
+- Cash drawer through receipt printer driver settings
+- Optional barcode label printer for product labels
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 - Node.js 18+
@@ -48,249 +45,71 @@ A modern, role-based Restaurant Point of Sale (POS) system built with React, fea
 ### Installation
 
 ```bash
-# Clone the repository
-git clone <repository-url>
-cd chillgrand-restaurant-frontend
-
-# Install dependencies
+cd abeyrathna-hardware-pos-frontend
 npm install
-
-# Start development server
 npm run dev
 ```
 
-The application will be available at `http://localhost:5173`
+The application will be available at `http://localhost:5173`.
 
 ### Test Login
 
-**Admin Access:**
-```
+Admin:
+```text
 Username: admin
-Password: (your admin password)
-→ Redirects to Dashboard
+Password: your admin password
 ```
 
-**Cashier Access:**
-```
+Cashier:
+```text
 Username: cashier
-Password: (your cashier password)
-→ Redirects to Order Operations
+Password: your cashier password
 ```
 
-## 📁 Project Structure
+## API Configuration
 
-```
-src/
-├── components/
-│   ├── common/
-│   │   ├── ProtectedRoute.jsx      # Route protection component
-│   │   ├── RoleGuard.jsx           # Component-level role guard
-│   │   └── InputGroup.jsx
-│   ├── dashboard/
-│   │   ├── Sidebar.jsx             # Dynamic role-based menu
-│   │   ├── TopBar.jsx              # User info & logout
-│   │   └── ...
-│   ├── layout/
-│   │   ├── AuthLayout.jsx
-│   │   └── DashboardLayout.jsx
-│   └── orders/
-│       └── OrderDetailsDrawer.jsx  # Order management drawer
-├── context/
-│   └── AuthContext.jsx             # JWT auth & role management
-├── pages/
-│   ├── auth/
-│   │   ├── LoginPage.jsx           # Role-based redirect
-│   │   └── UnauthorizedPage.jsx    # Access denied
-│   ├── dashboard/
-│   │   └── DashboardPage.jsx       # ADMIN home
-│   ├── orders/
-│   │   └── OrderOperationsPage.jsx # CASHIER home
-│   └── ...
-├── utils/
-│   └── constants.js                # Roles, helpers, formatters
-├── config/
-│   └── api.js                      # API configuration
-└── App.jsx                         # Main app with routing
-```
-
-## 🔑 User Roles
-
-### ADMIN
-- Full system access
-- Dashboard with analytics
-- Table management
-- Menu management
-- Inventory control
-- Reports and analytics
-
-### CASHIER
-- Order processing focus
-- Table status view
-- Order management
-- Bill processing
-- Cash counter access
-
-## 📚 Documentation
-
-Comprehensive documentation is available:
-
-- **[QUICKSTART.md](QUICKSTART.md)** - Quick start guide and basic usage
-- **[AUTHENTICATION_GUIDE.md](AUTHENTICATION_GUIDE.md)** - Complete authentication implementation details
-- **[CODE_EXAMPLES.md](CODE_EXAMPLES.md)** - Code snippets and patterns
-- **[AUTH_FLOW_DIAGRAMS.md](AUTH_FLOW_DIAGRAMS.md)** - Visual flow diagrams
-- **[BACKEND_JWT_REQUIREMENTS.md](BACKEND_JWT_REQUIREMENTS.md)** - Backend JWT specifications
-- **[TESTING_CHECKLIST.md](TESTING_CHECKLIST.md)** - Comprehensive testing guide
-- **[IMPLEMENTATION_SUMMARY.md](IMPLEMENTATION_SUMMARY.md)** - Feature summary
-
-## 🛠️ Tech Stack
-
-- **React** 19.2.0 - UI library
-- **Vite** 7.2.2 - Build tool
-- **Tailwind CSS** 4.1.18 - Styling
-- **jwt-decode** - JWT token decoding
-- **axios** - HTTP client
-- **lucide-react** - Icons
-
-## 🔒 Security
-
-- JWT tokens stored securely in localStorage
-- Role-based route protection
-- Authorization headers on all API calls
-- Token validation on app mount
-- Automatic logout on token expiry
-- Protected API endpoints
-
-## 🎯 API Integration
-
-### Required Endpoints
-
-```
-POST   /api/auth/login              - User authentication
-GET    /api/tables                  - Fetch tables with orders
-PATCH  /api/orders/:id/status       - Update order status
-POST   /api/orders/:id/complete     - Complete order
-```
-
-### Authentication Header
-
-All authenticated requests include:
-```javascript
-headers: {
-  'Authorization': `Bearer ${token}`,
-  'Content-Type': 'application/json'
-}
-```
-
-## 📦 Scripts
-
-```bash
-# Development
-npm run dev          # Start dev server
-
-# Production
-npm run build        # Build for production
-npm run preview      # Preview production build
-
-# Code Quality
-npm run lint         # Run ESLint
-```
-
-## 🧪 Testing
-
-Follow the comprehensive testing checklist in [TESTING_CHECKLIST.md](TESTING_CHECKLIST.md):
-
-- Authentication tests
-- Authorization tests
-- UI/UX tests
-- API integration tests
-- Browser compatibility
-- Performance tests
-
-## 🎨 Order Status Colors
-
-| Status | Color | Description |
-|--------|-------|-------------|
-| Available | Gray | No active order |
-| Placed | Blue | Order received |
-| Preparing | Orange | Kitchen preparing |
-| Served | Green | Food served to customer |
-| Bill Open | Red | Awaiting payment |
-
-## 🔧 Configuration
-
-### API Configuration
-
-Edit `src/config/api.js`:
-
-```javascript
-export const API_BASE_URL = 'http://localhost:5000/api';
-```
-
-### Environment Variables
-
-For production, use environment variables:
+Edit `src/config/api.js` or set an environment variable:
 
 ```env
-VITE_API_BASE_URL=https://api.yourrestaurant.com
+VITE_API_BASE_URL=https://your-backend-domain.com/api
 ```
 
-## 🚧 Future Enhancements
+For local development, the app can use `/api` with the Vite proxy.
 
-- [ ] Token refresh mechanism
-- [ ] Real-time updates via WebSocket
-- [ ] Push notifications
-- [ ] Mobile app version
-- [ ] Advanced analytics dashboard
-- [ ] Multi-location support
-- [ ] Offline mode
-- [ ] Receipt printing
+## Main User Roles
 
-## 🤝 Contributing
+ADMIN:
+- Full system access
+- Inventory/product control
+- Supplier management
+- Staff management
+- Reports
+- Cash management
 
-1. Fork the repository
-2. Create your feature branch
-3. Commit your changes
-4. Push to the branch
-5. Open a Pull Request
+CASHIER:
+- Order processing
+- Barcode billing
+- Bill closing
+- Receipt printing
+- Cash counter access
 
-## 📄 License
+## Scripts
 
-This project is proprietary software for Chill Grand Restaurant.
+```bash
+npm run dev
+npm run build
+npm run preview
+npm run lint
+```
 
-## 👥 Team
+## Production Notes
 
-- **Frontend Developer** - Senior Frontend Engineer
-- **Backend Developer** - (Your backend team)
-- **UI/UX Designer** - (Your design team)
+- Use secure backend and frontend environment variables.
+- Do not expose `.env` files to customers or public repositories.
+- Configure barcode scanner to USB HID/Keyboard mode.
+- Configure receipt printer in Windows before printing receipts.
+- Configure cash drawer to open after print in receipt printer settings.
 
-## 📞 Support
+## License
 
-For issues or questions:
-1. Check the documentation files
-2. Review the testing checklist
-3. Examine code examples
-4. Contact the development team
-
-## ⚡ Performance
-
-- Initial load: < 3s
-- Route transitions: < 100ms
-- API calls: < 500ms
-- Auto-refresh: Every 30s (configurable)
-
-## 🌟 Key Highlights
-
-✅ Production-ready code  
-✅ Comprehensive documentation  
-✅ Role-based access control  
-✅ Clean component architecture  
-✅ Reusable components  
-✅ Professional UI/UX  
-✅ Secure authentication  
-✅ Well-tested implementation  
-
----
-
-**Version:** 1.0  
-**Last Updated:** December 28, 2025  
-**Status:** ✅ Ready for Testing
+This project is proprietary software for Abeyrathna Trade Center.

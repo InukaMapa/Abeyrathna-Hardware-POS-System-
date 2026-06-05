@@ -509,7 +509,7 @@ export const updateOrderStatus = async (req, res) => {
 export const closeOrder = async (req, res) => {
     try {
         const { id } = req.params;
-        const { final_total, discount, other_charges, payments, customer_name, customer_phone, notes } = req.body || {};
+        const { final_total, discount, other_charges, other_charges_reason, payments, customer_name, customer_phone, notes } = req.body || {};
 
         const orderId = parseInt(id, 10);
         if (isNaN(orderId)) {
@@ -533,6 +533,7 @@ export const closeOrder = async (req, res) => {
             .from('cash_shifts')
             .select('shift_id')
             .in('status', ['OPEN', 'REPORT_SUBMITTED'])
+            .eq('cashier_name', req.user?.username)
             .limit(1)
             .maybeSingle();
 
@@ -573,6 +574,21 @@ export const closeOrder = async (req, res) => {
         if (customer_phone !== undefined) {
             updatePayload.customer_phone = customer_phone;
         }
+        if (customer_name !== undefined) {
+            updatePayload.customer_name = customer_name || null;
+        }
+        if (discount !== undefined) {
+            updatePayload.discount = Number.parseFloat(discount) || 0;
+        }
+        if (other_charges !== undefined) {
+            updatePayload.other_charges = Number.parseFloat(other_charges) || 0;
+        }
+        if (other_charges_reason !== undefined) {
+            updatePayload.other_charges_reason = other_charges_reason || null;
+        }
+        if (notes !== undefined) {
+            updatePayload.notes = notes || null;
+        }
 
         let { data, error } = await supabase
             .from('orders')
@@ -581,20 +597,28 @@ export const closeOrder = async (req, res) => {
             .select()
             .single();
 
-        if (error?.code === 'PGRST204' && (
-            error.message?.includes('payment_method') ||
-            error.message?.includes('payment_details') ||
-            error.message?.includes('cash_amount')
-        )) {
-            const {
-                payment_method: _paymentMethod,
-                payment_details: _paymentDetails,
-                cash_amount: _cashAmount,
-                ...legacyUpdatePayload
-            } = updatePayload;
+        let retryPayload = { ...updatePayload };
+        const optionalOrderColumns = new Set([
+            'payment_method',
+            'payment_details',
+            'cash_amount',
+            'customer_name',
+            'discount',
+            'other_charges',
+            'other_charges_reason',
+            'notes'
+        ]);
+
+        while (error?.code === 'PGRST204') {
+            const missingColumn = error.message?.match(/'([^']+)' column/)?.[1];
+            if (!missingColumn || !optionalOrderColumns.has(missingColumn) || !(missingColumn in retryPayload)) {
+                break;
+            }
+
+            delete retryPayload[missingColumn];
             ({ data, error } = await supabase
                 .from('orders')
-                .update(legacyUpdatePayload)
+                .update(retryPayload)
                 .eq('order_id', orderId)
                 .select()
                 .single());

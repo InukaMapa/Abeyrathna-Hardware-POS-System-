@@ -31,8 +31,8 @@ const CreateOrderModal = ({ table, isOpen, onClose, onSuccess }) => {
             const items = await fetchLiveMenu();
             setMenuItems(items);
         } catch (err) {
-            console.error('Failed to load menu items:', err);
-            setError('Failed to load menu items. Please try again.');
+            console.error('Failed to load product items:', err);
+            setError('Failed to load product items. Please try again.');
         } finally {
             setLoading(false);
         }
@@ -157,7 +157,7 @@ const CreateOrderModal = ({ table, isOpen, onClose, onSuccess }) => {
                             <div className="flex gap-4">
                                 <input
                                     type="text"
-                                    placeholder="Search menu items..."
+                                    placeholder="Search product items..."
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                     className="flex-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -179,11 +179,11 @@ const CreateOrderModal = ({ table, isOpen, onClose, onSuccess }) => {
                             {loading ? (
                                 <div className="text-center py-12">
                                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-                                    <p className="text-gray-600 mt-4">Loading menu...</p>
+                                    <p className="text-gray-600 mt-4">Loading products...</p>
                                 </div>
                             ) : filteredItems.length === 0 ? (
                                 <div className="text-center py-12 text-gray-500">
-                                    No menu items found
+                                    No product items found
                                 </div>
                             ) : (
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

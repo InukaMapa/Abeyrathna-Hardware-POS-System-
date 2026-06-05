@@ -56,7 +56,7 @@ const TableList = ({ tables = [], loading = false, onRefresh }) => {
     <div className="bg-black min-h-screen p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-white">Tables by Place</h2>
+        <h2 className="text-2xl font-bold text-white">Counters by Area</h2>
 
         {onRefresh && (
           <button
@@ -116,7 +116,7 @@ const TableList = ({ tables = [], loading = false, onRefresh }) => {
               </h3>
 
               <span className="text-sm text-white bg-gray-800 px-3 py-1 rounded-full">
-                {placeTables.length} tables
+                {placeTables.length} counters
               </span>
             </div>
 
@@ -167,7 +167,7 @@ const TableCard = ({ table }) => {
       {/* Info */}
       <div className="text-center space-y-2">
         <h4 className="text-lg font-bold text-white">
-          Table #{table.table_id}
+          Counter #{table.table_id}
         </h4>
 
         <div className="flex items-center justify-center gap-2 text-white">
@@ -184,7 +184,7 @@ const TableCard = ({ table }) => {
               d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
             />
           </svg>
-          <span className="text-sm font-medium">{table.seats} seats</span>
+          <span className="text-sm font-medium">{table.seats} capacity</span>
         </div>
       </div>
 

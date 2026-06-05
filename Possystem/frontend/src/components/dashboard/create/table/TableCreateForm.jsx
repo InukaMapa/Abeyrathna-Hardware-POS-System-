@@ -104,7 +104,7 @@ const TableCreateForm = ({ onTableCreated }) => {
             });
 
             setTableId(table.table_id);
-            setSuccess("Table created successfully");
+            setSuccess("Counter created successfully");
 
             if (onTableCreated) {
                 onTableCreated(table);
@@ -124,13 +124,13 @@ const TableCreateForm = ({ onTableCreated }) => {
 
         const link = document.createElement("a");
         link.href = qrImage;
-        link.download = `table-${tableId || "new"}-qr.png`;
+        link.download = `counter-${tableId || "new"}-qr.png`;
         link.click();
     };
 
     return (
         <div className="bg-[#1E1E1E] p-6 rounded-lg text-[#E0E0E0]">
-            <h2 className="text-xl font-bold mb-4">Create Table</h2>
+            <h2 className="text-xl font-bold mb-4">Create Counter / Area</h2>
 
             {/* Error Message */}
             {error && (
@@ -168,7 +168,7 @@ const TableCreateForm = ({ onTableCreated }) => {
                             d="M5 13l4 4L19 7"
                         />
                     </svg>
-                    <span className="font-medium">Table created successfully!</span>
+                    <span className="font-medium">Counter created successfully!</span>
                 </div>
             )}
 
@@ -189,7 +189,7 @@ const TableCreateForm = ({ onTableCreated }) => {
                     ))}
                 </select>
 
-                {/* SEATS */}
+                {/* CAPACITY */}
                 <input
                     type="number"
                     min="1"
@@ -239,7 +239,7 @@ const TableCreateForm = ({ onTableCreated }) => {
                     disabled={loading || !qrUrl}
                     className="w-full bg-[#D32F2F] text-white py-2 rounded hover:bg-[#B71C1C] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                    {loading ? "Creating..." : "Create Table"}
+                    {loading ? "Creating..." : "Create Counter"}
                 </button>
             </form>
         </div>

@@ -3,6 +3,7 @@ import DashboardLayout from '../../components/layout/DashboardLayout';
 import { API_BASE_URL } from '../../config/api';
 import { useAuth } from '../../context/AuthContext';
 import { fetchOrderById } from '../../services/orderService';
+import logo from '../../assets/logo.jpeg';
 import '../../styles/dashboard.css';
 
 const BillOpenPage = ({ orderId, onNavigate }) => {
@@ -24,6 +25,8 @@ const BillOpenPage = ({ orderId, onNavigate }) => {
     const [overallDiscountType, setOverallDiscountType] = useState('fixed'); // 'fixed' or 'percent'
     const [overallDiscountValue, setOverallDiscountValue] = useState(0);
     const [otherCharges, setOtherCharges] = useState(0);
+    const [otherChargesReason, setOtherChargesReason] = useState('');
+    const [otherChargesReasonError, setOtherChargesReasonError] = useState('');
 
     // Payments
     const [paymentMethods, setPaymentMethods] = useState([
@@ -91,11 +94,36 @@ const BillOpenPage = ({ orderId, onNavigate }) => {
     }
 
     const parsedOtherCharges = parseFloat(otherCharges) || 0;
+    const hasOtherCharges = parsedOtherCharges > 0;
+    const normalizedOtherChargesReason = otherChargesReason.trim();
     const grandTotal = priceAfterItemDiscounts - overallDiscountAmount + parsedOtherCharges;
 
     // Amount Received
     const totalReceived = paymentMethods.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
     const balance = totalReceived - grandTotal;
+    const totalReceiptQty = items.reduce((sum, item) => sum + (parseInt(item.editableQty, 10) || 0), 0);
+    const activePaymentMethods = paymentMethods
+        .map((payment) => ({
+            method: payment.method,
+            amount: parseFloat(payment.amount)
+        }))
+        .filter((payment) => Number.isFinite(payment.amount) && payment.amount > 0);
+    const receiptPaymentRows = activePaymentMethods.length > 0
+        ? activePaymentMethods
+        : [{ method: 'Cash', amount: grandTotal }];
+
+    const handlePrintBill = () => {
+        document.body.classList.add('receipt-printing');
+
+        const cleanup = () => {
+            document.body.classList.remove('receipt-printing');
+            window.removeEventListener('afterprint', cleanup);
+        };
+
+        window.addEventListener('afterprint', cleanup);
+        window.print();
+        setTimeout(cleanup, 1000);
+    };
 
     // Handlers
     const handleItemChange = (index, field, value) => {
@@ -134,6 +162,11 @@ const BillOpenPage = ({ orderId, onNavigate }) => {
     const [isCompleted, setIsCompleted] = useState(false);
 
     const handleCompletePayment = async () => {
+        if (hasOtherCharges && !normalizedOtherChargesReason) {
+            setOtherChargesReasonError('Reason is required when other charges are added.');
+            return;
+        }
+
         if (totalReceived < grandTotal) {
             if (!window.confirm(`Amount received (Rs. ${totalReceived.toFixed(2)}) is less than Grand Total (Rs. ${grandTotal.toFixed(2)}). Continue?`)) {
                 return;
@@ -163,6 +196,7 @@ const BillOpenPage = ({ orderId, onNavigate }) => {
                     customer_name: customerName,
                     discount: overallDiscountAmount,
                     other_charges: parsedOtherCharges,
+                    other_charges_reason: hasOtherCharges ? normalizedOtherChargesReason : null,
                     payments: normalizedPayments,
                     notes: notes
                 })
@@ -223,55 +257,125 @@ const BillOpenPage = ({ orderId, onNavigate }) => {
     if (isCompleted) {
         return (
             <DashboardLayout onNavigate={onNavigate} activePage="orders">
-                <div className="flex items-center justify-center min-h-screen bill-open-page p-6">
-                    <div className="max-w-md w-full bg-white rounded-2xl shadow-2xl overflow-hidden relative">
-                        <div className="absolute top-0 left-0 w-full h-3 bg-emerald-500"></div>
-                        <div className="p-8 text-center border-b border-gray-100">
-                            <div className="w-16 h-16 bg-emerald-100 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                <div className="bill-complete-screen flex items-center justify-center min-h-screen bill-open-page p-6">
+                    <div className="bill-complete-card">
+                        <div className="bill-complete-header">
+                            <div className="bill-complete-check">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
                             </div>
-                            <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tight">Payment Complete</h2>
-                            <p className="text-gray-500 text-sm mt-1 uppercase tracking-widest font-bold">Invoice #{order.order_id} Closed</p>
+                            <h2>Payment Complete</h2>
+                            <p>Invoice #{order.order_id} Closed</p>
                         </div>
 
-                        <div className="p-8 bg-gray-50">
-                            <div className="bg-white border text-black border-dashed border-gray-300 rounded-xl p-6 shadow-sm font-mono text-sm relative print:shadow-none print:border-none print:p-0">
-                                <div className="text-center mb-6 border-b border-dashed border-gray-300 pb-4">
-                                    <h3 className="font-black text-xl uppercase tracking-widest">Abeyrathna Hardware</h3>
-                                    <p className="text-xs text-gray-500 mt-1">Receipt for #{order.order_id}</p>
-                                    <p className="text-xs text-gray-500">{currentTime.toLocaleString()}</p>
+                        <div className="bill-receipt-shell">
+                            <div id="thermal-receipt" className="thermal-receipt">
+                                <div className="thermal-header">
+                                    <img src={logo} alt="Abeyrathna Trade Center" className="thermal-logo" />
+                                    <h3>ABEYRATHNA TRADE CENTER</h3>
+                                    <p>Hardware, Tools and Building Materials</p>
+                                    <p>No. 59, Main Street, Kurunegala</p>
+                                    <p>Tel: 037-2223422</p>
+                                    <p>Mob: 076-7638894 / 0777-898897</p>
                                 </div>
-                                <div className="space-y-3 mb-6">
-                                    {items.map(item => (
-                                        <div key={item.order_item_id} className="flex justify-between items-start">
-                                            <div>
-                                                <p className="font-bold">{item.item_name}</p>
-                                                <p className="text-xs text-gray-500">{item.editableQty} x {item.editablePrice.toFixed(2)}</p>
+
+                                <div className="thermal-meta">
+                                    <div><span>DATE :</span><strong>{currentTime.toLocaleDateString()}</strong></div>
+                                    <div><span>NUMBER:</span><strong>HSL{String(order.order_id).padStart(6, '0')}</strong></div>
+                                    <div><span>TIME :</span><strong>{currentTime.toLocaleTimeString()}</strong></div>
+                                    <div><span>USER :</span><strong>{user?.username || user?.name || 'CASHIER'}</strong></div>
+                                    <div><span>CUS  :</span><strong>{customerName || customerPhone || 'CASH'}</strong></div>
+                                    <div><span>INV  :</span><strong>#{order.order_id}</strong></div>
+                                </div>
+
+                                <div className="thermal-rule"></div>
+                                <div className="thermal-row thermal-table-head">
+                                    <span>LN</span>
+                                    <span>ITEM</span>
+                                    <span>QTY</span>
+                                    <span>PRICE</span>
+                                    <span>AMOUNT</span>
+                                </div>
+                                <div className="thermal-rule"></div>
+
+                                <div className="thermal-items">
+                                    {items.map((item, index) => {
+                                        const lineDiscount = parseFloat(item.itemDiscount) || 0;
+                                        const lineAmount = (item.editablePrice * item.editableQty) - lineDiscount;
+                                        return (
+                                            <div key={item.order_item_id} className="thermal-item">
+                                                <div className="thermal-row">
+                                                    <span>{index + 1})</span>
+                                                    <span>{item.item_name}</span>
+                                                    <span>{item.editableQty}</span>
+                                                    <span>{Number(item.editablePrice).toFixed(2)}</span>
+                                                    <span>{lineAmount.toFixed(2)}</span>
+                                                </div>
+                                                <div className="thermal-code">SYS-{item.item_id}</div>
+                                                {lineDiscount > 0 && (
+                                                    <div className="thermal-subnote">Discount: Rs. {lineDiscount.toFixed(2)}</div>
+                                                )}
                                             </div>
-                                            <span className="font-bold">Rs. {((item.editablePrice * item.editableQty) - (parseFloat(item.itemDiscount) || 0)).toFixed(2)}</span>
+                                        );
+                                    })}
+                                </div>
+
+                                <div className="thermal-rule"></div>
+                                <div className="thermal-total-row"><span>SUB TOTAL</span><strong>{subtotal.toFixed(2)}</strong></div>
+                                {overallDiscountAmount > 0 && (
+                                    <div className="thermal-total-row"><span>DISCOUNT</span><strong>- {overallDiscountAmount.toFixed(2)}</strong></div>
+                                )}
+                                {parsedOtherCharges > 0 && (
+                                    <>
+                                        <div className="thermal-total-row"><span>OTHER CHARGES</span><strong>+ {parsedOtherCharges.toFixed(2)}</strong></div>
+                                        <div className="thermal-reason">
+                                            <span>Reason:</span>
+                                            <strong>{normalizedOtherChargesReason}</strong>
                                         </div>
-                                    ))}
+                                    </>
+                                )}
+                                <div className="thermal-total-row thermal-net"><span>NET TOTAL</span><strong>{grandTotal.toFixed(2)}</strong></div>
+                                {receiptPaymentRows.map((payment, index) => (
+                                    <div key={`${payment.method}-${index}`} className="thermal-total-row">
+                                        <span>{payment.method.toUpperCase()}</span>
+                                        <strong>{payment.amount.toFixed(2)}</strong>
+                                    </div>
+                                ))}
+                                {balance > 0 && (
+                                    <div className="thermal-total-row"><span>BALANCE</span><strong>{balance.toFixed(2)}</strong></div>
+                                )}
+
+                                <div className="thermal-rule"></div>
+                                <div className="thermal-counts">
+                                    <span>NO OF ITEMS: {items.length}</span>
+                                    <span>NO OF QTY: {totalReceiptQty}</span>
                                 </div>
-                                <div className="border-t border-dashed border-gray-300 pt-4 space-y-2 text-xs uppercase tracking-widest font-bold text-gray-500">
-                                    <div className="flex justify-between"><span>Subtotal:</span> <span>Rs. {subtotal.toFixed(2)}</span></div>
-                                    {overallDiscountAmount > 0 && <div className="flex justify-between text-red-500"><span>Discount:</span> <span>- Rs. {overallDiscountAmount.toFixed(2)}</span></div>}
-                                    {parsedOtherCharges > 0 && <div className="flex justify-between"><span>Other Charges:</span> <span>+ Rs. {parsedOtherCharges.toFixed(2)}</span></div>}
-                                </div>
-                                <div className="mt-4 pt-4 border-t-2 border-gray-800 flex justify-between items-center text-lg">
-                                    <span className="font-black uppercase tracking-widest text-gray-900">Total</span>
-                                    <span className="font-black text-gray-900">Rs. {grandTotal.toFixed(2)}</span>
+                                <div className="thermal-rule"></div>
+
+                                <div className="thermal-footer">
+                                    <p>Thank you for shopping with us!</p>
+                                    <p>Return possible within 7 days.</p>
+                                    <p>Bills must be produced.</p>
+                                    <p>***</p>
+                                    <p>Software by Abeyrathna Hardware POS</p>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="p-6 bg-white gap-3 flex flex-col font-sans">
+                        <div className="bill-complete-actions">
                             <div className="flex gap-3">
-                                <button onClick={() => window.print()} className="flex-1 py-3 bg-[#1E1E1E] hover:bg-black text-white font-bold uppercase tracking-widest text-xs rounded-xl transition-all shadow-lg flex items-center justify-center gap-2">
+                                <button onClick={handlePrintBill} className="flex-1 py-3 bg-[#1E1E1E] hover:bg-black text-white font-bold uppercase tracking-widest text-xs rounded-xl transition-all shadow-lg flex items-center justify-center gap-2">
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
                                     Print Bill
                                 </button>
                                 <button onClick={() => {
-                                    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ orderId: order.order_id, date: currentTime, items, grandTotal }));
+                                    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({
+                                        orderId: order.order_id,
+                                        date: currentTime,
+                                        items,
+                                        otherCharges: parsedOtherCharges,
+                                        otherChargesReason: hasOtherCharges ? normalizedOtherChargesReason : null,
+                                        grandTotal
+                                    }));
                                     const dlAnchorElem = document.createElement('a'); dlAnchorElem.setAttribute("href", dataStr); dlAnchorElem.setAttribute("download", `bill_${order.order_id}.json`); dlAnchorElem.click();
                                 }} className="flex-1 py-3 bg-white border-2 border-gray-200 text-gray-800 hover:bg-gray-50 font-bold uppercase tracking-widest text-xs rounded-xl transition-all flex items-center justify-center gap-2">
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
@@ -453,11 +557,43 @@ const BillOpenPage = ({ orderId, onNavigate }) => {
                                     <span className="text-xs font-bold text-gray-500 uppercase tracking-widest block mb-1.5">Other Charges</span>
                                     <input
                                         type="number" min="0" step="0.01"
-                                        className="w-full bg-[#161616] border border-[#444] rounded-lg px-3 py-2 text-right text-emerald-400 font-mono font-bold outline-none focus:border-emerald-500"
+                                        className={`w-full bg-[#161616] border rounded-lg px-3 py-2 text-right text-emerald-400 font-mono font-bold outline-none focus:border-emerald-500 ${otherChargesReasonError ? 'border-red-500' : 'border-[#444]'}`}
                                         value={otherCharges}
-                                        onChange={(e) => setOtherCharges(e.target.value)}
+                                        onChange={(e) => {
+                                            setOtherCharges(e.target.value);
+                                            if ((parseFloat(e.target.value) || 0) <= 0) {
+                                                setOtherChargesReasonError('');
+                                            }
+                                        }}
                                         placeholder="0"
                                     />
+                                    {hasOtherCharges && (
+                                        <div className="mt-3">
+                                            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest block mb-1.5">
+                                                Reason for Other Charges <span className="text-red-500">*</span>
+                                            </label>
+                                            <textarea
+                                                className={`w-full min-h-[72px] bg-[#161616] border rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-emerald-500 transition-colors resize-none ${otherChargesReasonError ? 'border-red-500' : 'border-[#444]'}`}
+                                                value={otherChargesReason}
+                                                onChange={(e) => {
+                                                    setOtherChargesReason(e.target.value);
+                                                    if (e.target.value.trim()) {
+                                                        setOtherChargesReasonError('');
+                                                    }
+                                                }}
+                                                maxLength={120}
+                                                placeholder="Example: delivery charge, loading charge, transport fee"
+                                            />
+                                            <div className="flex justify-between gap-3 mt-1.5">
+                                                <p className={`text-[11px] font-semibold ${otherChargesReasonError ? 'text-red-500' : 'text-gray-500'}`}>
+                                                    {otherChargesReasonError || 'This reason will be printed on the customer bill.'}
+                                                </p>
+                                                <span className="text-[10px] text-gray-600 font-mono">
+                                                    {normalizedOtherChargesReason.length}/120
+                                                </span>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="bill-grand-total pt-6 mt-4 border-t border-[#333] flex justify-between items-end pb-4">

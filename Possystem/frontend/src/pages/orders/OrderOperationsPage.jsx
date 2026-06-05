@@ -38,7 +38,7 @@ const OrderOperationsPage = ({ onNavigate }) => {
             });
             
             if (!response.ok) {
-                throw new Error(`Failed to fetch tables: ${response.status} ${response.statusText}`);
+                throw new Error(`Failed to fetch counters: ${response.status} ${response.statusText}`);
             }
 
             const data = await response.json();
@@ -63,7 +63,7 @@ const OrderOperationsPage = ({ onNavigate }) => {
             setTables(tablesArray);
         } catch (error) {
             console.error('Error fetching tables:', error);
-            setError(error.message || 'Failed to load tables');
+            setError(error.message || 'Failed to load counters');
             setTables([]); // Ensure tables is always an array
         } finally {
             setLoading(false);
@@ -181,7 +181,7 @@ const OrderOperationsPage = ({ onNavigate }) => {
                             <svg className="w-16 h-16 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                             </svg>
-                            <p className="text-lg font-medium mb-2">Error Loading Tables</p>
+                            <p className="text-lg font-medium mb-2">Error Loading Counters</p>
                             <p className="text-sm text-gray-600 mb-4">{error}</p>
                             <button
                                 onClick={fetchTables}
@@ -201,10 +201,10 @@ const OrderOperationsPage = ({ onNavigate }) => {
                                     <div className="flex justify-between items-start mb-3">
                                         <div>
                                             <h3 className="text-xl font-bold text-gray-900">
-                                                Table {table.tableNumber}
+                                                Counter {table.tableNumber}
                                             </h3>
                                             <p className="text-sm text-gray-600">
-                                                {table.seats} seats
+                                                {table.seats} capacity
                                             </p>
                                         </div>
                                         {getTableStatusBadge(table)}
@@ -240,11 +240,11 @@ const OrderOperationsPage = ({ onNavigate }) => {
                             <svg className="w-16 h-16 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
                             </svg>
-                            <p className="text-lg font-medium">No tables found</p>
+                            <p className="text-lg font-medium">No counters found</p>
                             <p className="text-sm">
                                 {filterStatus !== 'ALL' 
                                     ? 'Try adjusting your filters' 
-                                    : 'No tables available in the system'}
+                                    : 'No counters available in the system'}
                             </p>
                         </div>
                     )}

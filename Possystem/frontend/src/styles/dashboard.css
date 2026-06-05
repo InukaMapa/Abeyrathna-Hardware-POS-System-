@@ -6320,6 +6320,328 @@ button[class*="bg-[#6A5ACD]"] {
     }
 }
 
+/* Thermal receipt preview and print output */
+.bill-complete-screen {
+    background: #F4FAF6;
+}
+
+.bill-complete-card {
+    width: min(560px, 100%);
+    background: #FFFFFF;
+    border: 1px solid #D7E7DC;
+    border-radius: 8px;
+    box-shadow: 0 24px 70px rgba(15, 23, 42, 0.12);
+    overflow: hidden;
+}
+
+.bill-complete-header {
+    padding: 28px 24px 24px;
+    text-align: center;
+    border-top: 8px solid #16A34A;
+    border-bottom: 1px solid #E5EEE8;
+}
+
+.bill-complete-check {
+    width: 58px;
+    height: 58px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 14px;
+    color: #16A34A;
+    background: #DCFCE7;
+    border-radius: 50%;
+}
+
+.bill-complete-check svg {
+    width: 30px;
+    height: 30px;
+}
+
+.bill-complete-header h2 {
+    margin: 0;
+    color: #0F172A;
+    font-size: 1.55rem;
+    font-weight: 700;
+    letter-spacing: 0;
+}
+
+.bill-complete-header p {
+    margin: 6px 0 0;
+    color: #475569;
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.bill-receipt-shell {
+    padding: 28px;
+    background: #F8FAFC;
+}
+
+.thermal-receipt {
+    width: 80mm;
+    max-width: 100%;
+    margin: 0 auto;
+    padding: 14px 12px;
+    color: #111827;
+    background: #FFFFFF;
+    border: 1px dashed #CBD5E1;
+    border-radius: 4px;
+    box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+    font-family: "Courier New", Courier, monospace;
+    font-size: 12px;
+    line-height: 1.28;
+}
+
+.thermal-header {
+    text-align: center;
+}
+
+.thermal-logo {
+    display: block;
+    width: 34mm;
+    max-width: 72%;
+    height: auto;
+    margin: 0 auto 6px;
+    object-fit: contain;
+}
+
+.thermal-header h3 {
+    margin: 0 0 4px;
+    font-size: 17px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-decoration: underline;
+}
+
+.thermal-header p {
+    margin: 1px 0;
+    font-size: 11px;
+}
+
+.thermal-meta {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2px 10px;
+    margin-top: 12px;
+}
+
+.thermal-meta div,
+.thermal-total-row,
+.thermal-counts,
+.thermal-row {
+    display: grid;
+    align-items: start;
+}
+
+.thermal-meta div {
+    grid-template-columns: auto 1fr;
+    gap: 4px;
+    min-width: 0;
+}
+
+.thermal-meta span {
+    white-space: pre;
+}
+
+.thermal-meta strong {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    font-weight: 700;
+}
+
+.thermal-rule {
+    border-top: 1px dashed #111827;
+    margin: 10px 0 7px;
+}
+
+.thermal-row {
+    grid-template-columns: 24px minmax(0, 1fr) 36px 54px 66px;
+    column-gap: 5px;
+}
+
+.thermal-row span:nth-child(3),
+.thermal-row span:nth-child(4),
+.thermal-row span:nth-child(5) {
+    text-align: right;
+}
+
+.thermal-table-head {
+    font-weight: 800;
+}
+
+.thermal-item {
+    margin: 7px 0;
+}
+
+.thermal-item .thermal-row span:nth-child(2) {
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+.thermal-code,
+.thermal-subnote {
+    margin-left: 29px;
+    color: #475569;
+    font-size: 11px;
+    overflow-wrap: anywhere;
+}
+
+.thermal-total-row {
+    grid-template-columns: 1fr auto;
+    gap: 12px;
+    margin: 4px 0;
+    font-weight: 800;
+}
+
+.thermal-total-row strong {
+    text-align: right;
+}
+
+.thermal-net {
+    margin-top: 8px;
+    padding-top: 7px;
+    border-top: 2px solid #111827;
+    font-size: 16px;
+}
+
+.thermal-reason {
+    margin: 2px 0 6px;
+    padding-left: 10px;
+    color: #111827;
+    font-size: 11px;
+    line-height: 1.35;
+}
+
+.thermal-reason span {
+    display: block;
+    color: #475569;
+}
+
+.thermal-reason strong {
+    display: block;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+.thermal-counts {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    font-weight: 700;
+}
+
+.thermal-counts span:last-child {
+    text-align: right;
+}
+
+.thermal-footer {
+    text-align: center;
+}
+
+.thermal-footer p {
+    margin: 2px 0;
+}
+
+.bill-complete-actions {
+    padding: 24px 28px 28px;
+    background: #FFFFFF;
+}
+
+@media print {
+    @page {
+        size: 80mm auto;
+        margin: 0;
+    }
+
+    html,
+    body.receipt-printing {
+        width: 80mm !important;
+        min-width: 80mm !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #FFFFFF !important;
+        overflow: visible !important;
+    }
+
+    body * {
+        visibility: hidden !important;
+    }
+
+    body.receipt-printing .sidebar,
+    body.receipt-printing .topbar,
+    body.receipt-printing .bill-complete-header,
+    body.receipt-printing .bill-complete-actions {
+        display: none !important;
+    }
+
+    body.receipt-printing .dashboard-layout,
+    body.receipt-printing .main-content,
+    body.receipt-printing main.dashboard-page,
+    body.receipt-printing .bill-open-page,
+    body.receipt-printing .bill-complete-screen,
+    body.receipt-printing .bill-complete-card,
+    body.receipt-printing .bill-receipt-shell {
+        display: block !important;
+        width: 80mm !important;
+        min-width: 80mm !important;
+        max-width: 80mm !important;
+        min-height: 0 !important;
+        height: auto !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        color: #000000 !important;
+        background: #FFFFFF !important;
+        border: 0 !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        overflow: visible !important;
+        transform: none !important;
+    }
+
+    #thermal-receipt,
+    #thermal-receipt * {
+        visibility: visible !important;
+    }
+
+    #thermal-receipt {
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 80mm !important;
+        max-width: 80mm !important;
+        margin: 0 !important;
+        padding: 3mm !important;
+        color: #000000 !important;
+        background: #FFFFFF !important;
+        border: 0 !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        font-size: 11px !important;
+        line-height: 1.25 !important;
+    }
+
+    .thermal-header h3 {
+        font-size: 15px !important;
+    }
+
+    .thermal-logo {
+        width: 30mm !important;
+        max-width: 68% !important;
+        margin-bottom: 4px !important;
+    }
+
+    .thermal-row {
+        grid-template-columns: 20px minmax(0, 1fr) 30px 48px 58px !important;
+        column-gap: 4px !important;
+    }
+
+    .thermal-net {
+        font-size: 14px !important;
+    }
+}
+
 /* Cashier order management: synced with the official admin white theme */
 .orders-page-container {
     color: #132238;

@@ -4,7 +4,7 @@ import '../../styles/menu.css';
 
 const MenuList = ({ items, onEdit, onDelete }) => {
     if (!items || items.length === 0) {
-        return <div className="no-items">No menu items found.</div>;
+        return <div className="no-items">No product items found.</div>;
     }
 
     return (
