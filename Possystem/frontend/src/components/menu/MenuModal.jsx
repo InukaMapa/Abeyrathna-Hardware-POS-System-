@@ -311,7 +311,7 @@ const MenuModal = ({ isOpen, onClose, onSubmit, editingItem, categories, invento
 
                 {/* Header */}
                 <div className="flex justify-between items-center p-6 border-b border-gray-800">
-                    <h2 className="text-2xl font-bold text-white">{editingItem ? 'Edit Menu Item' : 'New Menu Item'}</h2>
+                    <h2 className="text-2xl font-bold text-white">{editingItem ? 'Edit Product Item' : 'New Product Item'}</h2>
                     <button onClick={onClose} className="p-2 hover:bg-gray-800 rounded-full text-gray-400 hover:text-white transition-colors">
                         <X size={24} />
                     </button>
@@ -337,7 +337,7 @@ const MenuModal = ({ isOpen, onClose, onSubmit, editingItem, categories, invento
                                         name="name"
                                         value={formData.name}
                                         onChange={handleChange}
-                                        placeholder="e.g. Double Cheeseburger"
+                                        placeholder="e.g. Hammer, Paint Brush, PVC Pipe"
                                         className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none transition-all"
                                         required
                                     />

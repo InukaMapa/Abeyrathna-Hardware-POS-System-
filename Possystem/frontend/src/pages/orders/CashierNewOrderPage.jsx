@@ -459,7 +459,7 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
                         {loading && (
                             <div className="flex flex-col items-center justify-center py-24 bg-[#1E1E1E] rounded-2xl border border-[#333]">
                                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mb-4" />
-                                <p className="text-gray-500 font-bold uppercase tracking-widest text-sm">Loading menu…</p>
+                                <p className="text-gray-500 font-bold uppercase tracking-widest text-sm">Loading products...</p>
                             </div>
                         )}
                         {!loading && error && (

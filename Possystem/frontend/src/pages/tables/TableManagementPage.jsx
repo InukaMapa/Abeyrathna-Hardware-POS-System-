@@ -4,7 +4,7 @@ import TableQuickActions from '../../components/dashboard/create/table/TableQuic
 
 /**
  * TableManagementPage
- * Full-featured table creation and management page for restaurant POS
+ * Store counter and area creation page for the hardware POS.
  * Integrates with backend API: POST/GET /api/tables
  */
 const TableManagementPage = ({ onNavigate }) => {

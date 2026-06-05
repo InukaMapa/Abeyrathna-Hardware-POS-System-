@@ -242,7 +242,7 @@ const LiveMenuPage = () => {
             const data = await fetchLiveMenu();
             setMenuItems(data);
         } catch (err) {
-            setError('Failed to load menu. Please refresh.');
+            setError('Failed to load products. Please refresh.');
         } finally {
             setLoading(false);
         }
@@ -327,7 +327,7 @@ const LiveMenuPage = () => {
         }
     };
 
-    if (loading) return <div className="min-h-screen bg-[#1a1a1a] flex items-center justify-center text-white"><Loader className="animate-spin" /> Loading Menu...</div>;
+    if (loading) return <div className="min-h-screen bg-[#1a1a1a] flex items-center justify-center text-white"><Loader className="animate-spin" /> Loading Products...</div>;
     if (error) return <div className="min-h-screen bg-[#1a1a1a] flex items-center justify-center text-red-500">{error}</div>;
 
     if (orderSuccess) {
@@ -356,7 +356,7 @@ const LiveMenuPage = () => {
         <div className="min-h-screen bg-[#111] pb-24 font-sans text-gray-100">
             {/* Header */}
             <nav className="sticky top-0 z-40 bg-black/80 backdrop-blur-md border-b border-gray-800 px-4 py-4 flex justify-between items-center">
-                <h1 className="text-xl font-bold bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">Chill Grand</h1>
+                <h1 className="text-xl font-bold bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">Abeyrathna Trade Center</h1>
                 <span className="text-xs font-mono text-red-400 border border-red-500/30 bg-red-500/10 px-3 py-1 rounded-full">
                     T-{tableId}
                 </span>

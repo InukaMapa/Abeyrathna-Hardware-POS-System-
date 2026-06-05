@@ -3,7 +3,7 @@ import { createPlace } from '../../../../services/placeService';
 
 /**
  * PlaceCreateForm Component
- * Form for creating new restaurant places (zones/areas)
+ * Form for creating store sections or billing areas.
  */
 const PlaceCreateForm = ({ onPlaceCreated }) => {
     const [placeName, setPlaceName] = useState('');
@@ -86,7 +86,7 @@ const PlaceCreateForm = ({ onPlaceCreated }) => {
                             setPlaceName(e.target.value);
                             setError(null);
                         }}
-                        placeholder="e.g., Main Hall, VIP Room, Patio"
+                        placeholder="e.g., Counter 1, Main Store, Paint Section"
                         className="w-full px-4 py-2 border border-[#333333] bg-[#121212] text-[#E0E0E0] rounded-lg focus:ring-2 focus:ring-[#D32F2F] focus:border-[#D32F2F] placeholder-[#666666]"
                         disabled={loading}
                     />
@@ -170,7 +170,7 @@ const PlaceCreateForm = ({ onPlaceCreated }) => {
 
             {/* Helper Text */}
             <p className="text-xs text-[#A0A0A0] mt-3">
-                Places are zones or areas in your restaurant where tables are located.
+                Places are store sections, counters, or areas used to organize orders.
             </p>
         </div>
     );

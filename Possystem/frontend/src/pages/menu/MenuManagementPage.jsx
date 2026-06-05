@@ -90,7 +90,7 @@ const MenuManagementPage = ({ onNavigate }) => {
                 globalItems = await fetchMenuItems('all', 'All');
             }
 
-            console.log("DEBUG: Fetched Menu Items:", menuData);
+            console.log("DEBUG: Fetched Product Items:", menuData);
             console.log("DEBUG: Stats calculation base:", globalItems.length, "items");
 
             // Calculate real stats from global items
@@ -109,7 +109,7 @@ const MenuManagementPage = ({ onNavigate }) => {
             setInventoryCategories(invCatsData || []);
         } catch (err) {
             console.error(err);
-            setError("Failed to load menu data. Please try again.");
+            setError("Failed to load product data. Please try again.");
             if (err.message.includes('Unauthorized')) {
                 // onNavigate('login'); // Optional depending on auth flow
             }
@@ -122,7 +122,7 @@ const MenuManagementPage = ({ onNavigate }) => {
         setIsSubmitting(true);
         try {
             await createMenuItem(formData);
-            showNotification('Menu item created successfully!', 'success');
+            showNotification('Product item created successfully!', 'success');
             setIsModalOpen(false);
             loadData();
         } catch (err) {
@@ -137,7 +137,7 @@ const MenuManagementPage = ({ onNavigate }) => {
         setIsSubmitting(true);
         try {
             await updateMenuItem(editingItem.id, formData);
-            showNotification('Menu item updated successfully!', 'success');
+            showNotification('Product item updated successfully!', 'success');
             setIsModalOpen(false);
             setEditingItem(null);
             loadData();
@@ -220,8 +220,8 @@ const MenuManagementPage = ({ onNavigate }) => {
 
                 <div className="menu-header">
                     <div>
-                        <h1 className="menu-title">Menu Management</h1>
-                        <p className="text-gray-400 text-sm mt-1">Manage your restaurant offerings and inventory links</p>
+                        <h1 className="menu-title">Product Management</h1>
+                        <p className="text-gray-400 text-sm mt-1">Manage your hardware products and inventory links</p>
                     </div>
                 </div>
 

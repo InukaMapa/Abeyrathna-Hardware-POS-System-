@@ -41,8 +41,8 @@ const TableGrid = ({ tables = [], loading = false }) => {
                         d="M3 3h18v18H3zM3 9h18M9 21V9"
                     />
                 </svg>
-                <h3 className="text-lg font-medium text-gray-700 mb-2">No Tables Yet</h3>
-                <p className="text-gray-500">Create your first table to get started</p>
+                <h3 className="text-lg font-medium text-gray-700 mb-2">No Counters Yet</h3>
+                <p className="text-gray-500">Create your first counter or area to get started</p>
             </div>
         );
     }
@@ -76,7 +76,7 @@ const TableGrid = ({ tables = [], loading = false }) => {
                             {place}
                         </h3>
                         <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-                            {groupedTables[place].length} {groupedTables[place].length === 1 ? 'table' : 'tables'}
+                            {groupedTables[place].length} {groupedTables[place].length === 1 ? 'counter' : 'counters'}
                         </span>
                     </div>
 
@@ -121,7 +121,7 @@ const TableCard = ({ table }) => {
             {/* Table Info */}
             <div className="text-center space-y-2">
                 <h4 className="text-lg font-bold text-gray-800">
-                    Table #{table.table_id}
+                    Counter #{table.table_id}
                 </h4>
                 
                 {/* Seats */}
@@ -139,7 +139,7 @@ const TableCard = ({ table }) => {
                             d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
                         />
                     </svg>
-                    <span className="text-sm font-medium">{table.seats} seats</span>
+                    <span className="text-sm font-medium">{table.seats} capacity</span>
                 </div>
 
                 {/* Place Badge */}
