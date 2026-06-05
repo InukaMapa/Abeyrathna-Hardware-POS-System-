@@ -80,6 +80,28 @@
     font-weight: 500;
 }
 
+.inventory-price-tier-list {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 3px;
+    min-width: 130px;
+}
+
+.inventory-price-tier {
+    color: var(--text-primary);
+    font-size: 0.78rem;
+    font-weight: 600;
+    line-height: 1.25;
+    white-space: nowrap;
+}
+
+.inventory-price-tier.muted {
+    color: var(--text-secondary);
+    font-size: 0.72rem;
+}
+
+
 /* Filters Card Bar with 20px Rounded edges */
 .menu-filters-container {
     background: var(--bg-secondary);

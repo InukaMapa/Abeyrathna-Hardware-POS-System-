@@ -1,6 +1,118 @@
 import { supabase } from '../config/db.js';
 import { addOrderItem as addOrderItemService, getOrderItemWithVariants } from '../services/orderService.js';
 
+const getStockAllocations = async (inventoryItem, requestedQuantity) => {
+    const quantity = parseInt(requestedQuantity, 10);
+    if (!Number.isFinite(quantity) || quantity <= 0) return [];
+
+    const { data: batches, error } = await supabase
+        .from('inventory_batch_items')
+        .select('id, quantity_remaining, quantity_added, selling_price_at_time, buying_price_at_time, created_at')
+        .eq('inventory_id', inventoryItem.id)
+        .gt('quantity_remaining', 0)
+        .order('created_at', { ascending: true });
+
+    if (error) {
+        console.warn('[ORDER] Could not fetch stock batches for FIFO pricing:', error.message);
+    }
+
+    let remaining = quantity;
+    const allocations = [];
+
+    for (const batch of batches || []) {
+        if (remaining <= 0) break;
+
+        const available = parseFloat(batch.quantity_remaining ?? batch.quantity_added ?? 0);
+        if (available <= 0) continue;
+
+        const allocatedQty = Math.min(remaining, available);
+        const unitPrice = parseFloat(batch.selling_price_at_time || inventoryItem.selling_price || 0);
+        const buyingPrice = parseFloat(batch.buying_price_at_time || inventoryItem.buying_price || 0);
+
+        allocations.push({
+            batchItemId: batch.id,
+            quantity: allocatedQty,
+            unitPrice,
+            buyingPrice
+        });
+
+        remaining -= allocatedQty;
+    }
+
+    if (remaining > 0) {
+        allocations.push({
+            batchItemId: null,
+            quantity: remaining,
+            unitPrice: parseFloat(inventoryItem.selling_price || 0),
+            buyingPrice: parseFloat(inventoryItem.buying_price || 0)
+        });
+    }
+
+    return allocations;
+};
+
+const consumeOrderStock = async (orderId) => {
+    const { data: orderItems, error } = await supabase
+        .from('order_items')
+        .select('item_id, quantity, selected_variants')
+        .eq('order_id', orderId);
+
+    if (error) throw error;
+
+    const inventoryDeltas = new Map();
+    const batchDeltas = new Map();
+
+    for (const item of orderItems || []) {
+        const qty = parseFloat(item.quantity || 0);
+        if (!item.item_id || qty <= 0) continue;
+
+        inventoryDeltas.set(item.item_id, (inventoryDeltas.get(item.item_id) || 0) + qty);
+
+        const stockAllocation = Array.isArray(item.selected_variants)
+            ? item.selected_variants.find(entry => entry?.type === 'STOCK_BATCH')
+            : null;
+
+        if (stockAllocation?.batch_item_id) {
+            batchDeltas.set(
+                stockAllocation.batch_item_id,
+                (batchDeltas.get(stockAllocation.batch_item_id) || 0) + qty
+            );
+        }
+    }
+
+    for (const [batchItemId, qty] of batchDeltas.entries()) {
+        const { data: batchItem, error: batchFetchError } = await supabase
+            .from('inventory_batch_items')
+            .select('quantity_remaining')
+            .eq('id', batchItemId)
+            .single();
+
+        if (batchFetchError || !batchItem) continue;
+
+        const nextRemaining = Math.max(0, parseFloat(batchItem.quantity_remaining || 0) - qty);
+        await supabase
+            .from('inventory_batch_items')
+            .update({ quantity_remaining: nextRemaining })
+            .eq('id', batchItemId);
+    }
+
+    for (const [inventoryId, qty] of inventoryDeltas.entries()) {
+        const { data: inventoryItem, error: invFetchError } = await supabase
+            .from('inventory')
+            .select('quantity')
+            .eq('id', inventoryId)
+            .single();
+
+        if (invFetchError || !inventoryItem) continue;
+
+        const nextQuantity = Math.max(0, parseFloat(inventoryItem.quantity || 0) - qty);
+        await supabase
+            .from('inventory')
+            .update({ quantity: nextQuantity, last_updated: new Date() })
+            .eq('id', inventoryId);
+    }
+};
+
 const findOpenShiftForCashier = async (req) => {
     if (req.user?.role !== 'CASHIER') return { allowed: true, shift: null };
 
@@ -120,7 +232,7 @@ export const createOrder = async (req, res) => {
         const itemIds = items.map(i => i.id || i.menu_item_id).filter(Boolean);
         const { data: inventoryItems, error: invError } = await supabase
             .from('inventory')
-            .select('id, selling_price, ingredient_name')
+            .select('id, selling_price, buying_price, ingredient_name')
             .in('id', itemIds);
 
         if (invError) {
@@ -140,33 +252,30 @@ export const createOrder = async (req, res) => {
                 return res.status(400).json({ error: `Item with ID ${currentReqId} not found in inventory` });
             }
 
-            let unitPrice = parseFloat(invItem.selling_price || 0);
-            let selectedVariantsSnapshot = [];
-
-            // Variants are likely not used in Hardware Inventory for now, but keeping the loop structure for compatibility
-            if (reqItem.variants && Array.isArray(reqItem.variants) && reqItem.variants.length > 0) {
-                // If you add variants to inventory later, handle here
-            }
-
-            // TODO: Add stricter validation for required variants/min/max here if needed.
-            // For now, trusting that frontend sends valid selections corresponding to DB.
-
             const quantity = parseInt(reqItem.quantity);
             if (isNaN(quantity) || quantity <= 0) {
                 return res.status(400).json({ error: `Invalid quantity for item ${invItem.ingredient_name}` });
             }
 
-            const subtotal = unitPrice * quantity;
-            totalAmount += subtotal;
+            const allocations = await getStockAllocations(invItem, quantity);
 
-            orderItemsData.push({
-                item_id: invItem.id,       // Schema: item_id
-                item_name: invItem.ingredient_name,   // Schema: item_name
-                item_price: unitPrice,      // Store FINAL unit price (base + variants)
-                quantity: quantity,         // Schema: quantity
-                subtotal: subtotal,          // Schema: subtotal
-                selected_variants: selectedVariantsSnapshot // New JSONB column
-            });
+            for (const allocation of allocations) {
+                const subtotal = allocation.unitPrice * allocation.quantity;
+                totalAmount += subtotal;
+
+                orderItemsData.push({
+                    item_id: invItem.id,
+                    item_name: invItem.ingredient_name,
+                    item_price: allocation.unitPrice,
+                    quantity: allocation.quantity,
+                    subtotal,
+                    selected_variants: [{
+                        type: 'STOCK_BATCH',
+                        batch_item_id: allocation.batchItemId,
+                        buying_price: allocation.buyingPrice
+                    }]
+                });
+            }
         }
 
         // 3. Insert Order with staff_id from JWT
@@ -258,7 +367,8 @@ export const fetchAllOrders = async (req, res) => {
                     item_name,
                     quantity,
                     item_price,
-                    subtotal
+                    subtotal,
+                    selected_variants
                 )
             `)
             .order('created_at', { ascending: false });
@@ -326,6 +436,18 @@ export const updateOrderStatus = async (req, res) => {
             return res.status(400).json({ error: 'Invalid order ID' });
         }
 
+        const { data: existingOrder, error: existingOrderError } = await supabase
+            .from('orders')
+            .select('status')
+            .eq('order_id', orderId)
+            .single();
+
+        if (existingOrderError || !existingOrder) {
+            return res.status(404).json({ error: 'Order not found' });
+        }
+
+        const shouldConsumeStock = (status === 'CLOSED' || status === 'PAID') && existingOrder.status !== 'CLOSED';
+
         // If status is being set to CLOSED or PAID, we track the shift and time
         const updateData = { status };
 
@@ -365,6 +487,10 @@ export const updateOrderStatus = async (req, res) => {
             return res.status(404).json({ error: 'Order not found' });
         }
 
+        if (shouldConsumeStock) {
+            await consumeOrderStock(orderId);
+        }
+
         res.status(200).json({
             message: 'Order status updated successfully',
             order: data
@@ -389,6 +515,18 @@ export const closeOrder = async (req, res) => {
         if (isNaN(orderId)) {
             return res.status(400).json({ error: 'Invalid order ID' });
         }
+
+        const { data: existingOrder, error: existingOrderError } = await supabase
+            .from('orders')
+            .select('status')
+            .eq('order_id', orderId)
+            .single();
+
+        if (existingOrderError || !existingOrder) {
+            return res.status(404).json({ error: 'Order not found' });
+        }
+
+        const shouldConsumeStock = existingOrder.status !== 'CLOSED';
 
         // Handle case where cashier has no open shift gracefully
         const { data: activeShift } = await supabase
@@ -469,6 +607,10 @@ export const closeOrder = async (req, res) => {
 
         if (!data) {
             return res.status(404).json({ error: 'Order not found' });
+        }
+
+        if (shouldConsumeStock) {
+            await consumeOrderStock(orderId);
         }
 
         res.status(200).json({
@@ -706,6 +848,15 @@ export const getOrderById = async (req, res) => {
         }
 
         const itemIds = (order.order_items || []).map(item => item.item_id).filter(Boolean);
+        const batchItemIds = (order.order_items || [])
+            .map(item => {
+                const stockAllocation = Array.isArray(item.selected_variants)
+                    ? item.selected_variants.find(entry => entry?.type === 'STOCK_BATCH')
+                    : null;
+                return stockAllocation?.batch_item_id;
+            })
+            .filter(Boolean);
+
         if (itemIds.length > 0) {
             const { data: inventoryItems, error: inventoryError } = await supabase
                 .from('inventory')
@@ -719,10 +870,39 @@ export const getOrderById = async (req, res) => {
                 Number(item.buying_price || 0)
             ]));
 
-            order.order_items = (order.order_items || []).map(item => ({
-                ...item,
-                buying_price: buyingPriceById.get(item.item_id) || 0
-            }));
+            let batchBuyingPriceById = new Map();
+            if (batchItemIds.length > 0) {
+                const { data: batchItems, error: batchItemsError } = await supabase
+                    .from('inventory_batch_items')
+                    .select('id, buying_price_at_time')
+                    .in('id', batchItemIds);
+
+                if (!batchItemsError) {
+                    batchBuyingPriceById = new Map((batchItems || []).map(batchItem => [
+                        batchItem.id,
+                        Number(batchItem.buying_price_at_time || 0)
+                    ]));
+                }
+            }
+
+            order.order_items = (order.order_items || []).map(item => {
+                const stockAllocation = Array.isArray(item.selected_variants)
+                    ? item.selected_variants.find(entry => entry?.type === 'STOCK_BATCH')
+                    : null;
+                const batchBuyingPrice = Number(stockAllocation?.buying_price || 0);
+                const ledgerBuyingPrice = stockAllocation?.batch_item_id
+                    ? batchBuyingPriceById.get(stockAllocation.batch_item_id) || 0
+                    : 0;
+
+                return {
+                    ...item,
+                    buying_price: batchBuyingPrice > 0
+                        ? batchBuyingPrice
+                        : ledgerBuyingPrice > 0
+                            ? ledgerBuyingPrice
+                            : buyingPriceById.get(item.item_id) || 0
+                };
+            });
         }
 
         res.status(200).json(order);
@@ -763,7 +943,7 @@ export const updateOrderCart = async (req, res) => {
 
         const { data: inventoryItems, error: invError } = await supabase
             .from('inventory')
-            .select('id, selling_price, ingredient_name')
+            .select('id, selling_price, buying_price, ingredient_name')
             .in('id', itemIds);
 
         if (invError) throw invError;
@@ -776,22 +956,29 @@ export const updateOrderCart = async (req, res) => {
             const invItem = inventoryItems.find(m => m.id === currentReqId);
             if (!invItem) continue;
 
-            const unitPrice = parseFloat(invItem.selling_price) || 0;
             const quantity = parseInt(reqItem.quantity, 10);
             if (isNaN(quantity) || quantity <= 0) continue;
 
-            const subtotal = unitPrice * quantity;
-            totalAmount += subtotal;
+            const allocations = await getStockAllocations(invItem, quantity);
 
-            newOrderItems.push({
-                order_id: id,
-                item_id: invItem.id,
-                item_name: invItem.ingredient_name,
-                item_price: unitPrice,
-                quantity: quantity,
-                subtotal: subtotal,
-                selected_variants: []
-            });
+            for (const allocation of allocations) {
+                const subtotal = allocation.unitPrice * allocation.quantity;
+                totalAmount += subtotal;
+
+                newOrderItems.push({
+                    order_id: id,
+                    item_id: invItem.id,
+                    item_name: invItem.ingredient_name,
+                    item_price: allocation.unitPrice,
+                    quantity: allocation.quantity,
+                    subtotal,
+                    selected_variants: [{
+                        type: 'STOCK_BATCH',
+                        batch_item_id: allocation.batchItemId,
+                        buying_price: allocation.buyingPrice
+                    }]
+                });
+            }
         }
 
         // 2. Delete existing items

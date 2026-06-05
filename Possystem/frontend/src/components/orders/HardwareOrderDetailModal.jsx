@@ -231,7 +231,7 @@ const HardwareOrderDetailModal = ({ isOpen, onClose, order, onRefresh }) => {
                                     <option value="">-- Select Product --</option>
                                     {inventoryItems.map(item => (
                                         <option key={item.id} value={item.id}>
-                                            {item.ingredient_name || item.name} (Rs. {parseFloat(item.selling_price).toFixed(2)})
+                                            {item.ingredient_name || item.name} (Rs. {parseFloat(item.fifo_selling_price ?? item.selling_price ?? 0).toFixed(2)})
                                         </option>
                                     ))}
                                 </select>

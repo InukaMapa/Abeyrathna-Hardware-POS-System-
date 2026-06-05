@@ -8239,6 +8239,14 @@ body > .edit-inventory-overlay button.edit-inventory-btn:disabled {
     font-size: 13px;
 }
 
+.recent-purchases-controls {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    width: min(760px, 100%);
+}
+
 .recent-purchases-search {
     display: flex;
     align-items: center;
@@ -8252,6 +8260,19 @@ body > .edit-inventory-overlay button.edit-inventory-btn:disabled {
     color: #16A34A;
 }
 
+.recent-purchases-select {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 154px;
+    height: 46px;
+    padding: 0 12px;
+    color: #16A34A;
+    background: #FFFFFF;
+    border: 1px solid #CFE4D5;
+    border-radius: 8px;
+}
+
 .recent-purchases-search input {
     width: 100%;
     border: 0;
@@ -8259,6 +8280,17 @@ body > .edit-inventory-overlay button.edit-inventory-btn:disabled {
     color: #122033;
     font-size: 14px;
     background: transparent;
+}
+
+.recent-purchases-select select {
+    width: 100%;
+    border: 0;
+    outline: 0;
+    color: #122033;
+    background: transparent;
+    font-size: 14px;
+    font-family: inherit;
+    cursor: pointer;
 }
 
 .recent-purchases-table-wrap {
@@ -8411,6 +8443,17 @@ body > .edit-inventory-overlay button.edit-inventory-btn:disabled {
     .recent-purchases-toolbar {
         flex-direction: column;
         align-items: stretch;
+    }
+
+    .recent-purchases-controls {
+        flex-direction: column;
+        align-items: stretch;
+        width: 100%;
+    }
+
+    .recent-purchases-search,
+    .recent-purchases-select {
+        width: 100%;
     }
 
     .recent-purchases-stats {
