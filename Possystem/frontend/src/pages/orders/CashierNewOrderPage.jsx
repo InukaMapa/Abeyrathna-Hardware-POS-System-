@@ -213,11 +213,9 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
     const cartCount = cartItems.reduce((s, c) => s + c.quantity, 0);
 
     /* ── barcode scanner handler ── */
-    const handleBarcodeSubmit = (e) => {
-        if (e) e.preventDefault();
+    const processBarcode = (inputStr) => {
         setBarcodeError(null);
-
-        const input = barcodeInput.trim();
+        const input = inputStr.trim();
         if (!input) return;
 
         // Search in mapped inventory items locally
@@ -234,12 +232,50 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
 
             addToCart(foundItem);
             setBarcodeInput('');
-            setShowCart(true); // Automatically show the cart on mobile
+            setShowCart(true);
         } else {
             setBarcodeError('Barcode ID not found!');
             setTimeout(() => setBarcodeError(null), 3000);
         }
     };
+
+    const handleBarcodeSubmit = (e) => {
+        if (e) e.preventDefault();
+        processBarcode(barcodeInput);
+    };
+
+    // Global listener for barcode scanners
+    useEffect(() => {
+        let barcodeBuffer = '';
+        let lastKeyTime = Date.now();
+
+        const handleKeyDown = (e) => {
+            // Ignore if typing in a normal text input (except our search/barcode ones if we want to allow it, but best to just skip if it's not a rapid scanner)
+            // Actually, we'll measure the speed. Scanners are very fast (<30ms per char).
+            const currentTime = Date.now();
+            
+            // If more than 50ms since last key, assume human typing and reset
+            if (currentTime - lastKeyTime > 50) {
+                barcodeBuffer = '';
+            }
+
+            if (e.key === 'Enter' && barcodeBuffer.length > 2) { // Barcodes usually have >2 chars
+                // If focus is in an input, it might trigger submit anyway, but let's handle it
+                e.preventDefault();
+                processBarcode(barcodeBuffer);
+                barcodeBuffer = '';
+            } else if (e.key.length === 1) { // Normal character
+                barcodeBuffer += e.key;
+            }
+
+            lastKeyTime = currentTime;
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [inventoryItems]); // Need inventoryItems dependency to find the correct item
+
+    // End of barcode handlers
 
     /* ── submit order ── */
     const handleSubmit = async () => {

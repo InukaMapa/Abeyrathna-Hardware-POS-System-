@@ -9,7 +9,7 @@ import { Activity, AlertCircle, PackageCheck, RefreshCw, UsersRound } from 'luci
 import '../../styles/dashboard.css';
 
 const DashboardPage = ({ onNavigate }) => {
-    const { user, userRole } = useAuth();
+    const { user, userRole, logout } = useAuth();
     const [stats, setStats] = useState({
         salesToday: 0,
         mostOrderedDish: { name: 'None', quantity: 0 },
@@ -40,6 +40,9 @@ const DashboardPage = ({ onNavigate }) => {
                     lowInventory: data.lowInventory || [],
                     outOfStock: data.outOfStock || []
                 }));
+            } else if (response.status === 401) {
+                logout();
+                onNavigate('login');
             }
         } catch (err) {
             console.error('Failed to fetch dashboard stats', err);
