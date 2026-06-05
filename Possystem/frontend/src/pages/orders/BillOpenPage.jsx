@@ -5,11 +5,14 @@ import { useAuth } from '../../context/AuthContext';
 import { fetchOrderById } from '../../services/orderService';
 import '../../styles/dashboard.css';
 
+
 const BillOpenPage = ({ orderId, onNavigate }) => {
+    const [errorMessage, setErrorMessage] = useState('');
     const { user } = useAuth();
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState(false);
     const [currentTime, setCurrentTime] = useState(new Date());
+const [isCompleted, setIsCompleted] = useState(false);
 
     // Order & Customer Data
     const [order, setOrder] = useState(null);
@@ -37,7 +40,7 @@ const BillOpenPage = ({ orderId, onNavigate }) => {
 
     useEffect(() => {
         if (!orderId) {
-            onNavigate('orders');
+            setErrorMessage('Order ID not found');
             return;
         }
         loadData();
@@ -60,8 +63,16 @@ const BillOpenPage = ({ orderId, onNavigate }) => {
             }));
             setItems(mappedItems);
 
+            // Load saved values if present
+            if (orderData.customer_name) setCustomerName(orderData.customer_name);
+            if (orderData.discount) setOverallDiscountValue(orderData.discount);
+            if (orderData.other_charges) setOtherCharges(orderData.other_charges);
+
             // Update status to BILL_OPEN if not already
-            if (orderData.status !== 'BILL_OPEN') {
+            if (orderData.status === 'PAID' || orderData.status === 'CLOSED') {
+                setIsCompleted(true);
+                openCashDrawer();
+            } else if (orderData.status !== 'BILL_OPEN') {
                 const token = localStorage.getItem('token');
                 await fetch(`${API_BASE_URL}/orders/${orderData.order_id}/status`, {
                     method: 'PATCH',
@@ -71,6 +82,7 @@ const BillOpenPage = ({ orderId, onNavigate }) => {
             }
         } catch (err) {
             console.error('Failed to load order', err);
+            setErrorMessage('Failed to load order');
             alert('Failed to load order');
             onNavigate('orders');
         } finally {
@@ -131,7 +143,29 @@ const BillOpenPage = ({ orderId, onNavigate }) => {
         }
     };
 
-    const [isCompleted, setIsCompleted] = useState(false);
+    // Function to open cash drawer (placeholder implementation)
+    const openCashDrawer = () => {
+        // If using a POS printer with ESC/POS commands, integrate with a bridge like QZ Tray.
+        // This placeholder logs to console; replace with actual hardware call.
+        console.log('Cash drawer open command triggered');
+        // Example using QZ Tray (uncomment when QZ Tray is set up):
+        // if (window.qz) {
+        //     qz.websocket.connect().then(() => {
+        //         const config = qz.configs.create("Your_Printer_Name");
+        //         const escCommand = '\x1B\x70\x00\x19\xFA'; // ESC/POS open drawer
+        //         qz.print(config, [{ type: 'raw', format: 'plain', data: escCommand }]);
+        //     }).catch(err => console.error('QZ Tray error', err));
+        // }
+    };
+
+    // Open cash drawer automatically before printing (e.g., when user triggers browser print)
+    React.useEffect(() => {
+        const handleBeforePrint = () => {
+            openCashDrawer();
+        };
+        window.addEventListener('beforeprint', handleBeforePrint);
+        return () => window.removeEventListener('beforeprint', handleBeforePrint);
+    }, []);
 
     const handleCompletePayment = async () => {
         if (totalReceived < grandTotal) {
@@ -154,6 +188,7 @@ const BillOpenPage = ({ orderId, onNavigate }) => {
                     amount: shouldUseFullTotal ? grandTotal : (Number.isFinite(enteredAmount) ? enteredAmount : 0)
                 };
             });
+
             const response = await fetch(`${API_BASE_URL}/orders/${order.order_id}/close`, {
                 method: 'PATCH',
                 headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -169,8 +204,8 @@ const BillOpenPage = ({ orderId, onNavigate }) => {
             });
 
             if (response.ok) {
-                // Trigger the receipt view
                 setIsCompleted(true);
+                openCashDrawer();
             } else {
                 alert('Failed to complete payment.');
             }
@@ -182,8 +217,9 @@ const BillOpenPage = ({ orderId, onNavigate }) => {
         }
     };
 
+    // Inline payment handling removed; moved to handleCompletePayment function
+
     const handleSaveBill = () => {
-        // Technically just navigating back keeps it in BILL_OPEN
         alert('Bill placed on hold / saved.');
         onNavigate('orders');
     };
@@ -210,11 +246,20 @@ const BillOpenPage = ({ orderId, onNavigate }) => {
         }
     };
 
-    if (loading || !order) {
+    if (loading) {
         return (
             <DashboardLayout onNavigate={onNavigate} activePage="orders">
                 <div className="flex items-center justify-center min-h-screen bill-open-page">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div>
+                </div>
+            </DashboardLayout>
+        );
+    }
+    if (errorMessage) {
+        return (
+            <DashboardLayout onNavigate={onNavigate} activePage="orders">
+                <div className="flex items-center justify-center min-h-screen bill-open-page">
+                    <p className="text-red-500 text-lg">{errorMessage}</p>
                 </div>
             </DashboardLayout>
         );
@@ -230,7 +275,7 @@ const BillOpenPage = ({ orderId, onNavigate }) => {
                             <div className="w-16 h-16 bg-emerald-100 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4">
                                 <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
                             </div>
-                            <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tight">Payment Complete</h2>
+                            <h2 className="text-2xl font-black text-emerald-500 uppercase tracking-tight">Invoice #{order?.order_id}</h2>
                             <p className="text-gray-500 text-sm mt-1 uppercase tracking-widest font-bold">Invoice #{order.order_id} Closed</p>
                         </div>
 
@@ -266,17 +311,15 @@ const BillOpenPage = ({ orderId, onNavigate }) => {
 
                         <div className="p-6 bg-white gap-3 flex flex-col font-sans">
                             <div className="flex gap-3">
-                                <button onClick={() => window.print()} className="flex-1 py-3 bg-[#1E1E1E] hover:bg-black text-white font-bold uppercase tracking-widest text-xs rounded-xl transition-all shadow-lg flex items-center justify-center gap-2">
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
-                                    Print Bill
-                                </button>
                                 <button onClick={() => {
-                                    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ orderId: order.order_id, date: currentTime, items, grandTotal }));
-                                    const dlAnchorElem = document.createElement('a'); dlAnchorElem.setAttribute("href", dataStr); dlAnchorElem.setAttribute("download", `bill_${order.order_id}.json`); dlAnchorElem.click();
-                                }} className="flex-1 py-3 bg-white border-2 border-gray-200 text-gray-800 hover:bg-gray-50 font-bold uppercase tracking-widest text-xs rounded-xl transition-all flex items-center justify-center gap-2">
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                                    Download
+                                    window.print();
+                                }} className="flex-1 py-3 bg-[#1E1E1E] hover:bg-black text-white font-bold uppercase tracking-widest text-xs rounded-xl transition-all shadow-lg flex items-center justify-center gap-2">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                    </svg>
+                                    Print
                                 </button>
+
                             </div>
                             <button onClick={() => onNavigate('orders')} className="w-full py-4 mt-2 bg-emerald-500 hover:bg-emerald-600 text-white font-black uppercase tracking-widest text-sm rounded-xl transition-all shadow-lg active:scale-95">
                                 Return to Orders
@@ -288,6 +331,15 @@ const BillOpenPage = ({ orderId, onNavigate }) => {
         );
     }
 
+    if (!order) {
+        return (
+            <DashboardLayout onNavigate={onNavigate} activePage="orders">
+                <div className="flex items-center justify-center min-h-screen bill-open-page">
+                    <p className="text-gray-500 text-lg">Order data not available.</p>
+                </div>
+            </DashboardLayout>
+        );
+    }
     return (
         <DashboardLayout onNavigate={onNavigate} activePage="orders">
             <div className="bill-open-page p-4 md:p-6 min-h-screen font-sans flex flex-col gap-6">
@@ -562,5 +614,4 @@ const BillOpenPage = ({ orderId, onNavigate }) => {
         </DashboardLayout>
     );
 };
-
 export default BillOpenPage;

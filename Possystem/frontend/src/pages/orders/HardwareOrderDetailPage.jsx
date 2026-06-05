@@ -306,8 +306,17 @@ const HardwareOrderDetailPage = ({ orderId, onNavigate }) => {
                         )}
 
                         {isClosed && (
-                            <div className="p-4 bg-zinc-800/50 text-center text-zinc-400 font-bold uppercase tracking-widest text-xs rounded-xl border border-zinc-700">
-                                This order is paid and closed
+                            <div className="grid grid-cols-1 gap-4">
+                                <div className="p-4 bg-zinc-800/50 text-center text-zinc-400 font-bold uppercase tracking-widest text-xs rounded-xl border border-zinc-700">
+                                    This order is paid and closed
+                                </div>
+                                <button
+                                    onClick={() => onNavigate('bill-open', { orderId: order.order_id })}
+                                    className="hardware-order-action-btn w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-black uppercase tracking-widest text-sm rounded-xl transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2"
+                                >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                                    VIEW / PRINT RECEIPT
+                                </button>
                             </div>
                         )}
 
