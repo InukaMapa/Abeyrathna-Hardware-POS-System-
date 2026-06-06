@@ -6,6 +6,7 @@ import { fetchOrderById } from '../../services/orderService';
 import logo from '../../assets/logo.jpeg';
 import html2canvas from 'html2canvas';
 import { printImageAndOpenDrawer, openCashDrawerOnly, getPrinters } from '../../utils/qzHelper';
+import { getSavedBillPrinter } from '../../utils/printerConfig';
 import '../../styles/dashboard.css';
 
 const BillOpenPage = ({ orderId, onNavigate }) => {
@@ -134,6 +135,12 @@ const BillOpenPage = ({ orderId, onNavigate }) => {
         getPrinters().then(printerList => {
             setPrinters(printerList);
             if (printerList && printerList.length > 0) {
+                const savedBillPrinter = getSavedBillPrinter();
+                if (savedBillPrinter && printerList.includes(savedBillPrinter)) {
+                    setSelectedPrinter(savedBillPrinter);
+                    return;
+                }
+
                 const receiptPrinter = printerList.find(p => p.toLowerCase().includes('thermal') || p.toLowerCase().includes('pos') || p.toLowerCase().includes('receipt'));
                 setSelectedPrinter(receiptPrinter || printerList[0]);
             }
