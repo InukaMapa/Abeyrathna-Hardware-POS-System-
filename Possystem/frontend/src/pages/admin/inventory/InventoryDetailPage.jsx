@@ -35,10 +35,10 @@ const InventoryDetailPage = ({ inventoryId, onNavigate }) => {
                         format: 'CODE128',
                         lineColor: '#000000',
                         background: '#FFFFFF',
-                        width: 1.5,
-                        height: 40,
+                        width: 1.35,
+                        height: 44,
                         displayValue: true,
-                        fontSize: 12,
+                        fontSize: 10,
                         margin: 0
                     });
                 }
@@ -361,25 +361,25 @@ const InventoryDetailPage = ({ inventoryId, onNavigate }) => {
                                 position: 'absolute', 
                                 left: '-9999px', 
                                 top: '-9999px', 
-                                width: '2in', // approx 192px at 96dpi
-                                height: '1in', 
+                                width: '40mm',
+                                height: '30mm',
                                 backgroundColor: '#fff', 
                                 display: 'flex', 
                                 flexDirection: 'column', 
                                 alignItems: 'center', 
                                 justifyContent: 'center',
-                                padding: '5px',
+                                padding: '1.5mm',
                                 boxSizing: 'border-box',
                                 overflow: 'hidden'
                             }}
                         >
-                            <div style={{ fontSize: '14px', fontFamily: 'sans-serif', fontWeight: 'bold', color: '#000', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: '2px', maxWidth: '100%' }}>
+                            <div style={{ fontSize: '8px', lineHeight: '1', fontFamily: 'Arial, sans-serif', fontWeight: '700', color: '#000', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: '0.8mm', maxWidth: '100%' }}>
                                 {item.ingredient_name}
                             </div>
-                            <div style={{ fontSize: '12px', fontFamily: 'sans-serif', color: '#000', fontWeight: '500', marginBottom: '5px' }}>
+                            <div style={{ fontSize: '10px', lineHeight: '1', fontFamily: 'Arial, sans-serif', color: '#000', fontWeight: '700', marginBottom: '1mm' }}>
                                 Rs. {parseFloat(item.selling_price || 0).toFixed(2)}
                             </div>
-                            <svg ref={printBarcodeRef} style={{ maxWidth: '100%', height: 'auto' }}></svg>
+                            <svg ref={printBarcodeRef} style={{ width: '37mm', maxWidth: '100%', height: 'auto' }}></svg>
                         </div>
                     </div>
                 </div>

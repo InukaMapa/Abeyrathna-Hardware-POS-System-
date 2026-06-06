@@ -149,10 +149,10 @@ export const printLabelHTML = async (htmlContent, printerName = null) => {
         console.log('[QZ] Label printer:', printer);
 
         const config = qz.configs.create(printer, {
-            size: { width: 2, height: 1 },
-            units: 'in',
+            size: { width: 40, height: 30 },
+            units: 'mm',
             margins: 0,
-            colorType: 'grayscale'
+            colorType: 'blackwhite'
         });
 
         await qz.print(config, [
@@ -181,10 +181,10 @@ export const printLabelImage = async (base64Image, printerName = null) => {
         console.log('[QZ] Label printer:', printer);
 
         const config = qz.configs.create(printer, {
-            size: { width: 2, height: 1 },
-            units: 'in',
+            size: { width: 40, height: 30 },
+            units: 'mm',
             margins: 0,
-            colorType: 'grayscale',
+            colorType: 'blackwhite',
             interpolation: 'nearest-neighbor'
         });
 
