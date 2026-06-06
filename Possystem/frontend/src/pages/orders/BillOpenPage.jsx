@@ -168,7 +168,11 @@ const BillOpenPage = ({ orderId, onNavigate }) => {
             await printImageAndOpenDrawer(base64Image, selectedPrinter);
         } catch (err) {
             console.error('Print failed:', err);
-            alert('QZ Tray print failed. Make sure QZ Tray is running.');
+            if (err.message && err.message.includes('Connection blocked by client')) {
+                alert('Connection blocked by QZ Tray! Please right-click the QZ Tray icon on your computer\'s taskbar (near the clock), go to Advanced > Site Manager, and remove "localhost" from the Blocked list.');
+            } else {
+                alert('QZ Tray print failed. Make sure QZ Tray is running.');
+            }
         } finally {
             setPrinting(false);
         }

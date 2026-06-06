@@ -65,7 +65,11 @@ const InventoryDetailPage = ({ inventoryId, onNavigate }) => {
             alert('Label sent to printer!');
         } catch (error) {
             console.error('Failed to print label:', error);
-            alert('Failed to print label. Make sure QZ Tray is running.');
+            if (error.message && error.message.includes('Connection blocked by client')) {
+                alert('Connection blocked by QZ Tray! Please right-click the QZ Tray icon on your computer\'s taskbar (near the clock), go to Advanced > Site Manager, and remove "localhost" from the Blocked list.');
+            } else {
+                alert('Failed to print label. Make sure QZ Tray is running.');
+            }
         }
     };
 
