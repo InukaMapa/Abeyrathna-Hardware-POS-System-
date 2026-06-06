@@ -1,0 +1,259 @@
+/* 
+  Authentication Pages Styles 
+  Theme: Premium Light Glassmorphism Theme (Primary Green + Gold Accents)
+*/
+
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* ---------- Variables ---------- */
+:root {
+    --primary-green: #16A34A;
+    --dark-green: #166534;
+    --bg-mint: #F0FDF4;
+    --card-bg: rgba(255, 255, 255, 0.8);
+    --gold-accent: #D4A017;
+    --border-color: #DCFCE7;
+    --text-color: #1E293B;
+    --text-muted: #64748B;
+    --error-color: #EF4444;
+}
+
+/* ---------- Global Styles ---------- */
+html,
+body,
+#root {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+}
+
+body {
+    background: linear-gradient(135deg, #ECFDF5, #D1FAE5);
+    color: var(--text-color);
+    font-family: 'Poppins', 'Inter', sans-serif;
+}
+
+/* ---------- Auth Container ---------- */
+.auth-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    width: 100%;
+    padding: 20px;
+    box-sizing: border-box;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Background Decorative Elements for premium look */
+.auth-container::before {
+    content: '';
+    position: absolute;
+    width: 400px;
+    height: 400px;
+    background: radial-gradient(circle, rgba(22, 163, 74, 0.08) 0%, rgba(22, 163, 74, 0) 70%);
+    top: -100px;
+    right: -100px;
+    z-index: 0;
+}
+
+.auth-container::after {
+    content: '';
+    position: absolute;
+    width: 500px;
+    height: 500px;
+    background: radial-gradient(circle, rgba(212, 160, 23, 0.08) 0%, rgba(212, 160, 23, 0) 70%);
+    bottom: -150px;
+    left: -150px;
+    z-index: 0;
+}
+
+/* ---------- Form Wrapper (Glassmorphism Card) ---------- */
+.auth-form-wrapper {
+    position: relative;
+    z-index: 10;
+    width: 100%;
+    max-width: 360px; /* Reduced Scale of the Form */
+    padding: 35px 25px; /* Reduced Padding for tighter aspect */
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: var(--card-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-radius: 20px;
+    box-shadow: 0 12px 40px rgba(22, 101, 52, 0.08), 0 1px 3px rgba(22, 101, 52, 0.02);
+    border: 1.5px solid rgba(22, 163, 74, 0.15); /* More elegant visible green border */
+    transition: all 0.3s ease;
+}
+
+.auth-form-wrapper:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 15px 45px rgba(22, 101, 52, 0.1);
+}
+
+/* ---------- Logo Section ---------- */
+.logo-section {
+    margin-bottom: 30px;
+    display: flex;
+    justify-content: center;
+    width: 100%;
+}
+
+/* ---------- Logo Image ---------- */
+.logo-image {
+    width: 68%; /* Reduced logo width to balance narrower form width */
+    height: auto;
+    display: block;
+    margin: 0 auto;
+    filter: drop-shadow(0 4px 8px rgba(22, 101, 52, 0.06));
+    border-radius: 8px;
+}
+
+/* ---------- Form ---------- */
+form {
+    width: 100%;
+}
+
+/* ---------- Form Group ---------- */
+.form-group {
+    margin-bottom: 22px;
+    width: 100%;
+    text-align: left;
+}
+
+/* ---------- Input Wrapper ---------- */
+.input-wrapper {
+    display: flex;
+    align-items: center;
+    background: #ffffff;
+    border: 1.8px solid rgba(22, 163, 74, 0.3); /* Highly visible outline color */
+    border-radius: 20px;
+    transition: all 0.3s ease;
+    overflow: hidden;
+    height: 50px; /* Symmetrical height scale */
+}
+
+.input-wrapper:hover {
+    border-color: var(--primary-green);
+    box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.06);
+}
+
+.input-wrapper:focus-within {
+    background-color: #ffffff;
+    box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.12); /* Brighter and more visible focus halo */
+    border-color: var(--primary-green);
+}
+
+/* ---------- Input Icon ---------- */
+.input-icon-container {
+    width: 52px;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    color: var(--primary-green);
+    flex-shrink: 0;
+}
+
+.input-icon-container svg {
+    width: 20px;
+    height: 20px;
+}
+
+/* ---------- Input Field ---------- */
+.form-input {
+    flex: 1;
+    height: 100%;
+    padding: 0 20px 0 0;
+    background-color: transparent;
+    border: none;
+    color: var(--text-color);
+    font-size: 0.95rem;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 500;
+    outline: none;
+}
+
+.form-input::placeholder {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+}
+
+/* ---------- Auth Button ---------- */
+.auth-button {
+    width: 100%;
+    height: 52px;
+    background: linear-gradient(135deg, var(--primary-green), var(--dark-green));
+    color: #ffffff;
+    border: none;
+    border-radius: 20px;
+    font-size: 0.95rem;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: 15px;
+    box-shadow: 0 6px 20px rgba(22, 163, 74, 0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.auth-button:hover {
+    background: linear-gradient(135deg, #15803d, #14532d);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(22, 163, 74, 0.35);
+}
+
+.auth-button:active {
+    transform: translateY(0);
+}
+
+/* ---------- Links ---------- */
+.auth-link {
+    display: inline-block;
+    margin-top: 20px;
+    color: var(--primary-green);
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.auth-link:hover {
+    color: var(--dark-green);
+    text-decoration: underline;
+}
+
+/* ---------- Error Message ---------- */
+.error-message {
+    color: var(--error-color);
+    font-size: 0.8rem;
+    text-align: left;
+    margin-top: 6px;
+    padding-left: 10px;
+    font-weight: 500;
+}
+
+/* ---------- Responsive adjustments ---------- */
+@media (max-width: 480px) {
+    .auth-form-wrapper {
+        padding: 35px 20px;
+    }
+
+    .logo-image {
+        width: 85%;
+    }
+}
