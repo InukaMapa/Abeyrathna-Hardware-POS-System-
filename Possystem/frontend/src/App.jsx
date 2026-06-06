@@ -24,6 +24,7 @@ import RecentPurchasesPage from './pages/admin/supplier/RecentPurchasesPage';
 import ReturnManagementPage from './pages/admin/supplier/ReturnManagementPage';
 import ReportsPage from './pages/admin/ReportsPage';
 import StaffManagementPage from './pages/admin/StaffManagementPage';
+import PrinterSettingsPage from './pages/dashboard/PrinterSettingsPage';
 import './styles/dashboard.css';
 
 function AppContent() {
@@ -47,23 +48,49 @@ function AppContent() {
   useEffect(() => {
     if (initializing) return;
 
-    // If user is authenticated, try to restore last page or go to dashboard
+    const validPages = [
+      'dashboard', 'inventory', 'inventory-detail', 'reports', 'cash-management',
+      'supplier', 'supplier-returns', 'supplier-recent-purchases', 'return-management',
+      'staff-management', 'create-order', 'cashier-new-order', 'cash-counter',
+      'profile', 'orders', 'order-details', 'bill-open', 'printer-settings'
+    ];
+
     try {
-      const last = localStorage.getItem('lastPage');
       if (isAuthenticated) {
-        if (last && last !== 'login' && last !== 'forgot-password' && last !== 'reset-password' && last !== 'verify-email' && last !== 'unauthorized') {
+        // Try to load page from current URL path first
+        const path = window.location.pathname.replace(/^\//, '');
+        if (path && validPages.includes(path)) {
+          setCurrentPage(path);
+          return;
+        }
+
+        // Restoring last visited page if valid
+        const last = localStorage.getItem('lastPage');
+        if (last && validPages.includes(last)) {
           setCurrentPage(last);
+          window.history.replaceState({}, '', `/${last}`);
           return;
         }
         setCurrentPage('dashboard');
+        window.history.replaceState({}, '', '/dashboard');
         return;
       }
 
       // Not authenticated: default to login
       setCurrentPage('login');
+      if (window.location.pathname !== '/') {
+        window.history.replaceState({}, '', '/');
+      }
     } catch (err) {
-      if (isAuthenticated) setCurrentPage('dashboard');
-      else setCurrentPage('login');
+      if (isAuthenticated) {
+        setCurrentPage('dashboard');
+        window.history.replaceState({}, '', '/dashboard');
+      } else {
+        setCurrentPage('login');
+        if (window.location.pathname !== '/') {
+          window.history.replaceState({}, '', '/');
+        }
+      }
     }
   }, [initializing, isAuthenticated]);
 
@@ -79,8 +106,14 @@ function AppContent() {
     } catch (e) {
       // ignore
     }
-    // Optional: update URL
-    if (page === 'login') window.history.pushState({}, '', '/');
+    
+    // Update browser URL
+    const publicPages = ['login', 'forgot-password', 'verify-email', 'reset-password', 'unauthorized'];
+    if (publicPages.includes(page)) {
+      window.history.pushState({}, '', '/');
+    } else {
+      window.history.pushState({}, '', `/${page}`);
+    }
 
     // Handle params if needed
     if (page === 'inventory-detail' && params.id) {
@@ -198,6 +231,11 @@ function AppContent() {
       {currentPage === 'bill-open' && (
         <ProtectedRoute allowedRoles={['ADMIN', 'CASHIER']} onNavigate={navigateTo}>
           <BillOpenPage onNavigate={navigateTo} orderId={selectedOrderId} />
+        </ProtectedRoute>
+      )}
+      {currentPage === 'printer-settings' && (
+        <ProtectedRoute allowedRoles={['ADMIN', 'CASHIER']} onNavigate={navigateTo}>
+          <PrinterSettingsPage onNavigate={navigateTo} />
         </ProtectedRoute>
       )}
     </>

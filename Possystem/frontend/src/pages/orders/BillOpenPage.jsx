@@ -4,8 +4,9 @@ import { API_BASE_URL } from '../../config/api';
 import { useAuth } from '../../context/AuthContext';
 import { fetchOrderById } from '../../services/orderService';
 import logo from '../../assets/logo.jpeg';
+import html2canvas from 'html2canvas';
+import { printImageAndOpenDrawer, openCashDrawerOnly, getPrinters } from '../../utils/qzHelper';
 import '../../styles/dashboard.css';
-
 
 const BillOpenPage = ({ orderId, onNavigate }) => {
     const [errorMessage, setErrorMessage] = useState('');
@@ -13,7 +14,12 @@ const BillOpenPage = ({ orderId, onNavigate }) => {
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState(false);
     const [currentTime, setCurrentTime] = useState(new Date());
-const [isCompleted, setIsCompleted] = useState(false);
+    const [isCompleted, setIsCompleted] = useState(false);
+
+    // Printing
+    const [printers, setPrinters] = useState([]);
+    const [selectedPrinter, setSelectedPrinter] = useState('');
+    const [printing, setPrinting] = useState(false);
 
     // Order & Customer Data
     const [order, setOrder] = useState(null);
@@ -124,17 +130,52 @@ const [isCompleted, setIsCompleted] = useState(false);
         ? activePaymentMethods
         : [{ method: 'Cash', amount: grandTotal }];
 
-    const handlePrintBill = () => {
-        document.body.classList.add('receipt-printing');
+    useEffect(() => {
+        getPrinters().then(printerList => {
+            setPrinters(printerList);
+            if (printerList && printerList.length > 0) {
+                const receiptPrinter = printerList.find(p => p.toLowerCase().includes('thermal') || p.toLowerCase().includes('pos') || p.toLowerCase().includes('receipt'));
+                setSelectedPrinter(receiptPrinter || printerList[0]);
+            }
+        }).catch(err => console.error("Error fetching printers", err));
+    }, []);
 
-        const cleanup = () => {
-            document.body.classList.remove('receipt-printing');
-            window.removeEventListener('afterprint', cleanup);
-        };
+    const handlePrintBill = async () => {
+        setPrinting(true);
+        try {
+            const receiptElement = document.getElementById('thermal-receipt');
+            if (!receiptElement) {
+                throw new Error('Receipt element not found');
+            }
+            
+            // Add a temporary class to ensure the receipt is visible for rendering
+            const originalDisplay = receiptElement.style.display;
+            const originalPosition = receiptElement.style.position;
+            receiptElement.style.display = 'block';
+            receiptElement.style.position = 'relative';
 
-        window.addEventListener('afterprint', cleanup);
-        window.print();
-        setTimeout(cleanup, 1000);
+            const canvas = await html2canvas(receiptElement, {
+                scale: 2, // High resolution
+                useCORS: true,
+                backgroundColor: '#ffffff'
+            });
+            
+            // Restore styles
+            receiptElement.style.display = originalDisplay;
+            receiptElement.style.position = originalPosition;
+
+            const base64Image = canvas.toDataURL('image/png');
+            await printImageAndOpenDrawer(base64Image, selectedPrinter);
+        } catch (err) {
+            console.error('Print failed:', err);
+            if (err.message && err.message.includes('Connection blocked by client')) {
+                alert('Connection blocked by QZ Tray! Please right-click the QZ Tray icon on your computer\'s taskbar (near the clock), go to Advanced > Site Manager, and remove "localhost" from the Blocked list.');
+            } else {
+                alert('QZ Tray print failed. Make sure QZ Tray is running.');
+            }
+        } finally {
+            setPrinting(false);
+        }
     };
 
     // Handlers
@@ -171,19 +212,13 @@ const [isCompleted, setIsCompleted] = useState(false);
         }
     };
 
-    // Function to open cash drawer (placeholder implementation)
-    const openCashDrawer = () => {
-        // If using a POS printer with ESC/POS commands, integrate with a bridge like QZ Tray.
-        // This placeholder logs to console; replace with actual hardware call.
-        console.log('Cash drawer open command triggered');
-        // Example using QZ Tray (uncomment when QZ Tray is set up):
-        // if (window.qz) {
-        //     qz.websocket.connect().then(() => {
-        //         const config = qz.configs.create("Your_Printer_Name");
-        //         const escCommand = '\x1B\x70\x00\x19\xFA'; // ESC/POS open drawer
-        //         qz.print(config, [{ type: 'raw', format: 'plain', data: escCommand }]);
-        //     }).catch(err => console.error('QZ Tray error', err));
-        // }
+    // Function to open cash drawer
+    const openCashDrawer = async () => {
+        try {
+            await openCashDrawerOnly(selectedPrinter);
+        } catch (err) {
+            console.error('Failed to open cash drawer automatically via QZ Tray:', err);
+        }
     };
 
     // Open cash drawer automatically before printing (e.g., when user triggers browser print)
@@ -239,7 +274,9 @@ const [isCompleted, setIsCompleted] = useState(false);
 
             if (response.ok) {
                 setIsCompleted(true);
-                openCashDrawer();
+                setTimeout(() => {
+                    handlePrintBill();
+                }, 500);
             } else {
                 alert('Failed to complete payment.');
             }
@@ -407,11 +444,31 @@ const [isCompleted, setIsCompleted] = useState(false);
                         </div>
 
                         <div className="bill-complete-actions">
-                            <div className="flex gap-3">
-                                <button onClick={handlePrintBill} className="flex-1 py-3 bg-[#1E1E1E] hover:bg-black text-white font-bold uppercase tracking-widest text-xs rounded-xl transition-all shadow-lg flex items-center justify-center gap-2">
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
-                                    Print Bill
-                                </button>
+                            <div className="flex flex-col gap-3">
+                                {printers.length > 0 && (
+                                    <select 
+                                        className="w-full bg-[#f8f9fa] border border-gray-300 text-gray-700 text-xs font-bold rounded-lg px-3 py-2 outline-none focus:border-emerald-500"
+                                        value={selectedPrinter}
+                                        onChange={(e) => setSelectedPrinter(e.target.value)}
+                                    >
+                                        {printers.map((p, idx) => (
+                                            <option key={idx} value={p}>{p}</option>
+                                        ))}
+                                    </select>
+                                )}
+                                <div className="flex gap-3">
+                                    <button 
+                                        onClick={handlePrintBill} 
+                                        disabled={printing}
+                                        className="flex-1 py-3 bg-[#1E1E1E] hover:bg-black text-white font-bold uppercase tracking-widest text-xs rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 disabled:opacity-70"
+                                    >
+                                        {printing ? (
+                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                        ) : (
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                                        )}
+                                        {printing ? 'Printing...' : 'Print Bill'}
+                                    </button>
                                 <button onClick={() => {
                                     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({
                                         orderId: order.order_id,
@@ -427,6 +484,7 @@ const [isCompleted, setIsCompleted] = useState(false);
                                     Download
                                 </button>
 
+                                </div>
                             </div>
                             <button onClick={() => onNavigate('orders')} className="w-full py-4 mt-2 bg-emerald-500 hover:bg-emerald-600 text-white font-black uppercase tracking-widest text-sm rounded-xl transition-all shadow-lg active:scale-95">
                                 Return to Orders

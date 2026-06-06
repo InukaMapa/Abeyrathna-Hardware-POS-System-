@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import { ArrowLeft, Package, Clock, Calendar, Truck, Layers, Loader, Info, X, Printer } from 'lucide-react';
 import JsBarcode from 'jsbarcode';
+import html2canvas from 'html2canvas';
 import DashboardLayout from '../../../components/layout/DashboardLayout';
 import { API_BASE_URL } from '../../../config/api';
 import '../../../styles/menu.css'; // Reusing styles
@@ -11,80 +12,65 @@ const InventoryDetailPage = ({ inventoryId, onNavigate }) => {
     const [loading, setLoading] = useState(true);
     const [showBarcodePopup, setShowBarcodePopup] = useState(false);
     const barcodeRef = useRef(null);
+    const printLabelRef = useRef(null);
+    const printBarcodeRef = useRef(null);
 
     useEffect(() => {
-        if (showBarcodePopup && barcodeRef.current && item && item.item_code) {
+        if (showBarcodePopup && item && item.item_code) {
             try {
-                JsBarcode(barcodeRef.current, item.item_code, {
-                    format: 'CODE128',
-                    lineColor: '#000000',
-                    background: '#FFFFFF',
-                    width: 2,
-                    height: 60,
-                    displayValue: true,
-                    fontSize: 14,
-                    margin: 10
-                });
+                if (barcodeRef.current) {
+                    JsBarcode(barcodeRef.current, item.item_code, {
+                        format: 'CODE128',
+                        lineColor: '#000000',
+                        background: '#FFFFFF',
+                        width: 2,
+                        height: 60,
+                        displayValue: true,
+                        fontSize: 14,
+                        margin: 10
+                    });
+                }
+                if (printBarcodeRef.current) {
+                    JsBarcode(printBarcodeRef.current, item.item_code, {
+                        format: 'CODE128',
+                        lineColor: '#000000',
+                        background: '#FFFFFF',
+                        width: 1.5,
+                        height: 40,
+                        displayValue: true,
+                        fontSize: 12,
+                        margin: 0
+                    });
+                }
             } catch (err) {
                 console.error('Error rendering barcode:', err);
             }
         }
     }, [showBarcodePopup, item]);
 
-    const handlePrintBarcode = () => {
-        const printWindow = window.open('', '_blank');
-        const svgHtml = barcodeRef.current ? barcodeRef.current.outerHTML : '';
-        printWindow.document.write(`
-            <html>
-            <head>
-                <title>Print Barcode - ${item.ingredient_name}</title>
-                <style>
-                    body {
-                        display: flex;
-                        flex-direction: column;
-                        align-items: center;
-                        justify-content: center;
-                        height: 100vh;
-                        margin: 0;
-                        font-family: system-ui, -apple-system, sans-serif;
-                    }
-                    .label {
-                        text-align: center;
-                        padding: 20px;
-                        border: 1px dashed #ccc;
-                        border-radius: 8px;
-                        background: white;
-                    }
-                    .title {
-                        font-size: 18px;
-                        font-weight: bold;
-                        margin-bottom: 5px;
-                        color: #000;
-                    }
-                    .subtitle {
-                        font-size: 13px;
-                        color: #555;
-                        margin-bottom: 15px;
-                        font-weight: 500;
-                    }
-                </style>
-            </head>
-            <body>
-                <div class="label">
-                    <div class="title">${item.ingredient_name}</div>
-                    <div class="subtitle">Rs. ${parseFloat(item.selling_price || 0).toFixed(2)}</div>
-                    ${svgHtml}
-                </div>
-                <script>
-                    window.onload = function() {
-                        window.print();
-                        window.close();
-                    }
-                </script>
-            </body>
-            </html>
-        `);
-        printWindow.document.close();
+    const handlePrintBarcode = async () => {
+        if (!printLabelRef.current) return;
+        try {
+            const canvas = await html2canvas(printLabelRef.current, {
+                scale: 2, // better quality for printing
+                backgroundColor: '#ffffff'
+            });
+            const base64Image = canvas.toDataURL('image/png');
+            
+            // Call the QZ Tray helper function to print the image
+            await import('../../../utils/qzHelper').then(module => {
+                return module.printLabelImage(base64Image);
+            });
+            
+            alert('Label sent to printer!');
+        } catch (error) {
+            console.error('Failed to print label:', error);
+            if (error.message && error.message.includes('Connection blocked by client')) {
+                alert('Connection blocked by QZ Tray! Please right-click the QZ Tray icon on your computer\'s taskbar (near the clock), go to Advanced > Site Manager, and remove "localhost" from the Blocked list.');
+            } else {
+                alert('Failed to print label. Make sure QZ Tray is running.');
+            }
+        }
     };
 
     const fetchDetails = useCallback(async () => {
@@ -366,6 +352,34 @@ const InventoryDetailPage = ({ inventoryId, onNavigate }) => {
                             >
                                 Close
                             </button>
+                        </div>
+
+                        {/* Hidden Layout for Printing */}
+                        <div 
+                            ref={printLabelRef} 
+                            style={{ 
+                                position: 'absolute', 
+                                left: '-9999px', 
+                                top: '-9999px', 
+                                width: '2in', // approx 192px at 96dpi
+                                height: '1in', 
+                                backgroundColor: '#fff', 
+                                display: 'flex', 
+                                flexDirection: 'column', 
+                                alignItems: 'center', 
+                                justifyContent: 'center',
+                                padding: '5px',
+                                boxSizing: 'border-box',
+                                overflow: 'hidden'
+                            }}
+                        >
+                            <div style={{ fontSize: '14px', fontFamily: 'sans-serif', fontWeight: 'bold', color: '#000', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: '2px', maxWidth: '100%' }}>
+                                {item.ingredient_name}
+                            </div>
+                            <div style={{ fontSize: '12px', fontFamily: 'sans-serif', color: '#000', fontWeight: '500', marginBottom: '5px' }}>
+                                Rs. {parseFloat(item.selling_price || 0).toFixed(2)}
+                            </div>
+                            <svg ref={printBarcodeRef} style={{ maxWidth: '100%', height: 'auto' }}></svg>
                         </div>
                     </div>
                 </div>

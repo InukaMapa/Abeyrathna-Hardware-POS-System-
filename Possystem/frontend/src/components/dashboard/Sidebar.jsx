@@ -2,7 +2,7 @@ import { useAuth } from '../../context/AuthContext';
 import '../../styles/dashboard.css';
 import logo from '../../assets/logo.jpeg';
 import { API_BASE_URL } from '../../config/api';
-import { Banknote, BarChart3, Boxes, LayoutDashboard, RotateCcw, Truck, ClipboardList, Users } from 'lucide-react';
+import { Banknote, BarChart3, Boxes, LayoutDashboard, RotateCcw, Truck, ClipboardList, Users, Printer } from 'lucide-react';
 
 const Sidebar = ({ onNavigate, activePage }) => {
     const { userRole } = useAuth();
@@ -15,12 +15,14 @@ const Sidebar = ({ onNavigate, activePage }) => {
         { id: 'supplier-returns', name: 'Returns', icon: RotateCcw, roles: ['ADMIN'] },
         { id: 'cash-management', name: 'Cash Counter', icon: Banknote, roles: ['ADMIN'] },
         { id: 'staff-management', name: 'Staff Management', icon: Users, roles: ['ADMIN'] },
+        { id: 'printer-settings', name: 'Printer Settings', icon: Printer, roles: ['ADMIN'] },
     ];
 
     const cashierMenuItems = [
         { id: 'dashboard', name: 'Dashboard', icon: LayoutDashboard, roles: ['CASHIER'] },
         { id: 'orders', name: 'Orders', icon: ClipboardList, roles: ['CASHIER'] },
         { id: 'cash-counter', name: 'Cash Counter', icon: Banknote, roles: ['CASHIER'] },
+        { id: 'printer-settings', name: 'Printer Settings', icon: Printer, roles: ['CASHIER'] },
     ];
 
     let menuItems = [];

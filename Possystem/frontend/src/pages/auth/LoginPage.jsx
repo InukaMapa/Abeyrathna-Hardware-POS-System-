@@ -11,7 +11,7 @@ const LoginPage = ({ onNavigate }) => {
 
     const validateForm = () => {
         let isValid = true;
-        const newErrors = { email: '', password: '' };
+        const newErrors = { usernameOrEmail: '', password: '' };
 
         if (!usernameOrEmail.trim()) {
             newErrors.usernameOrEmail = 'Username or Email is required';
