@@ -121,7 +121,7 @@ const findOpenShiftForCashier = async (req) => {
 
     const { data, error } = await supabase
         .from('cash_shifts')
-        .select('shift_id, cashier_name, status')
+        .select('shift_id, cashier_name, status, start_time')
         .eq('cashier_name', cashierName)
         .in('status', ['OPEN', 'REPORT_SUBMITTED'])
         .limit(1)
@@ -286,7 +286,8 @@ export const createOrder = async (req, res) => {
             table_id: tableIdInt,
             total_amount: totalAmount,
             status: 'PLACED',
-            customer_phone: customer_phone || null
+            customer_phone: customer_phone || null,
+            shift_id: shiftCheck.shift?.shift_id || null
         };
 
         // Add staff_id if it exists (some schemas might not have this field yet)
@@ -373,9 +374,18 @@ export const fetchAllOrders = async (req, res) => {
             `)
             .order('created_at', { ascending: false });
 
-        // Filter by user role (Cashiers only see their own orders)
+        // Filter by user role (Cashiers only see their own current session orders)
         if (req.user?.role === 'CASHIER') {
             query = query.eq('staff_id', req.user.userId);
+
+            const shiftCheck = await findOpenShiftForCashier(req);
+            if (!shiftCheck.allowed || !shiftCheck.shift?.start_time) {
+                return res.status(200).json([]);
+            }
+
+            query = query
+                .eq('shift_id', shiftCheck.shift.shift_id)
+                .gte('created_at', shiftCheck.shift.start_time);
         }
 
         // Filter by status if provided
@@ -462,8 +472,9 @@ export const updateOrderStatus = async (req, res) => {
                 .from('cash_shifts')
                 .select('shift_id')
                 .in('status', ['OPEN', 'REPORT_SUBMITTED'])
+                .eq('cashier_name', req.user?.username)
                 .limit(1)
-                .single();
+                .maybeSingle();
 
             if (activeShift) {
                 updateData.shift_id = activeShift.shift_id;
@@ -848,15 +859,26 @@ export const getOrderById = async (req, res) => {
                 total_amount,
                 status,
                 customer_phone,
+                customer_name,
+                discount,
+                other_charges,
+                other_charges_reason,
+                notes,
+                payment_method,
+                payment_details,
+                cash_amount,
                 created_at,
+                closed_at,
                 staff_id,
+                shift_id,
                 order_items (
                     order_item_id,
                     item_id,
                     item_name,
                     quantity,
                     item_price,
-                    subtotal
+                    subtotal,
+                    selected_variants
                 )
             `)
             .eq('order_id', id)

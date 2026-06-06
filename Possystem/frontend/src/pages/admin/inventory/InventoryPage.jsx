@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Search, Plus, Package, PackagePlus, Edit, FileText, AlertTriangle, AlertCircle, Loader, Settings, X } from 'lucide-react';
 import axios from 'axios';
 import AddInventoryModal from './AddInventoryModal';
@@ -120,21 +121,25 @@ const InventoryPage = ({ onNavigate }) => {
         const tiers = item.stock_price_tiers || [];
         if (tiers.length === 0) {
             return (
-                <div className="inventory-price">
-                    Rs. {parseFloat(item.selling_price || 0).toFixed(2)}
+                <div className="inventory-price-card single">
+                    <span>Selling Price</span>
+                    <strong>Rs. {parseFloat(item.selling_price || 0).toFixed(2)}</strong>
                 </div>
             );
         }
 
         return (
-            <div className="inventory-price-tier-list">
+            <div className="inventory-price-card">
                 {tiers.slice(0, 2).map((tier, index) => (
                     <div key={`${tier.selling_price}-${index}`} className="inventory-price-tier">
-                        {tier.quantity_remaining} {item.unit} @ Rs. {parseFloat(tier.selling_price || 0).toFixed(2)}
+                        <span>
+                            {parseFloat(tier.quantity_remaining || 0).toLocaleString()} {item.unit}
+                        </span>
+                        <strong>Rs. {parseFloat(tier.selling_price || 0).toFixed(2)}</strong>
                     </div>
                 ))}
                 {tiers.length > 2 && (
-                    <div className="inventory-price-tier muted">+{tiers.length - 2} more</div>
+                    <div className="inventory-price-more">+ {tiers.length - 2} more price levels</div>
                 )}
             </div>
         );
@@ -353,7 +358,7 @@ const InventoryPage = ({ onNavigate }) => {
                     />
                 )}
 
-                {showBatchModal && (
+                {showBatchModal && createPortal((
                     <div className="inventory-batch-overlay">
                         <div className="inventory-batch-modal animate-slide-up">
                             
@@ -376,7 +381,7 @@ const InventoryPage = ({ onNavigate }) => {
                             />
                         </div>
                     </div>
-                )}
+                ), document.body)}
 
                 {showCategoryModal && (
                     <CategoryManagerModal

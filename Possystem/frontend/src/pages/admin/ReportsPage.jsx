@@ -64,6 +64,7 @@ const ReportsPage = ({ onNavigate }) => {
         suppliers: [],
         summary: { totalSuppliers: 0, activeSuppliers: 0, totalPurchases: 0, duePayments: 0, returnValue: 0 }
     });
+    const [cashierStaff, setCashierStaff] = useState([]);
     const [selectedSupplierReport, setSelectedSupplierReport] = useState(null);
     const [selectedBranch, setSelectedBranch] = useState('Main Branch');
     const [selectedCashier, setSelectedCashier] = useState('All Cashiers');
@@ -86,6 +87,27 @@ const ReportsPage = ({ onNavigate }) => {
             }
         };
         fetchStats();
+    }, []);
+
+    useEffect(() => {
+        const fetchCashierStaff = async () => {
+            try {
+                const response = await axios.get(`${API_BASE_URL}/staff`, {
+                    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+                    params: {
+                        role: 'CASHIER',
+                        status: 'ACTIVE',
+                        limit: 100
+                    }
+                });
+                setCashierStaff(response.data?.staff || []);
+            } catch (err) {
+                console.error('Failed to fetch cashier staff', err);
+                setCashierStaff([]);
+            }
+        };
+
+        fetchCashierStaff();
     }, []);
 
     const fetchSalesTrend = useCallback(async () => {
@@ -142,6 +164,29 @@ const ReportsPage = ({ onNavigate }) => {
 
     const formatCurrency = (value) => `Rs. ${Number(value || 0).toLocaleString()}`;
     const formatDateTime = (value) => value ? new Date(value).toLocaleString() : 'N/A';
+    const getSaleItemSubtotal = (sale) => (sale?.order_items || []).reduce((sum, item) => (
+        sum + Number(item.subtotal || (Number(item.quantity || 0) * Number(item.item_price || 0)))
+    ), 0);
+    const getSalePaymentRows = (sale) => {
+        if (Array.isArray(sale?.payment_details) && sale.payment_details.length > 0) {
+            return sale.payment_details
+                .map(payment => ({
+                    method: String(payment?.method || '').trim(),
+                    amount: Number(payment?.amount || 0)
+                }))
+                .filter(payment => payment.method && payment.amount > 0);
+        }
+
+        const method = String(sale?.payment_method || '').trim();
+        const cashAmount = Number(sale?.cash_amount || 0);
+        const totalAmount = Number(sale?.total_amount || 0);
+
+        if (method) {
+            return [{ method, amount: cashAmount || totalAmount }];
+        }
+
+        return totalAmount > 0 ? [{ method: 'Cash', amount: totalAmount }] : [];
+    };
 
     const fetchProductReport = useCallback(async () => {
         setProductReportLoading(true);
@@ -273,7 +318,11 @@ const ReportsPage = ({ onNavigate }) => {
     ];
     const cashierOptions = [
         'All Cashiers',
-        ...new Set([...(stats?.onlineCashiers?.names || []), 'Pasin Pasinda', 'Inuka Mapa'])
+        ...new Set([
+            ...cashierStaff.map(staff => staff.full_name || staff.username).filter(Boolean),
+            ...(stats?.cashiers?.names || []),
+            ...(stats?.onlineCashiers?.names || [])
+        ])
     ];
 
     const handleExport = (type) => {
@@ -1041,103 +1090,140 @@ const ReportsPage = ({ onNavigate }) => {
 
             {selectedSale && (
                 <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm px-4 py-6">
-                    <div className="w-full max-w-5xl max-h-[90vh] overflow-hidden bg-white rounded-2xl shadow-2xl border border-gray-100 flex flex-col">
-                        <div className="px-6 py-5 border-b border-gray-100 flex items-start justify-between bg-white">
-                            <div>
-                                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-emerald-700">Sales Invoice</p>
-                                <h2 className="text-[2rem] font-semibold text-slate-900 mt-1">#INV-{selectedSale.order_id}</h2>
-                                <p className="text-sm text-gray-500 mt-1">{formatDateTime(selectedSale.closed_at || selectedSale.created_at)}</p>
-                            </div>
-                            <button
-                                onClick={() => setSelectedSale(null)}
-                                className="inventory-outline-btn report-page-icon-btn p-2"
-                                title="Close"
-                            >
-                                <X className="w-5 h-5" />
-                            </button>
-                        </div>
+                    {(() => {
+                        const itemSubtotal = getSaleItemSubtotal(selectedSale);
+                        const discount = Number(selectedSale.discount || 0);
+                        const otherCharges = Number(selectedSale.other_charges || 0);
+                        const finalTotal = Number(selectedSale.total_amount || 0);
+                        const paymentRows = getSalePaymentRows(selectedSale);
+                        const paidTotal = paymentRows.reduce((sum, payment) => sum + payment.amount, 0);
+                        const balance = Math.max(finalTotal - paidTotal, 0);
 
-                        <div className="overflow-y-auto p-6 custom-scrollbar">
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                                <div className="border border-gray-100 rounded-xl p-4 bg-white">
-                                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Customer Details</p>
-                                    <p className="text-[1.05rem] font-semibold text-slate-900 mt-2">{selectedSale.customer_phone ? 'Registered Customer' : 'Walk-in Customer'}</p>
-                                    <p className="text-sm text-gray-500 mt-1">Phone: {selectedSale.customer_phone || 'N/A'}</p>
+                        return (
+                            <div className="w-full max-w-6xl max-h-[92vh] overflow-hidden bg-white rounded-2xl shadow-2xl border border-[#D7E7DC] flex flex-col">
+                                <div className="px-7 py-5 border-b border-[#D7E7DC] flex items-start justify-between bg-[#F8FCFA]">
+                                    <div>
+                                        <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-emerald-700">Sales Invoice Details</p>
+                                        <div className="flex flex-wrap items-center gap-3 mt-2">
+                                            <h2 className="text-[2rem] font-semibold text-slate-950">#INV-{selectedSale.order_id}</h2>
+                                            <span className="px-3 py-1 rounded-full border border-emerald-200 bg-emerald-50 text-[11px] font-bold uppercase text-emerald-700">
+                                                {selectedSale.status || 'Closed'}
+                                            </span>
+                                        </div>
+                                        <p className="text-sm text-slate-500 mt-1">Closed: {formatDateTime(selectedSale.closed_at || selectedSale.created_at)}</p>
+                                    </div>
+                                    <button onClick={() => setSelectedSale(null)} className="inventory-outline-btn report-page-icon-btn p-2" title="Close">
+                                        <X className="w-5 h-5" />
+                                    </button>
                                 </div>
-                                <div className="border border-gray-100 rounded-xl p-4 bg-white">
-                                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Cashier Details</p>
-                                    <p className="text-[1.05rem] font-semibold text-slate-900 mt-2">{selectedSale.cashier?.cashier_name || 'N/A'}</p>
-                                    <p className="text-sm text-gray-500 mt-1">Counter: {selectedSale.cashier?.counter_number || 'N/A'}</p>
+
+                                <div className="overflow-y-auto p-7 custom-scrollbar bg-white">
+                                    <div className="grid grid-cols-1 xl:grid-cols-3 gap-5 mb-5">
+                                        <div className="xl:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-5">
+                                            <div className="border border-gray-100 rounded-xl p-5 bg-white">
+                                                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Customer</p>
+                                                <p className="text-[1rem] font-semibold text-slate-900 mt-3">{selectedSale.customer_name || (selectedSale.customer_phone ? 'Registered Customer' : 'Walk-in Customer')}</p>
+                                                <p className="text-sm text-slate-500 mt-1">Phone: {selectedSale.customer_phone || 'N/A'}</p>
+                                            </div>
+                                            <div className="border border-gray-100 rounded-xl p-5 bg-white">
+                                                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Cashier</p>
+                                                <p className="text-[1rem] font-semibold text-slate-900 mt-3">{selectedSale.cashier?.cashier_name || 'N/A'}</p>
+                                                <p className="text-sm text-slate-500 mt-1">Counter: {selectedSale.cashier?.counter_number || 'N/A'}</p>
+                                            </div>
+                                            <div className="rounded-xl border border-gray-100 p-5">
+                                                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Order</p>
+                                                <p className="text-sm font-semibold text-slate-800 mt-3">Order ID: {selectedSale.order_id}</p>
+                                                <p className="text-sm text-slate-500 mt-1">Type: {selectedSale.table_id ? `Table ${selectedSale.table_id}` : 'Direct Sale'}</p>
+                                            </div>
+                                            <div className="rounded-xl border border-gray-100 p-5">
+                                                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Time</p>
+                                                <p className="text-sm font-semibold text-slate-800 mt-3">Created: {formatDateTime(selectedSale.created_at)}</p>
+                                                <p className="text-sm text-slate-500 mt-1">Closed: {formatDateTime(selectedSale.closed_at)}</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="rounded-xl border border-[#D7E7DC] bg-[#F8FCFA] p-5">
+                                            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-700">Billing Summary</p>
+                                            <div className="mt-4 space-y-3">
+                                                <div className="flex justify-between text-sm text-slate-600"><span>Items Subtotal</span><strong className="text-slate-900">{formatCurrency(itemSubtotal)}</strong></div>
+                                                <div className="flex justify-between text-sm text-slate-600"><span>Discount</span><strong className="text-rose-600">- {formatCurrency(discount)}</strong></div>
+                                                <div className="flex justify-between text-sm text-slate-600"><span>Other Charges</span><strong className="text-slate-900">+ {formatCurrency(otherCharges)}</strong></div>
+                                                {otherCharges > 0 && (
+                                                    <div className="rounded-lg border border-emerald-100 bg-white p-3">
+                                                        <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Other Charge Reason</p>
+                                                        <p className="text-sm font-medium text-slate-800 mt-1">{selectedSale.other_charges_reason || 'Not provided'}</p>
+                                                    </div>
+                                                )}
+                                                <div className="border-t border-[#D7E7DC] pt-4 flex justify-between items-end">
+                                                    <span className="text-sm font-bold uppercase tracking-[0.12em] text-slate-700">Grand Total</span>
+                                                    <strong className="text-2xl text-slate-950">{formatCurrency(finalTotal)}</strong>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
+                                        <div className="xl:col-span-2 rounded-xl border border-gray-100 overflow-hidden">
+                                            <div className="px-5 py-4 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
+                                                <h3 className="text-[1.05rem] font-semibold text-slate-800">Sold Items</h3>
+                                                <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">{selectedSale.order_items?.length || 0} Items</span>
+                                            </div>
+                                            <div className="overflow-x-auto">
+                                                <table className="w-full text-left">
+                                                    <thead className="bg-white border-b border-gray-100">
+                                                        <tr>
+                                                            <th className="px-5 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-[0.16em]">Item</th>
+                                                            <th className="px-5 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-[0.16em]">Category</th>
+                                                            <th className="px-5 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-[0.16em]">Code</th>
+                                                            <th className="px-5 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-[0.16em]">Qty</th>
+                                                            <th className="px-5 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-[0.16em]">Unit Price</th>
+                                                            <th className="px-5 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-[0.16em] text-right">Line Total</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-gray-50">
+                                                        {selectedSale.order_items?.map((item) => (
+                                                            <tr key={item.order_item_id}>
+                                                                <td className="px-5 py-4 text-sm font-semibold text-slate-800">{item.item_name}</td>
+                                                                <td className="px-5 py-4 text-sm text-gray-600">{item.category || 'Uncategorized'}</td>
+                                                                <td className="px-5 py-4 text-sm text-gray-500">{item.item_code || 'N/A'}</td>
+                                                                <td className="px-5 py-4 text-sm text-gray-600">{item.quantity} {item.unit || ''}</td>
+                                                                <td className="px-5 py-4 text-sm text-gray-600">{formatCurrency(item.item_price)}</td>
+                                                                <td className="px-5 py-4 text-sm font-semibold text-emerald-700 text-right">{formatCurrency(item.subtotal)}</td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-5">
+                                            <div className="rounded-xl border border-gray-100 p-5 bg-white">
+                                                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Payment Details</p>
+                                                <div className="mt-4 space-y-3">
+                                                    {paymentRows.map((payment, index) => (
+                                                        <div key={`${payment.method}-${index}`} className="flex justify-between text-sm">
+                                                            <span className="font-medium text-slate-600">{payment.method}</span>
+                                                            <strong className="text-slate-900">{formatCurrency(payment.amount)}</strong>
+                                                        </div>
+                                                    ))}
+                                                    <div className="border-t border-gray-100 pt-3 flex justify-between text-sm"><span className="text-slate-500">Paid Total</span><strong className="text-emerald-700">{formatCurrency(paidTotal)}</strong></div>
+                                                    <div className="flex justify-between text-sm"><span className="text-slate-500">Balance</span><strong className={balance > 0 ? 'text-rose-600' : 'text-slate-900'}>{formatCurrency(balance)}</strong></div>
+                                                </div>
+                                            </div>
+                                            <div className="rounded-xl border border-gray-100 p-5 bg-white">
+                                                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Notes</p>
+                                                <p className="mt-3 text-sm text-slate-600 leading-relaxed">{selectedSale.notes || 'No notes recorded for this invoice.'}</p>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="border border-[#D7E7DC] rounded-xl p-4 bg-white">
-                                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-700">Sale Summary</p>
-                                    <p className="text-[1.9rem] font-semibold text-slate-900 mt-2">{formatCurrency(selectedSale.total_amount)}</p>
-                                    <p className="text-sm text-slate-500 mt-1">Status: <span className="font-medium text-emerald-700">{selectedSale.status}</span></p>
+
+                                <div className="px-7 py-4 border-t border-gray-100 bg-white flex justify-end">
+                                    <button onClick={() => setSelectedSale(null)} className="inventory-outline-btn report-page-btn px-5 py-2">Close</button>
                                 </div>
                             </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                                <div className="rounded-xl border border-gray-100 p-4">
-                                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Order ID</p>
-                                    <p className="text-sm font-semibold text-slate-800 mt-2">{selectedSale.order_id}</p>
-                                </div>
-                                <div className="rounded-xl border border-gray-100 p-4">
-                                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Table</p>
-                                    <p className="text-sm font-semibold text-slate-800 mt-2">{selectedSale.table_id || 'Direct Sale'}</p>
-                                </div>
-                                <div className="rounded-xl border border-gray-100 p-4">
-                                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Created</p>
-                                    <p className="text-sm font-semibold text-slate-800 mt-2">{formatDateTime(selectedSale.created_at)}</p>
-                                </div>
-                                <div className="rounded-xl border border-gray-100 p-4">
-                                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Closed</p>
-                                    <p className="text-sm font-semibold text-slate-800 mt-2">{formatDateTime(selectedSale.closed_at)}</p>
-                                </div>
-                            </div>
-
-                            <div className="rounded-xl border border-gray-100 overflow-hidden">
-                                <div className="px-5 py-4 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
-                                    <h3 className="text-[1.05rem] font-semibold text-slate-800">Items Details</h3>
-                                    <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">{selectedSale.order_items?.length || 0} Items</span>
-                                </div>
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-left">
-                                        <thead className="bg-white border-b border-gray-100">
-                                            <tr>
-                                                <th className="px-5 py-3 text-[10px] font-semibold text-slate-500 uppercase tracking-[0.18em]">Item</th>
-                                                <th className="px-5 py-3 text-[10px] font-semibold text-slate-500 uppercase tracking-[0.18em]">Category</th>
-                                                <th className="px-5 py-3 text-[10px] font-semibold text-slate-500 uppercase tracking-[0.18em]">Code</th>
-                                                <th className="px-5 py-3 text-[10px] font-semibold text-slate-500 uppercase tracking-[0.18em]">Qty</th>
-                                                <th className="px-5 py-3 text-[10px] font-semibold text-slate-500 uppercase tracking-[0.18em]">Unit Price</th>
-                                                <th className="px-5 py-3 text-[10px] font-semibold text-slate-500 uppercase tracking-[0.18em] text-right">Subtotal</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-gray-50">
-                                            {selectedSale.order_items?.map((item) => (
-                                                <tr key={item.order_item_id}>
-                                                    <td className="px-5 py-4 text-sm font-semibold text-slate-800">{item.item_name}</td>
-                                                    <td className="px-5 py-4 text-sm text-gray-600">{item.category || 'Uncategorized'}</td>
-                                                    <td className="px-5 py-4 text-sm text-gray-500">{item.item_code || 'N/A'}</td>
-                                                    <td className="px-5 py-4 text-sm text-gray-600">{item.quantity} {item.unit || ''}</td>
-                                                    <td className="px-5 py-4 text-sm text-gray-600">{formatCurrency(item.item_price)}</td>
-                                                    <td className="px-5 py-4 text-sm font-semibold text-emerald-700 text-right">{formatCurrency(item.subtotal)}</td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="px-6 py-4 border-t border-gray-100 bg-white flex justify-end">
-                            <button
-                                onClick={() => setSelectedSale(null)}
-                                className="inventory-outline-btn report-page-btn px-5 py-2"
-                            >
-                                Close
-                            </button>
-                        </div>
-                    </div>
+                        );
+                    })()}
                 </div>
             )}
 

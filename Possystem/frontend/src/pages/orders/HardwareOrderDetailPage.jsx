@@ -155,6 +155,27 @@ const HardwareOrderDetailPage = ({ orderId, onNavigate }) => {
     if (!order) return null;
 
     const isClosed = order.status === 'PAID' || order.status === 'CLOSED';
+    const formatCurrency = (value) => `Rs. ${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const formatDateTime = (value) => value ? new Date(value).toLocaleString() : 'N/A';
+    const itemSubtotal = (order.order_items || []).reduce((sum, item) => sum + Number(item.subtotal || 0), 0);
+    const discountAmount = Number(order.discount || 0);
+    const otherChargesAmount = Number(order.other_charges || 0);
+    const grandTotal = Number(order.total_amount || 0);
+    const paymentRows = Array.isArray(order.payment_details)
+        ? order.payment_details
+        : (() => {
+            try {
+                const parsed = JSON.parse(order.payment_details || '[]');
+                return Array.isArray(parsed) ? parsed : [];
+            } catch {
+                return [];
+            }
+        })();
+    const normalizedPaymentRows = paymentRows.length > 0
+        ? paymentRows
+        : order.payment_method
+            ? [{ method: order.payment_method, amount: grandTotal }]
+            : [];
 
     return (
         <DashboardLayout onNavigate={onNavigate} activePage="orders">
@@ -267,21 +288,111 @@ const HardwareOrderDetailPage = ({ orderId, onNavigate }) => {
                     {/* Right Column (Summary & Actions) */}
                     <div className="space-y-6">
 
-                        {/* Summary Box */}
-                        <div className="bg-[#1E1E1E] border border-[#333] rounded-2xl p-6 shadow-xl pb-8">
-                            <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-6 border-b border-[#333] pb-4">Customer Info</h4>
-                            <div className="mb-8">
-                                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1">Mobile Contact</p>
-                                <p className="text-lg font-medium text-white">{order.customer_phone || <span className="text-gray-600">N/A</span>}</p>
+                        {/* Official Order Summary */}
+                        <div className="hardware-order-official-panel">
+                            <div className="hardware-order-section-title">
+                                <span>Customer Details</span>
+                            </div>
+                            <div className="hardware-order-info-grid">
+                                <div>
+                                    <span>Customer Name</span>
+                                    <strong>{order.customer_name || 'Walk-in Customer'}</strong>
+                                </div>
+                                <div>
+                                    <span>Mobile Contact</span>
+                                    <strong>{order.customer_phone || 'N/A'}</strong>
+                                </div>
                             </div>
 
-                            <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-6 border-b border-[#333] pb-4">Billing Summary</h4>
-                            <div className="flex justify-between items-end mt-4">
-                                <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Grand Total</span>
-                                <span className="text-xl font-bold text-white tracking-widest tabular-nums font-mono">
-                                    Rs. {parseFloat(order.total_amount).toFixed(2)}
-                                </span>
+                            <div className="hardware-order-section-title">
+                                <span>Order Details</span>
                             </div>
+                            <div className="hardware-order-info-grid">
+                                <div>
+                                    <span>Order ID</span>
+                                    <strong>#{order.order_id}</strong>
+                                </div>
+                                <div>
+                                    <span>Session ID</span>
+                                    <strong>{order.shift_id || 'N/A'}</strong>
+                                </div>
+                                <div>
+                                    <span>Created Time</span>
+                                    <strong>{formatDateTime(order.created_at)}</strong>
+                                </div>
+                                <div>
+                                    <span>Closed Time</span>
+                                    <strong>{formatDateTime(order.closed_at)}</strong>
+                                </div>
+                            </div>
+
+                            <div className="hardware-order-section-title">
+                                <span>Billing Summary</span>
+                            </div>
+                            <div className="hardware-order-bill-lines">
+                                <div>
+                                    <span>Items Subtotal</span>
+                                    <strong>{formatCurrency(itemSubtotal)}</strong>
+                                </div>
+                                {discountAmount > 0 && (
+                                    <div>
+                                        <span>Discount</span>
+                                        <strong>- {formatCurrency(discountAmount)}</strong>
+                                    </div>
+                                )}
+                                {otherChargesAmount > 0 && (
+                                    <>
+                                        <div>
+                                            <span>Other Charges</span>
+                                            <strong>+ {formatCurrency(otherChargesAmount)}</strong>
+                                        </div>
+                                        <div className="hardware-order-reason-line">
+                                            <span>Other Charges Reason</span>
+                                            <strong>{order.other_charges_reason || 'N/A'}</strong>
+                                        </div>
+                                    </>
+                                )}
+                                <div className="hardware-order-grand-line">
+                                    <span>Grand Total</span>
+                                    <strong>{formatCurrency(grandTotal)}</strong>
+                                </div>
+                            </div>
+
+                            {isClosed && (
+                                <>
+                                    <div className="hardware-order-section-title">
+                                        <span>Payment Registry</span>
+                                    </div>
+                                    <div className="hardware-order-payment-list">
+                                        {normalizedPaymentRows.length > 0 ? normalizedPaymentRows.map((payment, index) => (
+                                            <div key={`${payment.method}-${index}`}>
+                                                <span>{String(payment.method || 'Payment').toUpperCase()}</span>
+                                                <strong>{formatCurrency(payment.amount)}</strong>
+                                            </div>
+                                        )) : (
+                                            <div>
+                                                <span>Payment</span>
+                                                <strong>Not recorded</strong>
+                                            </div>
+                                        )}
+                                        {Number(order.cash_amount || 0) > 0 && (
+                                            <div>
+                                                <span>Cash Received</span>
+                                                <strong>{formatCurrency(order.cash_amount)}</strong>
+                                            </div>
+                                        )}
+                                    </div>
+                                </>
+                            )}
+
+                            {order.notes && (
+                                <>
+                                    <div className="hardware-order-section-title">
+                                        <span>Order Notes</span>
+                                    </div>
+                                    <div className="hardware-order-note">{order.notes}</div>
+                                </>
+                            )}
                         </div>
 
                         {/* Actions */}

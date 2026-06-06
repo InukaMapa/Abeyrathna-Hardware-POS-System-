@@ -1,4 +1,5 @@
 import React, { useEffect,  useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Save, User, Building, Phone, RefreshCw, Bookmark, AlertCircle, Mail, MapPin, Landmark, CreditCard } from 'lucide-react';
 import '../../../styles/menu.css';
 import { createSupplier, updateSupplier } from '../../../services/supplierService';
@@ -52,7 +53,7 @@ const AddSupplierModal = ({ onClose, onSuccess, initialData }) => {
         }
     };
 
-    return (
+    return createPortal((
         <div className="supplier-form-overlay fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-md">
             <div className="supplier-form-modal bg-white w-full max-w-2xl max-h-[90vh] flex flex-col rounded-[24px] shadow-2xl overflow-hidden animate-slide-up relative">
 
@@ -250,7 +251,7 @@ const AddSupplierModal = ({ onClose, onSuccess, initialData }) => {
                 </div>
             </div>
         </div>
-    );
+    ), document.body);
 };
 
 export default AddSupplierModal;
