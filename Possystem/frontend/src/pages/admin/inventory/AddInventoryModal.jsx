@@ -21,6 +21,11 @@ const AddInventoryModal = ({ onClose, onSuccess, onScanBillClick, categories = [
         expiry_date: ''
     });
     const [suppliers, setSuppliers] = useState([]);
+    const [barcodeCheck, setBarcodeCheck] = useState({
+        loading: false,
+        existingItem: null,
+        message: ''
+    });
 
     useEffect(() => {
         document.body.style.overflow = 'hidden';
@@ -52,6 +57,47 @@ const AddInventoryModal = ({ onClose, onSuccess, onScanBillClick, categories = [
         }
     }, [categories]);
 
+    useEffect(() => {
+        const barcode = String(formData.item_code || '').trim();
+
+        if (!barcode) {
+            setBarcodeCheck({ loading: false, existingItem: null, message: '' });
+            return undefined;
+        }
+
+        setBarcodeCheck(prev => ({ ...prev, loading: true, message: '' }));
+
+        const timeoutId = setTimeout(async () => {
+            try {
+                const token = localStorage.getItem('token');
+                const response = await axios.get(`${API_BASE_URL}/inventory`, {
+                    params: { search: barcode },
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                const existingItem = (response.data || []).find(item =>
+                    String(item.item_code || '').trim().toLowerCase() === barcode.toLowerCase()
+                );
+
+                setBarcodeCheck({
+                    loading: false,
+                    existingItem: existingItem || null,
+                    message: existingItem
+                        ? `This barcode is already assigned to ${existingItem.ingredient_name}.`
+                        : 'Barcode is available.'
+                });
+            } catch (error) {
+                console.error('Barcode duplicate check failed:', error);
+                setBarcodeCheck({
+                    loading: false,
+                    existingItem: null,
+                    message: 'Could not verify barcode right now.'
+                });
+            }
+        }, 350);
+
+        return () => clearTimeout(timeoutId);
+    }, [formData.item_code]);
+
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
@@ -59,6 +105,11 @@ const AddInventoryModal = ({ onClose, onSuccess, onScanBillClick, categories = [
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (barcodeCheck.existingItem) {
+            alert(`This barcode already exists for ${barcodeCheck.existingItem.ingredient_name}. Please use a different barcode or receive stock for the existing item.`);
+            return;
+        }
+
         setLoading(true);
         try {
             const token = localStorage.getItem('token');
@@ -205,9 +256,28 @@ const AddInventoryModal = ({ onClose, onSuccess, onScanBillClick, categories = [
                                                 type="text" name="item_code"
                                                 value={formData.item_code} onChange={handleChange}
                                                 placeholder="Auto-generated if empty"
+                                                className={barcodeCheck.existingItem ? 'barcode-duplicate-input' : ''}
                                             />
                                             <ScanLine size={15} />
                                         </div>
+                                        {formData.item_code && (
+                                            <div className={`barcode-check-note ${barcodeCheck.existingItem ? 'duplicate' : barcodeCheck.message ? 'available' : ''}`}>
+                                                {barcodeCheck.loading ? (
+                                                    <span>Checking barcode...</span>
+                                                ) : barcodeCheck.existingItem ? (
+                                                    <>
+                                                        <strong>Already have this barcode</strong>
+                                                        <span>
+                                                            {barcodeCheck.existingItem.ingredient_name}
+                                                            {barcodeCheck.existingItem.storage_location ? ` | Location: ${barcodeCheck.existingItem.storage_location}` : ''}
+                                                            {barcodeCheck.existingItem.quantity !== undefined ? ` | Stock: ${barcodeCheck.existingItem.quantity} ${barcodeCheck.existingItem.unit || ''}` : ''}
+                                                        </span>
+                                                    </>
+                                                ) : (
+                                                    <span>{barcodeCheck.message}</span>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                     <div className="add-inventory-full">
                                         <label>Category</label>
@@ -312,7 +382,7 @@ const AddInventoryModal = ({ onClose, onSuccess, onScanBillClick, categories = [
                     {!showReplacementPicker && (
                         <button
                             type="submit" form="inventoryForm"
-                            disabled={loading}
+                            disabled={loading || Boolean(barcodeCheck.existingItem)}
                             title="Save Inventory"
                             className="add-inventory-btn"
                         >

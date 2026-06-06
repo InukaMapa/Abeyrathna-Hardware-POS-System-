@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { API_BASE_URL } from '../../config/api';
 import { Search, Plus, Edit2, Trash2, Key, ToggleLeft, ToggleRight, X, ChevronLeft, ChevronRight, Eye, Loader } from 'lucide-react';
@@ -568,7 +569,7 @@ const StaffManagementPage = ({ onNavigate }) => {
                 </div>
 
                 {/* MODAL 0: VIEW STAFF */}
-                {isViewModalOpen && (
+                {isViewModalOpen && createPortal((
                     <div className="staff-modal-overlay animate-fadeIn">
                         <div className="staff-modal staff-details-modal">
                             <div className="staff-modal-header">
@@ -621,10 +622,10 @@ const StaffManagementPage = ({ onNavigate }) => {
                             </div>
                         </div>
                     </div>
-                )}
+                ), document.body)}
 
                 {/* MODAL 1: ADD & EDIT STAFF FORM */}
-                {isFormModalOpen && (
+                {isFormModalOpen && createPortal((
                     <div className="staff-modal-overlay staff-form-overlay animate-fadeIn">
                         <div className="staff-modal staff-form-modal">
                             {/* Modal Header */}
@@ -735,10 +736,10 @@ const StaffManagementPage = ({ onNavigate }) => {
                             </form>
                         </div>
                     </div>
-                )}
+                ), document.body)}
 
                 {/* MODAL 2: RESET PASSWORD */}
-                {isPasswordModalOpen && (
+                {isPasswordModalOpen && createPortal((
                     <div className="staff-modal-overlay animate-fadeIn">
                         <div className="staff-modal staff-password-modal">
                             <div className="staff-modal-header">
@@ -803,11 +804,11 @@ const StaffManagementPage = ({ onNavigate }) => {
                             </form>
                         </div>
                     </div>
-                )}
+                ), document.body)}
 
                 {/* MODAL 3: DELETE CONFIRMATION */}
-                {isDeleteModalOpen && (
-                    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn">
+                {isDeleteModalOpen && createPortal((
+                    <div className="staff-modal-overlay animate-fadeIn">
                         <div className="bg-white rounded-3xl border border-[#D7E7DC] w-full max-w-md shadow-2xl overflow-hidden p-6 text-center">
                             <div className="mx-auto w-12 h-12 bg-rose-50 border border-rose-100 text-rose-600 rounded-full flex items-center justify-center mb-4">
                                 <Trash2 size={22} />
@@ -836,7 +837,7 @@ const StaffManagementPage = ({ onNavigate }) => {
                             </div>
                         </div>
                     </div>
-                )}
+                ), document.body)}
 
             </div>
         </DashboardLayout>

@@ -53,44 +53,63 @@ const getColomboRange = (dateRange = 'Today') => {
 const getColomboLocalDate = (date) => new Date(date.getTime() + COLOMBO_OFFSET_MS);
 
 const getTrendBuckets = (dateRange, rangeStart, rangeEnd) => {
-    if (dateRange === 'Today' || dateRange === 'Yesterday') {
-        return [
-            { name: '8 AM - 11 AM', value: 0, startHour: 8, endHour: 11 },
-            { name: '11 AM - 2 PM', value: 0, startHour: 11, endHour: 14 },
-            { name: '2 PM - 5 PM', value: 0, startHour: 14, endHour: 17 },
-            { name: '5 PM - 7 PM', value: 0, startHour: 17, endHour: 19 }
-        ];
-    }
+    const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'UTC',
+        month: 'short',
+        day: 'numeric'
+    });
+    const dayCount = Math.max(1, Math.ceil((rangeEnd.getTime() - rangeStart.getTime()) / DAY_MS));
 
-    if (dateRange === 'Last 7 Days') {
-        return Array.from({ length: 7 }, (_, index) => {
-            const start = new Date(rangeStart.getTime() + index * DAY_MS);
-            const local = getColomboLocalDate(start);
-            return {
-                name: new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone: 'UTC' }).format(local),
-                value: 0,
-                start,
-                end: new Date(start.getTime() + DAY_MS)
-            };
-        });
-    }
+    return Array.from({ length: dayCount }, (_, index) => {
+        const start = new Date(rangeStart.getTime() + index * DAY_MS);
+        const calculatedEnd = new Date(start.getTime() + DAY_MS);
+        const local = getColomboLocalDate(start);
 
-    return [
-        { name: 'Week 01', value: 0, startDay: 1, endDay: 8 },
-        { name: 'Week 02', value: 0, startDay: 8, endDay: 15 },
-        { name: 'Week 03', value: 0, startDay: 15, endDay: 22 },
-        { name: 'Week 04', value: 0, startDay: 22, endDay: 32 }
-    ].map((bucket, index, buckets) => {
-        const start = new Date(rangeStart.getTime() + (bucket.startDay - 1) * DAY_MS);
-        const calculatedEnd = index === buckets.length - 1
-            ? rangeEnd
-            : new Date(rangeStart.getTime() + (bucket.endDay - 1) * DAY_MS);
         return {
-            ...bucket,
+            name: formatter.format(local),
+            value: 0,
             start,
             end: calculatedEnd > rangeEnd ? rangeEnd : calculatedEnd
         };
     });
+};
+
+const resolveCashierFilter = async (cashier) => {
+    const cleanCashier = String(cashier || '').trim();
+    if (!cleanCashier || cleanCashier === 'All Cashiers') {
+        return { user: null, shiftIds: null };
+    }
+
+    const { data: users, error: usersError } = await supabase
+        .from('users')
+        .select('id, username, full_name, role')
+        .eq('role', 'CASHIER');
+
+    if (usersError) throw usersError;
+
+    const normalizedCashier = cleanCashier.toLowerCase();
+    const user = (users || []).find(item => (
+        String(item.username || '').trim().toLowerCase() === normalizedCashier ||
+        String(item.full_name || '').trim().toLowerCase() === normalizedCashier
+    )) || null;
+
+    const shiftName = user?.username || cleanCashier;
+    const { data: matchingShifts, error: shiftError } = await supabase
+        .from('cash_shifts')
+        .select('shift_id')
+        .eq('cashier_name', shiftName);
+
+    if (shiftError) throw shiftError;
+
+    return {
+        user,
+        shiftIds: (matchingShifts || []).map(shift => shift.shift_id)
+    };
+};
+
+const applyCashierFilterToOrdersQuery = (query, cashierFilter) => {
+    if (!cashierFilter?.user) return query;
+    return query.eq('staff_id', cashierFilter.user.id);
 };
 
 /**
@@ -163,8 +182,19 @@ export const getDashboardStats = async (req, res) => {
             .in('status', ['OPEN', 'REPORT_SUBMITTED']);
 
         if (shiftsError) throw shiftsError;
+
+        const { data: cashierUsers, error: cashierUsersError } = await supabase
+            .from('users')
+            .select('username, full_name')
+            .eq('role', 'CASHIER');
+
+        if (cashierUsersError) throw cashierUsersError;
+
         const onlineCashiersCount = activeShifts.length;
         const activeCashierNames = [...new Set(activeShifts.map(s => s.cashier_name))];
+        const cashierNames = [...new Set((cashierUsers || []).map(user => (
+            user.full_name || user.username
+        )).filter(Boolean))];
 
         // 4. Low Inventory - Fetch all and filter in JS
         const { data: allInventory, error: allError } = await supabase
@@ -182,6 +212,9 @@ export const getDashboardStats = async (req, res) => {
             onlineCashiers: {
                 count: onlineCashiersCount,
                 names: activeCashierNames
+            },
+            cashiers: {
+                names: cashierNames
             },
             lowInventory: inventoryRunningOut,
             outOfStock: outOfStockInventory,
@@ -210,24 +243,19 @@ export const getSalesTrendReport = async (req, res) => {
 
         let query = supabase
             .from('orders')
-            .select('order_id, total_amount, closed_at, shift_id')
+            .select('order_id, total_amount, closed_at, shift_id, staff_id')
             .eq('status', 'CLOSED')
             .gte('closed_at', start.toISOString())
             .lt('closed_at', end.toISOString());
 
         if (cashier && cashier !== 'All Cashiers') {
-            const { data: matchingShifts, error: shiftError } = await supabase
-                .from('cash_shifts')
-                .select('shift_id')
-                .eq('cashier_name', cashier);
-
-            if (shiftError) throw shiftError;
-
-            const shiftIds = matchingShifts.map(shift => shift.shift_id);
-            if (shiftIds.length === 0) {
+            const cashierFilter = await resolveCashierFilter(cashier);
+            if (!cashierFilter.user && cashierFilter.shiftIds.length === 0) {
                 return res.status(200).json({ data: buckets, total: 0 });
             }
-            query = query.in('shift_id', shiftIds);
+            query = cashierFilter.user
+                ? query.eq('staff_id', cashierFilter.user.id)
+                : query.in('shift_id', cashierFilter.shiftIds);
         }
 
         const { data: orders, error } = await query;
@@ -236,14 +264,6 @@ export const getSalesTrendReport = async (req, res) => {
         orders.forEach(order => {
             const closedAt = new Date(order.closed_at);
             const amount = Number(order.total_amount || 0);
-
-            if (dateRange === 'Today' || dateRange === 'Yesterday') {
-                const localDate = getColomboLocalDate(closedAt);
-                const hour = localDate.getUTCHours() + (localDate.getUTCMinutes() / 60);
-                const bucket = buckets.find(item => hour >= item.startHour && hour < item.endHour);
-                if (bucket) bucket.value += amount;
-                return;
-            }
 
             const bucket = buckets.find(item => closedAt >= item.start && closedAt < item.end);
             if (bucket) bucket.value += amount;
@@ -279,11 +299,20 @@ export const getSalesReport = async (req, res) => {
                 order_id,
                 table_id,
                 total_amount,
+                discount,
+                other_charges,
+                other_charges_reason,
+                payment_method,
+                payment_details,
+                cash_amount,
+                customer_name,
                 status,
                 customer_phone,
+                notes,
                 created_at,
                 closed_at,
                 shift_id,
+                staff_id,
                 order_items (
                     order_item_id,
                     item_id,
@@ -299,20 +328,19 @@ export const getSalesReport = async (req, res) => {
             .order('closed_at', { ascending: false });
 
         let matchingShiftIds = null;
+        let selectedCashierUser = null;
         if (cashier && cashier !== 'All Cashiers') {
-            const { data: matchingShifts, error: shiftError } = await supabase
-                .from('cash_shifts')
-                .select('shift_id')
-                .eq('cashier_name', cashier);
+            const cashierFilter = await resolveCashierFilter(cashier);
+            matchingShiftIds = cashierFilter.shiftIds;
+            selectedCashierUser = cashierFilter.user;
 
-            if (shiftError) throw shiftError;
-            matchingShiftIds = matchingShifts.map(shift => shift.shift_id);
-
-            if (matchingShiftIds.length === 0) {
+            if (!selectedCashierUser && matchingShiftIds.length === 0) {
                 return res.status(200).json({ categorySales: [], orders: [], total: 0 });
             }
 
-            query = query.in('shift_id', matchingShiftIds);
+            query = selectedCashierUser
+                ? query.eq('staff_id', selectedCashierUser.id)
+                : query.in('shift_id', matchingShiftIds);
         }
 
         const { data: orders, error } = await query;
@@ -398,6 +426,7 @@ export const getProductReport = async (req, res) => {
                 total_amount,
                 closed_at,
                 shift_id,
+                staff_id,
                 order_items (
                     order_item_id,
                     item_id,
@@ -412,22 +441,17 @@ export const getProductReport = async (req, res) => {
             .lt('closed_at', end.toISOString());
 
         if (cashier && cashier !== 'All Cashiers') {
-            const { data: matchingShifts, error: shiftError } = await supabase
-                .from('cash_shifts')
-                .select('shift_id')
-                .eq('cashier_name', cashier);
-
-            if (shiftError) throw shiftError;
-
-            const shiftIds = matchingShifts.map(shift => shift.shift_id);
-            if (shiftIds.length === 0) {
+            const cashierFilter = await resolveCashierFilter(cashier);
+            if (!cashierFilter.user && cashierFilter.shiftIds.length === 0) {
                 return res.status(200).json({
                     products: [],
                     bestSellingItems: [],
                     summary: { soldQty: 0, revenue: 0, profit: 0, returnsQty: 0, productCount: 0 }
                 });
             }
-            query = query.in('shift_id', shiftIds);
+            query = cashierFilter.user
+                ? query.eq('staff_id', cashierFilter.user.id)
+                : query.in('shift_id', cashierFilter.shiftIds);
         }
 
         const { data: orders, error } = await query;

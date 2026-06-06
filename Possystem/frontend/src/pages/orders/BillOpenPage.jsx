@@ -317,7 +317,7 @@ const [isCompleted, setIsCompleted] = useState(false);
                                 <div className="thermal-header">
                                     <img src={logo} alt="Abeyrathna Trade Center" className="thermal-logo" />
                                     <h3>ABEYRATHNA TRADE CENTER</h3>
-                                    <p>Hardware, Tools and Building Materials</p>
+                                    <p>Grocery Items</p>
                                     <p>No. 59, Main Street, Kurunegala</p>
                                     <p>Tel: 037-2223422</p>
                                     <p>Mob: 076-7638894 / 0777-898897</p>
@@ -401,7 +401,6 @@ const [isCompleted, setIsCompleted] = useState(false);
                                     <p>Return possible within 7 days.</p>
                                     <p>Bills must be produced.</p>
                                     <p>***</p>
-                                    <p>Software by Abeyrathna Hardware POS</p>
                                 </div>
                             </div>
                         </div>

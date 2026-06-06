@@ -9,6 +9,7 @@ const ReceiveInventoryModal = ({ onClose, onSuccess, batches = [] }) => {
     const [items, setItems] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedItemId, setSelectedItemId] = useState('');
+    const [autoSelectedItemName, setAutoSelectedItemName] = useState('');
     const [loadingItems, setLoadingItems] = useState(false);
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
@@ -40,9 +41,22 @@ const ReceiveInventoryModal = ({ onClose, onSuccess, batches = [] }) => {
                     params
                 });
 
-                setItems(response.data || []);
-                if (selectedItemId && !response.data?.some(item => item.id === selectedItemId)) {
+                const inventoryItems = response.data || [];
+                setItems(inventoryItems);
+
+                const searchValue = searchTerm.trim().toLowerCase();
+                const exactBarcodeMatch = searchValue
+                    ? inventoryItems.find(item => String(item.item_code || '').trim().toLowerCase() === searchValue)
+                    : null;
+
+                if (exactBarcodeMatch) {
+                    setSelectedItemId(exactBarcodeMatch.id);
+                    setAutoSelectedItemName(exactBarcodeMatch.ingredient_name || 'Selected item');
+                } else if (selectedItemId && !inventoryItems.some(item => item.id === selectedItemId)) {
                     setSelectedItemId('');
+                    setAutoSelectedItemName('');
+                } else if (!searchValue) {
+                    setAutoSelectedItemName('');
                 }
             } catch (error) {
                 console.error('Error searching inventory:', error);
@@ -76,6 +90,26 @@ const ReceiveInventoryModal = ({ onClose, onSuccess, batches = [] }) => {
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleSearchChange = (e) => {
+        setSearchTerm(e.target.value);
+        setAutoSelectedItemName('');
+    };
+
+    const handleSearchKeyDown = (e) => {
+        if (e.key !== 'Enter') return;
+
+        e.preventDefault();
+        const searchValue = searchTerm.trim().toLowerCase();
+        const exactBarcodeMatch = searchValue
+            ? items.find(item => String(item.item_code || '').trim().toLowerCase() === searchValue)
+            : null;
+
+        if (exactBarcodeMatch) {
+            setSelectedItemId(exactBarcodeMatch.id);
+            setAutoSelectedItemName(exactBarcodeMatch.ingredient_name || 'Selected item');
+        }
     };
 
     const handleSubmit = async (e) => {
@@ -127,11 +161,17 @@ const ReceiveInventoryModal = ({ onClose, onSuccess, batches = [] }) => {
                                         <input
                                             type="text"
                                             value={searchTerm}
-                                            onChange={(e) => setSearchTerm(e.target.value)}
+                                            onChange={handleSearchChange}
+                                            onKeyDown={handleSearchKeyDown}
                                             placeholder="Search by barcode or item name"
                                         />
                                         <Search size={15} />
                                     </div>
+                                    {autoSelectedItemName && (
+                                        <p className="barcode-check-note barcode-available">
+                                            Barcode matched. Selected item: {autoSelectedItemName}
+                                        </p>
+                                    )}
                                 </div>
 
                                 <div className="add-inventory-full">

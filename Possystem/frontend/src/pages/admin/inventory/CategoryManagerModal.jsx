@@ -1,4 +1,5 @@
 import React, { useEffect,  useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Plus, Trash2, Tag } from 'lucide-react';
 import { Loader } from 'lucide-react';
 import axios from 'axios';
@@ -58,7 +59,7 @@ const CategoryManagerModal = ({ isOpen, onClose, categories, onCategoryChange })
         }
     };
 
-    return (
+    return createPortal((
         <div className="inventory-category-overlay">
             <div className="inventory-category-modal animate-slide-up">
                 
@@ -124,7 +125,7 @@ const CategoryManagerModal = ({ isOpen, onClose, categories, onCategoryChange })
                 </div>
             </div>
         </div>
-    );
+    ), document.body);
 };
 
 export default CategoryManagerModal;
