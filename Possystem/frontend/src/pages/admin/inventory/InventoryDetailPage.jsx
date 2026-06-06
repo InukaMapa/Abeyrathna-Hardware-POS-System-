@@ -35,10 +35,10 @@ const InventoryDetailPage = ({ inventoryId, onNavigate }) => {
                         format: 'CODE128',
                         lineColor: '#000000',
                         background: '#FFFFFF',
-                        width: 1.35,
-                        height: 44,
+                        width: 1,
+                        height: 42,
                         displayValue: true,
-                        fontSize: 10,
+                        fontSize: 9,
                         margin: 0
                     });
                 }
@@ -368,7 +368,7 @@ const InventoryDetailPage = ({ inventoryId, onNavigate }) => {
                                 flexDirection: 'column', 
                                 alignItems: 'center', 
                                 justifyContent: 'center',
-                                padding: '1.5mm',
+                                padding: '2mm',
                                 boxSizing: 'border-box',
                                 overflow: 'hidden'
                             }}
@@ -379,7 +379,7 @@ const InventoryDetailPage = ({ inventoryId, onNavigate }) => {
                             <div style={{ fontSize: '10px', lineHeight: '1', fontFamily: 'Arial, sans-serif', color: '#000', fontWeight: '700', marginBottom: '1mm' }}>
                                 Rs. {parseFloat(item.selling_price || 0).toFixed(2)}
                             </div>
-                            <svg ref={printBarcodeRef} style={{ width: '37mm', maxWidth: '100%', height: 'auto' }}></svg>
+                            <svg ref={printBarcodeRef} style={{ width: '34mm', maxWidth: '100%', height: 'auto' }}></svg>
                         </div>
                     </div>
                 </div>
