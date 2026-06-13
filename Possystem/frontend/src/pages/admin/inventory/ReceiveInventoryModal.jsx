@@ -115,7 +115,7 @@ const ReceiveInventoryModal = ({ onClose, onSuccess, batches = [] }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!selectedItem) {
-            alert('Please select an inventory item first.');
+            alert('Please select a product first.');
             return;
         }
 
@@ -132,7 +132,7 @@ const ReceiveInventoryModal = ({ onClose, onSuccess, batches = [] }) => {
             onSuccess();
         } catch (error) {
             console.error('Error receiving stock:', error);
-            alert(error.response?.data?.message || 'Failed to update inventory quantity.');
+            alert(error.response?.data?.message || 'Failed to update product quantity.');
         } finally {
             setLoading(false);
         }
@@ -144,7 +144,7 @@ const ReceiveInventoryModal = ({ onClose, onSuccess, batches = [] }) => {
                 <div className="add-inventory-header">
                     <div>
                         <PackagePlus size={17} />
-                        <h2>Update Inventory Stock</h2>
+                        <h2>Update Product Stock</h2>
                     </div>
                     <button title="Close" onClick={onClose} className="add-inventory-close">
                         <X size={16} />
@@ -175,7 +175,7 @@ const ReceiveInventoryModal = ({ onClose, onSuccess, batches = [] }) => {
                                 </div>
 
                                 <div className="add-inventory-full">
-                                    <label>Select Inventory Item *</label>
+                                    <label>Select Product *</label>
                                     <select
                                         required
                                         value={selectedItemId}
@@ -320,11 +320,11 @@ const ReceiveInventoryModal = ({ onClose, onSuccess, batches = [] }) => {
                         type="submit"
                         form="receiveInventoryForm"
                         disabled={loading}
-                        title="Update Inventory"
+                        title="Update Product"
                         className="add-inventory-btn"
                     >
                         {loading ? <RefreshCw size={15} className="animate-spin" /> : <Save size={15} />}
-                        Update Inventory
+                        Update Product
                     </button>
                 </div>
             </div>

@@ -70,7 +70,7 @@ const EditInventoryModal = ({ onClose, onSuccess, categories = [], batches = [],
             onSuccess();
         } catch (error) {
             console.error('Error updating inventory:', error);
-            alert('Failed to update inventory.');
+            alert('Failed to update product.');
         } finally {
             setLoading(false);
         }
@@ -80,7 +80,7 @@ const EditInventoryModal = ({ onClose, onSuccess, categories = [], batches = [],
         <div className="edit-inventory-overlay">
             <div className="edit-inventory-modal">
                 <div className="edit-inventory-header">
-                    <h2>Edit Inventory Item</h2>
+                    <h2>Edit Product</h2>
                     <button title="Close" onClick={onClose} className="edit-inventory-close"><X className="w-5 h-5" /></button>
                 </div>
 
@@ -185,7 +185,7 @@ const EditInventoryModal = ({ onClose, onSuccess, categories = [], batches = [],
                                 />
                             </div>
                             <div className="edit-inventory-full form-group edit-inventory-batch">
-                                <label>Select Inventory Batch *</label>
+                                <label>Select Products Batch *</label>
                                 <select
                                     name="batch_id"
                                     required

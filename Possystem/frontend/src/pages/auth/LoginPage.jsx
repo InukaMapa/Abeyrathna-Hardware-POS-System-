@@ -2,11 +2,13 @@ import React, { useState } from 'react';
 import AuthLayout from '../../components/layout/AuthLayout';
 import InputGroup from '../../components/common/InputGroup';
 import { useAuth } from '../../context/AuthContext';
+import { Eye, EyeOff } from 'lucide-react';
 
 const LoginPage = ({ onNavigate }) => {
     const { login, loading, error: authError } = useAuth();
     const [usernameOrEmail, setUsernameOrEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const [errors, setErrors] = useState({ usernameOrEmail: '', password: '' });
 
     const validateForm = () => {
@@ -94,11 +96,22 @@ const LoginPage = ({ onNavigate }) => {
                 />
 
                 <InputGroup
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     placeholder="PASSWORD"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     icon={lockIcon}
+                    rightElement={
+                        <button
+                            type="button"
+                            className="password-preview-btn"
+                            title={showPassword ? 'Hide password' : 'Show password'}
+                            aria-label={showPassword ? 'Hide password' : 'Show password'}
+                            onClick={() => setShowPassword(prev => !prev)}
+                        >
+                            {showPassword ? <EyeOff size={19} /> : <Eye size={19} />}
+                        </button>
+                    }
                     error={errors.password}
                 />
 

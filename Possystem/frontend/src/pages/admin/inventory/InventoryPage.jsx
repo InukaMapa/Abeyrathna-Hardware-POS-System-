@@ -154,16 +154,16 @@ const InventoryPage = ({ onNavigate }) => {
                     {/* Header */}
                     <div className="menu-header inventory-header !mb-6">
                         <div>
-                            <h1 className="menu-title inventory-title">Inventory Management</h1>
-                            <p className="inventory-subtitle">Manage stock, track items, and handle reordering.</p>
+                            <h1 className="menu-title inventory-title">Products Management</h1>
+                            <p className="inventory-subtitle">Manage products, track stock, and handle reordering.</p>
                         </div>
                         <div className="inventory-toolbar">
                             <button
-                                title="Create Inventory Batch"
+                                title="Create Products Batch"
                                 onClick={() => setShowBatchModal(true)}
                                 className="inventory-outline-btn"
                             >
-                                <Package size={15} /> Create Inventory Batch
+                                <Package size={15} /> Create Products Batch
                             </button>
                             <button
                                 title="Manage Categories"
@@ -173,20 +173,20 @@ const InventoryPage = ({ onNavigate }) => {
                                 <Settings size={15} /> Manage Categories
                             </button>
                             <button
-                                title="Add Inventory"
+                                title="Add Products"
                                 onClick={() => setShowAddModal(true)}
                                 className="inventory-outline-btn"
                             >
                                 <Plus size={15} />
-                                Add Inventory
+                                Add Products
                             </button>
                             <button
-                                title="Update Inventory"
+                                title="Update Products"
                                 onClick={() => setShowReceiveModal(true)}
                                 className="inventory-outline-btn"
                             >
                                 <PackagePlus size={15} />
-                                Update Inventory
+                                Update Products
                             </button>
                         </div>
                     </div>
@@ -232,7 +232,7 @@ const InventoryPage = ({ onNavigate }) => {
                     </div>
                 </div>
 
-                {/* Inventory Table */}
+                {/* Products Table */}
                 <div className="inventory-table-card">
                     <div className="overflow-x-auto">
                         <table className="inventory-table w-full text-left border-collapse">
@@ -250,7 +250,7 @@ const InventoryPage = ({ onNavigate }) => {
                             </thead>
                             <tbody>
                                 {loading ? (
-                                    <tr><td colSpan="8" className="p-12 text-center text-[#A0A0A0]"><Loader className="w-6 h-6 animate-spin mx-auto mb-2" />Loading inventory...</td></tr>
+                                    <tr><td colSpan="8" className="p-12 text-center text-[#A0A0A0]"><Loader className="w-6 h-6 animate-spin mx-auto mb-2" />Loading products...</td></tr>
                                 ) : inventory.length === 0 ? (
                                     <tr><td colSpan="8" className="p-12 text-center text-[#A0A0A0]"><Package className="w-8 h-8 mx-auto mb-2 opacity-50" />No items found.</td></tr>
                                 ) : (
@@ -365,7 +365,7 @@ const InventoryPage = ({ onNavigate }) => {
                             <div className="inventory-batch-header">
                                 <div>
                                     <Package size={17} />
-                                    <h2>Create Inventory Batch</h2>
+                                    <h2>Create Products Batch</h2>
                                 </div>
                                 <button title="Close" onClick={() => setShowBatchModal(false)} className="inventory-batch-close">
                                     <X size={16} />
