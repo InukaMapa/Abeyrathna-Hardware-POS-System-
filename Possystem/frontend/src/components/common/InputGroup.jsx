@@ -10,9 +10,10 @@ import React from 'react';
  * @param {string} value - Input value
  * @param {function} onChange - Change handler
  * @param {React.ReactNode} icon - SVG icon component
+ * @param {React.ReactNode} rightElement - Optional action rendered on the right side
  * @param {string} error - Error message
  */
-const InputGroup = ({ type = 'text', placeholder, value, onChange, icon, error }) => {
+const InputGroup = ({ type = 'text', placeholder, value, onChange, icon, rightElement, error }) => {
     return (
         <div className="form-group">
             <div className="input-wrapper">
@@ -24,6 +25,7 @@ const InputGroup = ({ type = 'text', placeholder, value, onChange, icon, error }
                     onChange={onChange}
                     placeholder={placeholder}
                 />
+                {rightElement && <div className="input-action-container">{rightElement}</div>}
             </div>
             {error && <div className="error-message">{error}</div>}
         </div>

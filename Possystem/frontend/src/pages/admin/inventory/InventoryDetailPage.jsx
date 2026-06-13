@@ -121,11 +121,11 @@ const InventoryDetailPage = ({ inventoryId, onNavigate }) => {
         <DashboardLayout activePage="inventory" onNavigate={onNavigate}>
             <div className="menu-management-container inventory-detail-page animate-fade-in custom-scrollbar">
                 <button
-                    title="Back to Inventory"
+                    title="Back to Products"
                     onClick={() => onNavigate('inventory')}
                     className="detail-back-btn"
                 >
-                    <ArrowLeft className="w-4 h-4" /> Back to Inventory
+                    <ArrowLeft className="w-4 h-4" /> Back to Products
                 </button>
 
                 <div className="inventory-detail-grid">
