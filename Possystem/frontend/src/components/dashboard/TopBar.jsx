@@ -43,7 +43,7 @@ const TopBar = ({ onNavigate }) => {
         <div className="top-bar">
             <div className="search-bar">
                 <Search size={18} />
-                <input type="text" placeholder="Search orders, inventory, customers..." className="search-input" />
+                <input type="text" placeholder="Search orders, products, customers..." className="search-input" />
             </div>
             <div className="user-actions flex items-center gap-4">
                 <div

@@ -126,7 +126,7 @@ const AddInventoryModal = ({ onClose, onSuccess, onScanBillClick, categories = [
             onSuccess();
         } catch (error) {
             console.error('Error adding inventory:', error);
-            alert('Failed to add inventory. Code or Name might already exist.');
+            alert('Failed to add product. Code or Name might already exist.');
         } finally {
             setLoading(false);
         }
@@ -139,7 +139,7 @@ const AddInventoryModal = ({ onClose, onSuccess, onScanBillClick, categories = [
                 <div className="add-inventory-header">
                     <div>
                         <Type size={17} />
-                        <h2>Add Inventory Item</h2>
+                        <h2>Add Product</h2>
                     </div>
                     <button title="Close" onClick={onClose} className="add-inventory-close">
                         <X size={16} />
@@ -311,11 +311,11 @@ const AddInventoryModal = ({ onClose, onSuccess, onScanBillClick, categories = [
                                         </div>
                                     </div>
                                     <div>
-                                        <label>Low Inventory Level</label>
+                                        <label>Low Product Level</label>
                                         <input
                                             type="number" step="0.01" min="0" name="reorder_level"
                                             value={formData.reorder_level} onChange={handleChange}
-                                            placeholder="Low Inventory Level"
+                                            placeholder="Low Product Level"
                                         />
                                     </div>
                                     <div className="add-inventory-split add-inventory-full">
@@ -353,7 +353,7 @@ const AddInventoryModal = ({ onClose, onSuccess, onScanBillClick, categories = [
                                     </div>
                                     
                                     <div className="add-inventory-full add-inventory-batch">
-                                        <label>Select Inventory Batch *</label>
+                                        <label>Select Products Batch *</label>
                                         <select
                                             name="batch_id"
                                             required
@@ -383,11 +383,11 @@ const AddInventoryModal = ({ onClose, onSuccess, onScanBillClick, categories = [
                         <button
                             type="submit" form="inventoryForm"
                             disabled={loading || Boolean(barcodeCheck.existingItem)}
-                            title="Save Inventory"
+                            title="Save Product"
                             className="add-inventory-btn"
                         >
                             {loading ? <RefreshCw size={15} className="animate-spin" /> : <Save size={15} />}
-                            Save Inventory
+                            Save Product
                         </button>
                     )}
                 </div>

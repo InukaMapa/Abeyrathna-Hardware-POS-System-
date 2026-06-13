@@ -118,11 +118,11 @@ const ScanBillModal = ({ onClose, onSuccess }) => {
                 console.log("Seller template updated for:", supplierName);
             }
 
-            alert(`Inventory updated! AI learned rules for ${supplierName}.`);
+            alert(`Products updated! AI learned rules for ${supplierName}.`);
             onSuccess();
         } catch (error) {
             console.error("Error saving inventory items:", error);
-            alert("Failed to update inventory. Check console.");
+            alert("Failed to update products. Check console.");
         } finally {
             setIsSaving(false);
         }
@@ -298,7 +298,7 @@ const ScanBillModal = ({ onClose, onSuccess }) => {
                                     className="btn-primary flex items-center gap-2 disabled:opacity-50"
                                 >
                                     {isSaving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                                    {isSaving ? 'Updating Inventory...' : 'Confirm & Update'}
+                                    {isSaving ? 'Updating Products...' : 'Confirm & Update'}
                                 </button>
                             </div>
                         </div>

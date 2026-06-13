@@ -9,7 +9,7 @@ const Sidebar = ({ onNavigate, activePage }) => {
 
     const adminMenuItems = [
         { id: 'dashboard', name: 'Dashboard', icon: LayoutDashboard, roles: ['ADMIN'] },
-        { id: 'inventory', name: 'Inventory', icon: Boxes, roles: ['ADMIN'] },
+        { id: 'inventory', name: 'Products', icon: Boxes, roles: ['ADMIN'] },
         { id: 'supplier', name: 'Supplier', icon: Truck, roles: ['ADMIN'] },
         { id: 'reports', name: 'Reports', icon: BarChart3, roles: ['ADMIN'] },
         { id: 'supplier-returns', name: 'Returns', icon: RotateCcw, roles: ['ADMIN'] },
