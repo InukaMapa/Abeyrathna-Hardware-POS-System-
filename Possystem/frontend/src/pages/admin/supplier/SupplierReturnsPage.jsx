@@ -289,20 +289,56 @@ const SupplierReturnsPage = ({ onNavigate }) => {
                             <div className="supplier-returns-form-content overflow-y-auto p-8 pt-6 space-y-6 custom-scrollbar">
                                 <form onSubmit={handleCreateReturn} className="supplier-returns-form-body space-y-5">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                        <div>
-                                            <label className="text-[11px] font-bold text-green-800 mb-2 block">Search & Select Item</label>
-                                            <select
-                                                value={formData.item_id}
-                                                onChange={(e) => handleItemSelect(e.target.value)}
-                                                required
-                                                className="w-full bg-white border border-green-200 rounded-xl px-4 py-3 text-sm text-gray-800 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 transition-all"
-                                            >
-                                                <option value="">-- Choose Item --</option>
-                                                {inventoryItems.map(i => (
-                                                    <option key={i.id} value={i.id}>{i.ingredient_name} ({i.item_code}) - Avail: {i.quantity}</option>
-                                                ))}
-                                            </select>
-                                        </div>
+                        <div>
+                            <label className="text-[11px] font-bold text-green-800 mb-2 block">Supplier Name</label>
+                            <select
+                                value={formData.supplier_id}
+                                onChange={(e) => {
+                                    const supplierId = e.target.value;
+                                    setFormData({ ...formData, supplier_id: supplierId, item_id: '', batch_id: '' });
+                                    setSelectedItemInfo(null);
+                                    setSelectedBatchInfo(null);
+                                }}
+                                required
+                                className="w-full bg-white border border-green-200 rounded-xl px-4 py-3 text-sm text-gray-800 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 transition-all"
+                            >
+                                <option value="">-- Choose Supplier --</option>
+                                {suppliers.map(s => (
+                                    <option key={s.id} value={s.id}>{s.supplier_name}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="text-[11px] font-bold text-green-800 mb-2 block">Search &amp; Select Item</label>
+                            <select
+                                value={formData.item_id}
+                                onChange={(e) => handleItemSelect(e.target.value)}
+                                required
+                                disabled={!formData.supplier_id}
+                                className="w-full bg-white border border-green-200 rounded-xl px-4 py-3 text-sm text-gray-800 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 transition-all"
+                            >
+                                <option value="">
+                                    {formData.supplier_id ? '-- Choose Item --' : 'Select a supplier first'}
+                                </option>
+                                {inventoryItems
+                                    .filter(i => {
+                                        const batch = batches.find(b => b.id === i.batch_id);
+                                        return batch && batch.supplier_id === formData.supplier_id;
+                                    })
+                                    .map(i => (
+                                        <option key={i.id} value={i.id}>
+                                            {i.ingredient_name} ({i.item_code}) - Avail: {i.quantity}
+                                        </option>
+                                    ))}
+                                {formData.supplier_id && inventoryItems.filter(i => {
+                                    const batch = batches.find(b => b.id === i.batch_id);
+                                    return batch && batch.supplier_id === formData.supplier_id;
+                                }).length === 0 && (
+                                    <option disabled>No products available for the selected supplier.</option>
+                                )}
+                            </select>
+                        </div>
+                    </div>
 
                                         <div>
                                             <label className="text-[11px] font-bold text-green-800 mb-2 block">Return Quantity</label>
@@ -319,7 +355,7 @@ const SupplierReturnsPage = ({ onNavigate }) => {
                                                 <p className="text-[10px] text-green-700 font-bold mt-1.5 uppercase">Max Available: {selectedItemInfo.quantity}</p>
                                             )}
                                         </div>
-                                    </div>
+                                    
 
                                     {/* Batch Info Box */}
                                     <div className="supplier-returns-batch-box p-5 bg-[#F3F9F5] border border-green-200 rounded-2xl grid grid-cols-2 gap-y-4">

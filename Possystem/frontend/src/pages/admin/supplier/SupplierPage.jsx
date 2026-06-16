@@ -27,6 +27,8 @@ const SupplierPage = ({ onNavigate, focusSection }) => {
     const [sellerNote, setSellerNote] = useState("");
     const [noteDate, setNoteDate] = useState("15 May 24");
     const [activeProfileTab, setActiveProfileTab] = useState('Overview');
+const [paymentStats, setPaymentStats] = useState({ totalItems: 0, totalInvoiced: 0, totalPaid: 0, outstanding: 0 });
+    const [totalInventoryValue, setTotalInventoryValue] = useState(0);
     const [selectedTransaction, setSelectedTransaction] = useState(null);
     const [profileBatches, setProfileBatches] = useState([]);
     const [profileReturns, setProfileReturns] = useState([]);
@@ -320,6 +322,36 @@ const SupplierPage = ({ onNavigate, focusSection }) => {
         }
     }, [selectedSupplier]);
 
+// Compute supplier summary stats
+useEffect(() => {
+  if (!selectedSupplier) {
+    setPaymentStats({ totalItems: 0, totalInvoiced: 0, totalPaid: 0, outstanding: 0 });
+    setTotalInventoryValue(0);
+    return;
+  }
+  const supplierBatches = profileBatches.filter(b => b.supplier_id === selectedSupplier.id);
+  const totalItems = supplierBatches.reduce((sum, b) => sum + (b.total_items || 0), 0);
+  const totalInvoiced = supplierBatches.reduce((sum, b) => sum + (b.raw_net_value || 0), 0);
+  const totalPaid = supplierBatches.reduce((sum, b) => sum + (b.raw_paid_amount || 0), 0);
+  const outstanding = supplierBatches.reduce((sum, b) => sum + (b.remaining_balance || 0), 0);
+  setPaymentStats({ totalItems, totalInvoiced, totalPaid, outstanding });
+  // Fetch total inventory value for supplier
+  const fetchInventoryValue = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API_BASE_URL}/suppliers/${selectedSupplier.id}/inventory-value`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.data && typeof res.data.totalValue === 'number') {
+        setTotalInventoryValue(res.data.totalValue);
+      }
+    } catch (err) {
+      console.error('Error fetching inventory value:', err);
+    }
+  };
+  fetchInventoryValue();
+}, [profileBatches, selectedSupplier]);
+
     const handleBankDetailsChange = (e) => {
         const { name, value } = e.target;
         setBankDetailsForm(prev => ({ ...prev, [name]: value }));
@@ -372,7 +404,8 @@ const SupplierPage = ({ onNavigate, focusSection }) => {
                 fetchSuppliers();
             } catch (err) {
                 console.error('Error deleting supplier:', err);
-                alert('Failed to delete supplier. Please try again.');
+                const errMsg = err.message || (err.response && err.response.data && err.response.data.message) || 'Failed to delete supplier. Please try again.';
+                alert(errMsg);
             }
         }
     };
@@ -771,12 +804,11 @@ const SupplierPage = ({ onNavigate, focusSection }) => {
                     </div>
 
                     {/* KPI Metrics */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
                         {[
                             { label: 'Total Suppliers', value: stats.totalSuppliers, icon: User, color: '#D4AF37' },
-                            { label: 'Active POs', value: stats.activePOs, icon: Package, color: '#4caf50' },
                             { label: 'Pending Payments', value: `Rs. ${stats.pendingPayments.toLocaleString()}`, icon: CreditCard, color: '#ff5252' },
-                            { label: 'Returns This Month', value: stats.returnsThisMonth, icon: RefreshCcw, color: '#2196f3' }
+                            { label: 'Total Inventory Value', value: `Rs. ${totalInventoryValue.toLocaleString()}`, icon: Package, color: '#4caf50' }
                         ].map((kpi, i) => (
                             <div key={i} className="bg-[#1E1E1E] p-5 rounded-2xl border border-[#333] shadow-lg relative overflow-hidden group hover:border-[#444] transition-all">
                                 <div className="flex justify-between items-start relative z-10">
@@ -894,12 +926,19 @@ const SupplierPage = ({ onNavigate, focusSection }) => {
                                                                     <Eye className="w-4 h-4" />
                                                                 </button>
                                                                 <button
-                                                                    onClick={() => setEditingSupplier(supplier)}
-                                                                    className="p-3 bg-[#121212] text-[#A0A0A0] hover:text-white border border-[#333] rounded-xl transition-all group-hover:bg-[#1E1E1E]"
-                                                                    title="Edit Profile"
-                                                                >
-                                                                    <Edit className="w-4 h-4" />
-                                                                </button>
+                                                                     onClick={() => setEditingSupplier(supplier)}
+                                                                     className="p-3 bg-[#121212] text-[#A0A0A0] hover:text-white border border-[#333] rounded-xl transition-all group-hover:bg-[#1E1E1E]"
+                                                                     title="Edit Profile"
+                                                                 >
+                                                                     <Edit className="w-4 h-4" />
+                                                                 </button>
+                                                                 <button
+                                                                     onClick={() => handleDeleteSupplier(supplier.id)}
+                                                                     className="p-3 bg-[#121212] text-[#A0A0A0] hover:text-[#ff5252] hover:border-[#ff5252] border border-[#333] rounded-xl transition-all group-hover:bg-[#1E1E1E]"
+                                                                     title="Delete Supplier"
+                                                                 >
+                                                                     <Trash2 className="w-4 h-4" />
+                                                                 </button>
                                                             </div>
                                                         </td>
                                                     </tr>
@@ -952,70 +991,6 @@ const SupplierPage = ({ onNavigate, focusSection }) => {
                                 </div>
                             </div>
 
-                            {/* Recent Activity: Purchase Orders */}
-                            <div className="bg-white rounded-3xl border border-gray-100 overflow-hidden shadow-sm">
-                                <div className="p-6 bg-green-100 flex justify-between items-center">
-                                    <h3 className="text-[10px] font-black text-green-900 uppercase tracking-[0.2em] flex items-center gap-2">
-                                        <Package className="w-4 h-4 text-green-700" /> Recent purchases
-                                    </h3>
-                                    <button
-                                        className="supplier-small-action"
-                                        onClick={() => onNavigate('supplier-recent-purchases')}
-                                    >
-                                        Live
-                                    </button>
-                                </div>
-                                <div className="divide-y divide-gray-100">
-                                    {recentPOs.map(po => (
-                                        <div key={po.id} className="p-5 hover:bg-gray-50 transition-all cursor-pointer group">
-                                            <div className="flex justify-between items-start mb-3">
-                                                <div>
-                                                    <span className="text-[10px] font-black text-[#D4AF37] tracking-widest uppercase">{po.id}</span>
-                                                    <div className="text-[11px] font-black text-gray-900 mt-1 group-hover:translate-x-1 transition-transform">{po.supplier}</div>
-                                                </div>
-                                                <span className={`text-[9px] font-black px-2 py-0.5 rounded-md border ${po.status === 'COMPLETED' ? 'bg-[#4caf50]/5 text-[#4caf50] border-[#4caf50]/20' :
-                                                    po.status === 'PENDING' ? 'bg-[#ff9800]/5 text-[#ff9800] border-[#ff9800]/20' :
-                                                        'bg-[#2196f3]/5 text-[#2196f3] border-[#2196f3]/20'
-                                                    }`}>{po.status}</span>
-                                            </div>
-                                            <div className="flex justify-between items-center text-[10px] font-bold">
-                                                <div className="text-gray-500 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {po.date}</div>
-                                                <div className="text-gray-900">Rs. {po.amount.toLocaleString()}</div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Financial Registry: Unpaid */}
-                            <div className="bg-white rounded-3xl border border-gray-100 overflow-hidden shadow-sm">
-                                <div className="p-6 bg-green-100 flex justify-between items-center">
-                                    <h3 className="text-[10px] font-black text-green-900 uppercase tracking-[0.2em] flex items-center gap-2">
-                                        Pending Settlements
-                                    </h3>
-                                </div>
-                                <div className="p-6 space-y-4">
-                                    {pendingPayments.map(payment => (
-                                        <div key={payment.id} className="supplier-payment-card p-4 rounded-2xl bg-[#121212] border border-[#333] hover:border-[#ff5252]/30 transition-all relative group">
-                                            <div className="flex justify-between items-center mb-2">
-                                                <span className="text-[9px] font-black text-[#444] uppercase">{payment.id}</span>
-                                                <span className="text-[9px] font-black text-[#ff5252] animate-pulse uppercase">DUE</span>
-                                            </div>
-                                            <div className="text-xs font-black text-white mb-2 uppercase tracking-tight">{payment.supplier}</div>
-                                            <div className="flex justify-between items-end border-t border-[#222] pt-2 mt-2">
-                                                <div className="text-[9px] text-[#666] font-bold uppercase">{payment.dueDate}</div>
-                                                <div className="text-sm font-black text-white">Rs. {payment.amount.toLocaleString()}</div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                    <button
-                                        className="supplier-settlement-action"
-                                        onClick={() => setGlobalPaymentsOpen(true)}
-                                    >
-                                        All Payments
-                                    </button>
-                                </div>
-                            </div>
                         </div>
 
                         {/* --- Modals Component System --- */}
@@ -1132,6 +1107,25 @@ const SupplierPage = ({ onNavigate, focusSection }) => {
                                             </div>
                                         ))}
                                     </div>
+{/* Supplier Summary Stats */}
+<div className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-8">
+  <div className="p-5 rounded-2xl bg-gray-50 border border-gray-200 flex flex-col items-center">
+    <span className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Items Received</span>
+    <span className="text-xl font-black text-gray-900">{paymentStats.totalItems}</span>
+  </div>
+  <div className="p-5 rounded-2xl bg-gray-50 border border-gray-200 flex flex-col items-center">
+    <span className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Total Invoiced</span>
+    <span className="text-xl font-black text-gray-900">Rs. {paymentStats.totalInvoiced.toLocaleString()}</span>
+  </div>
+  <div className="p-5 rounded-2xl bg-gray-50 border border-gray-200 flex flex-col items-center">
+    <span className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Total Paid</span>
+    <span className="text-xl font-black text-gray-900">Rs. {paymentStats.totalPaid.toLocaleString()}</span>
+  </div>
+  <div className="p-5 rounded-2xl bg-gray-50 border border-gray-200 flex flex-col items-center">
+    <span className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Outstanding</span>
+    <span className="text-xl font-black text-gray-900">Rs. {paymentStats.outstanding.toLocaleString()}</span>
+  </div>
+</div>
 
                                     {/* Minimalist Tabs */}
                                     <div className="supplier-profile-tabs px-8 flex gap-8 border-b border-gray-200">
