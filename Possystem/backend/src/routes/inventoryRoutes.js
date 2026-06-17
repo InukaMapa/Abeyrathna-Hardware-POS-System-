@@ -9,15 +9,8 @@ import {
     fetchInventoryCategories,
     createInventoryCategory,
     deleteInventoryCategory,
-    fetchInventoryBatches,
-    createInventoryBatch,
-    updateInventoryBatch,
-    updateInventoryBatchItem,
-    settleBatchPayment,
     fetchPayoutRequests,
-    completePayoutRequest,
-    fetchRefundBatches,
-    completeRefundBatch
+    completePayoutRequest
 } from '../controllers/inventoryController.js';
 import {
     fetchSupplierReturns as fetchReturns,
@@ -35,17 +28,9 @@ router.get('/categories', protect, authorize('ADMIN', 'CASHIER'), fetchInventory
 router.post('/categories', protect, authorize('ADMIN'), createInventoryCategory);
 router.delete('/categories/:id', protect, authorize('ADMIN'), deleteInventoryCategory);
 
-// Batch Routes
-router.get('/batches', protect, authorize('ADMIN', 'CASHIER'), fetchInventoryBatches);
-router.post('/batches', protect, authorize('ADMIN'), createInventoryBatch);
-router.put('/batches/:id', protect, authorize('ADMIN'), updateInventoryBatch);
-router.put('/batch-items/:id', protect, authorize('ADMIN'), updateInventoryBatchItem);
-router.post('/batches/:id/pay', protect, authorize('ADMIN'), settleBatchPayment);
+// Payout Routes
 router.get('/payout-requests', protect, authorize('ADMIN', 'CASHIER'), fetchPayoutRequests);
 router.post('/payout-requests/:id/complete', protect, authorize('CASHIER'), completePayoutRequest);
-router.get('/refund-batches', protect, authorize('ADMIN', 'CASHIER'), fetchRefundBatches);
-router.post('/refund-batches/:id/complete', protect, authorize('CASHIER'), completeRefundBatch);
-
 // Return Routes
 router.get('/returns', protect, authorize('ADMIN', 'CASHIER'), fetchReturns);
 router.post('/returns', protect, authorize('ADMIN'), createReturn);

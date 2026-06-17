@@ -10,7 +10,7 @@ export const fetchSupplierReturns = async (req, res) => {
 
         let query = supabase
             .from('supplier_returns')
-            .select('*, inventory(ingredient_name, item_code, buying_price), suppliers(supplier_name), inventory_batches!supplier_returns_batch_id_fkey(batch_number)')
+            .select('*, inventory(ingredient_name, item_code, buying_price), suppliers(supplier_name)')
             .order('created_at', { ascending: false });
 
         if (supplier_id && supplier_id !== 'all') {
@@ -37,11 +37,11 @@ export const fetchSupplierReturns = async (req, res) => {
 export const createSupplierReturn = async (req, res) => {
     try {
         const {
-            item_id, batch_id, supplier_id, quantity,
+            item_id, supplier_id, quantity,
             return_type, reason, warehouse_location, notes
         } = req.body;
 
-        if (!item_id || !batch_id || !supplier_id || !quantity) {
+        if (!item_id || !supplier_id || !quantity) {
             return res.status(400).json({ message: 'Missing required fields.' });
         }
 
@@ -54,7 +54,6 @@ export const createSupplierReturn = async (req, res) => {
             .insert([{
                 return_number: returnNumber,
                 item_id,
-                batch_id,
                 supplier_id,
                 quantity: parseFloat(quantity),
                 return_type,
@@ -160,20 +159,7 @@ export const resolveSupplierReturn = async (req, res) => {
 
         if (updateErr) throw updateErr;
 
-        // If resolution is REFUND, create a refund batch for cashier
-        if (resolution_type === 'REFUND') {
-            const batchNumber = `RFB-${Math.floor(10000 + Math.random() * 90000)}`;
-            const { error: batchErr } = await supabase
-                .from('refund_batches')
-                .insert([{
-                    batch_number: batchNumber,
-                    return_id: id,
-                    supplier_id: ret.supplier_id,
-                    amount: parseFloat(refund_amount),
-                    status: 'PENDING'
-                }]);
-            if (batchErr) throw batchErr;
-        }
+        // No refund batch logic needed.
 
         res.status(200).json(updatedReturn);
     } catch (err) {

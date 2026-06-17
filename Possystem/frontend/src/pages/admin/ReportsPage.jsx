@@ -297,16 +297,12 @@ const ReportsPage = ({ onNavigate }) => {
             supplier.company_name,
             supplier.supplier_id,
             supplier.phone_number,
-            supplier.email
+supplier.email
         ].some(value => String(value || '').toLowerCase().includes(query));
     });
 
     // Summary Stats - Dynamic + Mocked
-    const summaryStats = [
-        { title: 'Total Sales Today', value: stats ? `Rs. ${Number(stats.salesToday || 0).toLocaleString()}` : 'Rs. 0', trend: 'Orders', isUp: true, icon: DollarSign, color: '#16A34A', data: salesData },
-        { title: 'Low Stock Items', value: stats ? String(stats.lowInventory?.length || 0) : '0', trend: 'Live Stock', isUp: false, icon: AlertTriangle, color: '#F59E0B', data: salesData },
-        { title: 'Out of Stock', value: stats ? String(stats.outOfStockCount || stats.outOfStock?.length || 0) : '0', trend: 'Live Stock', isUp: false, icon: Package, color: '#EF4444', data: salesData },
-    ];
+    const summaryStats = [];
 
     const reportCategories = [
         { id: 'sales', name: 'Sales Reports', icon: DollarSign },

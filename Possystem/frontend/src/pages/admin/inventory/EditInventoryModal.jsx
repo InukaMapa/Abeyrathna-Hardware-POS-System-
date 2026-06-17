@@ -6,7 +6,7 @@ import { API_BASE_URL } from '../../../config/api';
 import '../../../styles/menu.css';
 import { getSuppliers } from '../../../services/supplierService';
 
-const EditInventoryModal = ({ onClose, onSuccess, categories = [], batches = [], initialData }) => {
+const EditInventoryModal = ({ onClose, onSuccess, categories = [], initialData }) => {
     const [formData, setFormData] = useState({
         ingredient_name: '',
         item_code: '',
@@ -14,7 +14,6 @@ const EditInventoryModal = ({ onClose, onSuccess, categories = [], batches = [],
         quantity: '',
         unit: 'kg',
         reorder_level: '10',
-        batch_id: '',
         buying_price: '',
         selling_price: '',
         storage_location: '',
@@ -35,7 +34,6 @@ const EditInventoryModal = ({ onClose, onSuccess, categories = [], batches = [],
                 quantity: initialData.quantity || '',
                 unit: initialData.unit || 'kg',
                 reorder_level: initialData.reorder_level || '10',
-                batch_id: initialData.batch_id || '',
                 buying_price: initialData.buying_price || '',
                 selling_price: initialData.selling_price || '',
                 storage_location: initialData.storage_location || '',
@@ -184,27 +182,9 @@ const EditInventoryModal = ({ onClose, onSuccess, categories = [], batches = [],
                                     placeholder="e.g. Shelf A-1"
                                 />
                             </div>
-                            <div className="edit-inventory-full form-group edit-inventory-batch">
-                                <label>Select Products Batch *</label>
-                                <select
-                                    name="batch_id"
-                                    required
-                                    value={formData.batch_id}
-                                    onChange={handleChange}
-                                    disabled
-                                >
-                                    <option value="">-- Change Active Batch --</option>
-                                    {batches.map(b => (
-                                        <option key={b.id} value={b.id}>
-                                            {b.batch_number} | {b.supplier_name} ({b.date})
-                                        </option>
-                                    ))}
-                                </select>
-                                <p>Supplier identity is derived from the selected procurement batch.</p>
                             </div>
-                        </div>
-                    </form>
-                </div>
+                        </form>
+                    </div>
 
                 <div className="edit-inventory-actions">
                     <button title="Cancel" onClick={onClose} className="edit-inventory-btn">
