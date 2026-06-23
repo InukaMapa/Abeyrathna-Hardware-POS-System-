@@ -42,11 +42,13 @@ const InventoryDetailPage = ({ inventoryId, onNavigate }) => {
                         format: 'CODE128',
                         lineColor: '#000000',
                         background: '#FFFFFF',
-                        width: 2,
-                        height: 60,
+                        width: 1.5,
+                        height: 38,
                         displayValue: true,
-                        fontSize: 14,
-                        margin: 10
+                        font: 'monospace',
+                        fontSize: 9,
+                        textMargin: 2,
+                        margin: 0
                     });
                 }
                 if (printBarcodeRef.current) {
@@ -54,10 +56,12 @@ const InventoryDetailPage = ({ inventoryId, onNavigate }) => {
                         format: 'CODE128',
                         lineColor: '#000000',
                         background: '#FFFFFF',
-                        width: 1,
-                        height: 42,
+                        width: 1.2,
+                        height: 32,
                         displayValue: true,
-                        fontSize: 9,
+                        font: 'monospace',
+                        fontSize: 8,
+                        textMargin: 2,
                         margin: 0
                     });
                 }
@@ -375,9 +379,67 @@ const InventoryDetailPage = ({ inventoryId, onNavigate }) => {
                                 <p>Category: {item.category || 'Uncategorized'}</p>
                             </div>
                             
-                            {/* Barcode Rendered Here */}
-                            <div className="detail-barcode-preview">
-                                <svg ref={barcodeRef}></svg>
+                            {/* Barcode Rendered Here as a clean retail tag mockup */}
+                            <div className="detail-barcode-preview" style={{ background: '#f8fafc', padding: '24px', display: 'flex', justifyContent: 'center' }}>
+                                <div style={{
+                                    width: '180px',
+                                    height: '135px',
+                                    backgroundColor: '#ffffff',
+                                    border: '1px solid #e2e8f0',
+                                    borderRadius: '6px',
+                                    boxShadow: '0 4px 16px rgba(15, 23, 42, 0.08)',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    padding: '10px 8px',
+                                    boxSizing: 'border-box',
+                                    color: '#000000'
+                                }}>
+                                    {/* Company Name */}
+                                    <div style={{ 
+                                        fontSize: '9px', 
+                                        fontFamily: "'Segoe UI', Arial, sans-serif", 
+                                        fontWeight: '800', 
+                                        textTransform: 'uppercase', 
+                                        letterSpacing: '0.5px',
+                                        lineHeight: '1'
+                                    }}>
+                                        ATC & SONS
+                                    </div>
+                                    
+                                    {/* Product Name */}
+                                    <div style={{ 
+                                        fontSize: '8px', 
+                                        fontFamily: "'Segoe UI', Arial, sans-serif", 
+                                        fontWeight: '600', 
+                                        color: '#000000', 
+                                        whiteSpace: 'nowrap', 
+                                        overflow: 'hidden', 
+                                        textOverflow: 'ellipsis', 
+                                        maxWidth: '100%',
+                                        lineHeight: '1',
+                                        marginTop: '1px'
+                                    }}>
+                                        {item.ingredient_name}
+                                    </div>
+                                    
+                                    {/* Barcode */}
+                                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%', margin: '4px 0' }}>
+                                        <svg ref={barcodeRef} style={{ maxWidth: '100%', height: 'auto' }}></svg>
+                                    </div>
+                                    
+                                    {/* Price */}
+                                    <div style={{ 
+                                        fontSize: '12px', 
+                                        fontFamily: "'Segoe UI', Arial, sans-serif", 
+                                        fontWeight: '800',
+                                        lineHeight: '1',
+                                        marginTop: 'auto'
+                                    }}>
+                                        LKR {parseFloat(item.selling_price || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </div>
+                                </div>
                             </div>
                             
                             <div className="detail-barcode-code">
@@ -414,23 +476,63 @@ const InventoryDetailPage = ({ inventoryId, onNavigate }) => {
                                 top: '-9999px', 
                                 width: '40mm',
                                 height: '30mm',
-                                backgroundColor: '#fff', 
+                                backgroundColor: '#ffffff', 
                                 display: 'flex', 
                                 flexDirection: 'column', 
                                 alignItems: 'center', 
-                                justifyContent: 'center',
-                                padding: '2mm',
+                                justifyContent: 'space-between',
+                                padding: '2mm 1.5mm',
                                 boxSizing: 'border-box',
                                 overflow: 'hidden'
                             }}
                         >
-                            <div style={{ fontSize: '8px', lineHeight: '1', fontFamily: 'Arial, sans-serif', fontWeight: '700', color: '#000', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: '0.8mm', maxWidth: '100%' }}>
+                            <div style={{ 
+                                fontSize: '7.5px', 
+                                fontFamily: "'Segoe UI', Arial, sans-serif", 
+                                fontWeight: '800', 
+                                color: '#000000', 
+                                textTransform: 'uppercase', 
+                                letterSpacing: '0.5px', 
+                                textAlign: 'center', 
+                                lineHeight: '1' 
+                            }}>
+                                ATC & SONS
+                            </div>
+                            <div style={{ 
+                                fontSize: '7px', 
+                                fontFamily: "'Segoe UI', Arial, sans-serif", 
+                                fontWeight: '600', 
+                                color: '#000000', 
+                                textAlign: 'center', 
+                                whiteSpace: 'nowrap', 
+                                overflow: 'hidden', 
+                                textOverflow: 'ellipsis', 
+                                maxWidth: '100%', 
+                                lineHeight: '1',
+                                marginTop: '1px'
+                            }}>
                                 {item.ingredient_name}
                             </div>
-                            <div style={{ fontSize: '10px', lineHeight: '1', fontFamily: 'Arial, sans-serif', color: '#000', fontWeight: '700', marginBottom: '1mm' }}>
-                                Rs. {parseFloat(item.selling_price || 0).toFixed(2)}
+                            <div style={{ 
+                                display: 'flex', 
+                                justifyContent: 'center', 
+                                alignItems: 'center', 
+                                width: '100%', 
+                                margin: '0.5mm 0' 
+                            }}>
+                                <svg ref={printBarcodeRef} style={{ maxWidth: '100%', height: 'auto' }}></svg>
                             </div>
-                            <svg ref={printBarcodeRef} style={{ width: '34mm', maxWidth: '100%', height: 'auto' }}></svg>
+                            <div style={{ 
+                                fontSize: '11px', 
+                                fontFamily: "'Segoe UI', Arial, sans-serif", 
+                                fontWeight: '800', 
+                                color: '#000000', 
+                                textAlign: 'center', 
+                                lineHeight: '1',
+                                marginTop: 'auto'
+                            }}>
+                                LKR {parseFloat(item.selling_price || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </div>
                         </div>
                     </div>
                 </div>
