@@ -8,6 +8,15 @@ import {
 } from 'lucide-react';
 import { API_BASE_URL } from '../../../config/api';
 
+const parseReturnNotes = (notesStr) => {
+    try {
+        if (notesStr && notesStr.startsWith('{')) {
+            return JSON.parse(notesStr);
+        }
+    } catch (e) {}
+    return { notes: notesStr || '', buying_price: null, tier_id: null };
+};
+
 const ReturnManagementPage = ({ onNavigate, returnId }) => {
     const [returnData, setReturnData] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -35,7 +44,9 @@ const ReturnManagementPage = ({ onNavigate, returnId }) => {
             const found = res.data.find(r => r.id === parseInt(returnId) || r.id === returnId);
             setReturnData(found);
             if (found) {
-                setForm(prev => ({ ...prev, refund_amount: (parseFloat(found.quantity) * parseFloat(found.inventory?.buying_price || 0)).toFixed(2) }));
+                const parsed = parseReturnNotes(found.notes);
+                const price = parsed.buying_price !== null ? parsed.buying_price : (found.inventory?.buying_price || 0);
+                setForm(prev => ({ ...prev, refund_amount: (parseFloat(found.quantity) * parseFloat(price)).toFixed(2) }));
             }
         } catch (err) { console.error(err); }
         setLoading(false);
@@ -106,6 +117,17 @@ const ReturnManagementPage = ({ onNavigate, returnId }) => {
                                     <div className="bg-[#F7FBF8] p-4 rounded-lg border border-green-100">
                                         <p className="text-sm font-bold text-gray-950">{returnData.inventory?.ingredient_name}</p>
                                         <p className="text-lg font-bold text-green-700 mt-1">{returnData.quantity} Units</p>
+                                        {(() => {
+                                            const parsed = parseReturnNotes(returnData.notes);
+                                            if (parsed.buying_price !== null) {
+                                                return (
+                                                    <p className="text-xs text-gray-500 mt-1 font-semibold">
+                                                        Returned Set Buy Price: Rs. {parsed.buying_price}
+                                                    </p>
+                                                );
+                                            }
+                                            return null;
+                                        })()}
                                     </div>
                                 </div>
 
@@ -156,7 +178,13 @@ const ReturnManagementPage = ({ onNavigate, returnId }) => {
                                 </div>
                                 <div className="bg-[#F7FBF8] p-3 rounded-lg border border-green-100 flex flex-col items-end">
                                     <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Estimated Value</p>
-                                    <p className="text-lg font-bold text-green-800">Rs. {(parseFloat(returnData.quantity) * parseFloat(returnData.inventory?.buying_price || 0)).toLocaleString()}</p>
+                                    <p className="text-lg font-bold text-green-800">
+                                        Rs. {(() => {
+                                            const parsed = parseReturnNotes(returnData.notes);
+                                            const price = parsed.buying_price !== null ? parsed.buying_price : (returnData.inventory?.buying_price || 0);
+                                            return (parseFloat(returnData.quantity) * parseFloat(price)).toLocaleString();
+                                        })()}
+                                    </p>
                                 </div>
                             </div>
 

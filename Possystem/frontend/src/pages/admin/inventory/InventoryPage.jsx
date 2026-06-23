@@ -134,14 +134,6 @@ const InventoryPage = ({ onNavigate }) => {
                             >
                                 <Settings size={15} /> Manage Categories
                             </button>
-                            <button
-                                title="Add Products"
-                                onClick={() => setShowAddModal(true)}
-                                className="inventory-outline-btn"
-                            >
-                                <Plus size={15} />
-                                Add Products
-                            </button>
                         </div>
                     </div>
 
@@ -249,7 +241,18 @@ const InventoryPage = ({ onNavigate }) => {
                                             <td className="p-4 text-right">
                                                 <div className="flex items-center justify-end gap-2">
                                                     <button
-                                                        onClick={() => setReceivingItem(item)}
+                                                        onClick={() => {
+                                                            if (item.supplier_id) {
+                                                                onNavigate('supplier', {
+                                                                    supplierParams: {
+                                                                        supplierId: item.supplier_id,
+                                                                        activeTab: 'Products'
+                                                                    }
+                                                                });
+                                                            } else {
+                                                                alert('This product does not have an assigned supplier. Please edit the product to assign a supplier first.');
+                                                            }
+                                                        }}
                                                         className="inventory-action-btn"
                                                         title="Receive Stock"
                                                     >

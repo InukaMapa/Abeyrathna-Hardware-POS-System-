@@ -105,6 +105,22 @@ export const updateSupplier = async (req, res) => {
             return acc;
         }, {});
 
+        if (updates.status === 'INACTIVE') {
+            const { data: pendingPayouts, error: payoutError } = await supabase
+                .from('supplier_payout_requests')
+                .select('id')
+                .eq('supplier_id', id)
+                .eq('status', 'PENDING');
+
+            if (payoutError) throw payoutError;
+
+            if (pendingPayouts && pendingPayouts.length > 0) {
+                return res.status(400).json({
+                    message: 'Cannot deactivate supplier. Pending payments must be settled first.'
+                });
+            }
+        }
+
         const { data, error } = await supabase
             .from('suppliers')
             .update(updates)

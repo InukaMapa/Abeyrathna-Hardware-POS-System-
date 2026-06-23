@@ -6,7 +6,7 @@ import { API_BASE_URL } from '../../../config/api';
 import '../../../styles/menu.css';
 import { getSuppliers } from '../../../services/supplierService';
 
-const AddInventoryModal = ({ onClose, onSuccess, onScanBillClick, categories = [] }) => {
+const AddInventoryModal = ({ onClose, onSuccess, onScanBillClick, categories = [], initialSupplierId }) => {
     const [formData, setFormData] = useState({
         ingredient_name: '',
         item_code: '',
@@ -19,7 +19,7 @@ const AddInventoryModal = ({ onClose, onSuccess, onScanBillClick, categories = [
         selling_price: '',
         storage_location: '',
         expiry_date: '',
-        supplier_id: ''
+        supplier_id: initialSupplierId || ''
     });
     const [suppliers, setSuppliers] = useState([]);
     const [allProducts, setAllProducts] = useState([]);
@@ -238,13 +238,15 @@ const AddInventoryModal = ({ onClose, onSuccess, onScanBillClick, categories = [
                         >
                             <Type size={15} /> Manual Entry
                         </button>
-                        <button
-                            title="Scan Bill"
-                            onClick={onScanBillClick}
-                            className="add-inventory-tab"
-                        >
-                            <ScanLine size={15} /> Scan Bill (AI)
-                        </button>
+                        {onScanBillClick && (
+                            <button
+                                title="Scan Bill"
+                                onClick={onScanBillClick}
+                                className="add-inventory-tab"
+                            >
+                                <ScanLine size={15} /> Scan Bill (AI)
+                            </button>
+                        )}
                         
                     </div>
 
@@ -256,6 +258,7 @@ const AddInventoryModal = ({ onClose, onSuccess, onScanBillClick, categories = [
                                         <select
                                             name="supplier_id"
                                             required
+                                            disabled={!!initialSupplierId}
                                             value={formData.supplier_id}
                                             onChange={handleSupplierChange}
                                         >

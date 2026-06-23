@@ -76,7 +76,7 @@ const backfillMissingBatchPrices = async (inventoryId, existingItem) => {
  */
 export const fetchInventoryList = async (req, res) => {
     try {
-        const { search, category, status } = req.query;
+        const { search, category, status, supplier_id } = req.query;
 
         let query = supabase
             .from('inventory')
@@ -88,6 +88,9 @@ export const fetchInventoryList = async (req, res) => {
         }
         if (category && category !== 'All') {
             query = query.eq('category', category);
+        }
+        if (supplier_id) {
+            query = query.eq('supplier_id', supplier_id);
         }
 
         const { data, error } = await query;
@@ -119,10 +122,36 @@ export const fetchInventoryList = async (req, res) => {
             if (item.quantity === 0) stockStatus = 'Out of Stock';
             else if (item.quantity <= item.reorder_level) stockStatus = 'Low Stock';
 
+            let tiers = [];
+            if (item.supplier_info) {
+                try {
+                    tiers = JSON.parse(item.supplier_info);
+                    if (!Array.isArray(tiers)) tiers = [];
+                } catch (e) {
+                    tiers = [];
+                }
+            }
+
+            // Fallback for existing stock if tiers is empty and quantity > 0
+            if (tiers.length === 0 && parseFloat(item.quantity || 0) > 0) {
+                tiers.push({
+                    id: 'tier_init_' + item.id,
+                    quantity: parseFloat(item.quantity),
+                    quantity_remaining: parseFloat(item.quantity),
+                    buying_price: parseFloat(item.buying_price || 0),
+                    selling_price: parseFloat(item.selling_price || 0),
+                    created_at: item.last_updated || new Date()
+                });
+            }
+
+            // Find the selling price of the first active (remaining > 0) load
+            const activeTier = tiers.find(t => parseFloat(t.quantity_remaining || 0) > 0);
+            const fifoSellingPrice = activeTier ? parseFloat(activeTier.selling_price || 0) : parseFloat(item.selling_price || 0);
+
             return {
                 ...item,
-                fifo_selling_price: parseFloat(item.selling_price || 0),
-                stock_price_tiers: [],
+                fifo_selling_price: fifoSellingPrice,
+                stock_price_tiers: tiers,
                 status: stockStatus
             };
         });
@@ -196,6 +225,67 @@ export const fetchInventoryItemDetails = async (req, res) => {
     }
 };
 
+const handleSupplierPaymentOnPurchase = async (supplierId, qty, price, itemName) => {
+    if (!supplierId || !qty || qty <= 0 || !price || price <= 0) return;
+    
+    try {
+        const cost = parseFloat(qty) * parseFloat(price);
+        
+        // Check if there is an existing PENDING payout request for this supplier
+        const { data: existingPayout, error: fetchError } = await supabase
+            .from('supplier_payout_requests')
+            .select('*')
+            .eq('supplier_id', supplierId)
+            .eq('status', 'PENDING')
+            .maybeSingle();
+            
+        if (fetchError) {
+            console.error('Error fetching existing payout request:', fetchError);
+            return;
+        }
+        
+        if (existingPayout) {
+            // Update existing payout request
+            const newAmount = parseFloat(existingPayout.amount || 0) + cost;
+            const newNotes = `${existingPayout.notes || ''}, Added ${qty}x ${itemName} (Rs. ${price} each)`.slice(0, 1000);
+            
+            const { error: updateError } = await supabase
+                .from('supplier_payout_requests')
+                .update({
+                    amount: newAmount,
+                    notes: newNotes,
+                    authorized_at: new Date().toISOString()
+                })
+                .eq('id', existingPayout.id);
+                
+            if (updateError) {
+                console.error('Error updating supplier payout request:', updateError);
+            }
+        } else {
+            // Create a new payout request
+            const payoutNumber = 'PAY-' + Date.now().toString().slice(-6) + Math.floor(1000 + Math.random() * 9000);
+            const notes = `Purchased ${qty}x ${itemName} (Rs. ${price} each)`;
+            
+            const { error: insertError } = await supabase
+                .from('supplier_payout_requests')
+                .insert([{
+                    payout_number: payoutNumber,
+                    supplier_id: supplierId,
+                    amount: cost,
+                    status: 'PENDING',
+                    notes: notes,
+                    authorized_at: new Date().toISOString()
+                }]);
+                
+            if (insertError) {
+                console.error('Error inserting supplier payout request:', insertError);
+            }
+        }
+    } catch (err) {
+        console.error('Unexpected error in handleSupplierPaymentOnPurchase:', err);
+    }
+};
+
 /**
  * Add new inventory item or add stock to existing.
  * @route POST /api/inventory
@@ -244,19 +334,50 @@ export const addInventoryItem = async (req, res) => {
         if (existing) {
             // Update existing
             itemId = existing.id;
-            startQty = existing.quantity;
-            const newQty = parseFloat(startQty) + parseFloat(quantity);
+            startQty = parseFloat(existing.quantity || 0);
+            const newQty = startQty + parseFloat(quantity || 0);
+            let tiers = [];
+            if (existing.supplier_info) {
+                try {
+                    tiers = JSON.parse(existing.supplier_info);
+                    if (!Array.isArray(tiers)) tiers = [];
+                } catch (e) {
+                    tiers = [];
+                }
+            }
 
-            
+            // Fallback for existing stock if tiers total remaining is less than current quantity
+            const sumTiersQty = tiers.reduce((sum, t) => sum + parseFloat(t.quantity_remaining || 0), 0);
+            if (parseFloat(existing.quantity || 0) > sumTiersQty) {
+                const fallbackQty = parseFloat(existing.quantity || 0) - sumTiersQty;
+                tiers.unshift({
+                    id: 'tier_fallback_' + Date.now(),
+                    quantity: fallbackQty,
+                    quantity_remaining: fallbackQty,
+                    buying_price: parseFloat(existing.buying_price || 0),
+                    selling_price: parseFloat(existing.selling_price || 0),
+                    created_at: existing.last_updated || new Date()
+                });
+            }
+
+            // Add the new load/tier
+            tiers.push({
+                id: 'tier_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+                quantity: parseFloat(quantity || 0),
+                quantity_remaining: parseFloat(quantity || 0),
+                buying_price: parseFloat(buying_price || existing.buying_price || 0) || 0,
+                selling_price: parseFloat(selling_price || existing.selling_price || 0) || 0,
+                created_at: new Date()
+            });
 
             const { error: updateError } = await supabase
                 .from('inventory')
                 .update({
                     quantity: newQty,
-                    
                     buying_price: buying_price || existing.buying_price || 0,
                     selling_price: selling_price || existing.selling_price || 0,
                     storage_location: storage_location || existing.storage_location || null,
+                    supplier_info: JSON.stringify(tiers),
                     last_updated: new Date()
                 })
                 .eq('id', itemId);
@@ -267,6 +388,15 @@ export const addInventoryItem = async (req, res) => {
             const finalItemCode = item_code && item_code.trim() !== ''
                 ? item_code
                 : 'HW' + Date.now().toString().slice(-6) + Math.floor(1000 + Math.random() * 9000);
+
+            const initialTier = {
+                id: 'tier_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+                quantity: parseFloat(quantity || 0),
+                quantity_remaining: parseFloat(quantity || 0),
+                buying_price: parseFloat(buying_price || 0),
+                selling_price: parseFloat(selling_price || 0),
+                created_at: new Date()
+            };
 
             const { data: newItem, error: createError } = await supabase
                 .from('inventory')
@@ -279,7 +409,7 @@ export const addInventoryItem = async (req, res) => {
                     reorder_level: reorder_level || 10,
                     selling_price: selling_price || 0,
                     buying_price: buying_price || 0,
-                    supplier_info,
+                    supplier_info: JSON.stringify([initialTier]),
                     supplier_id,
                     storage_location
                 }])
@@ -291,6 +421,12 @@ export const addInventoryItem = async (req, res) => {
         }
 
         // Log History
+        const notesObj = {
+            notes: existing ? 'Added stock to existing item' : 'Created new item',
+            buying_price: buying_price || (existing && existing.buying_price) || 0,
+            selling_price: selling_price || (existing && existing.selling_price) || 0
+        };
+
         await supabase.from('stock_history').insert([{
             inventory_id: itemId,
             action: 'ADDED',
@@ -299,8 +435,18 @@ export const addInventoryItem = async (req, res) => {
             new_quantity: parseFloat(startQty) + parseFloat(quantity),
             method: method || 'MANUAL',
             admin_name: admin_name || 'Admin',
-            notes: existing ? 'Added stock to existing item' : 'Created new item'
+            notes: JSON.stringify(notesObj)
         }]);
+
+        const finalSupplierId = supplier_id || (existing && existing.supplier_id);
+        if (finalSupplierId) {
+            await handleSupplierPaymentOnPurchase(
+                finalSupplierId, 
+                quantity, 
+                buying_price || (existing && existing.buying_price) || 0, 
+                ingredient_name
+            );
+        }
 
         res.status(201).json({ message: 'Inventory updated successfully', id: itemId });
 
@@ -347,6 +493,40 @@ export const receiveInventoryStock = async (req, res) => {
         const previousQty = parseFloat(existing.quantity || 0);
         const newQty = previousQty + receivedQty;
 
+        let tiers = [];
+        if (existing.supplier_info) {
+            try {
+                tiers = JSON.parse(existing.supplier_info);
+                if (!Array.isArray(tiers)) tiers = [];
+            } catch (e) {
+                tiers = [];
+            }
+        }
+
+        // Fallback for existing stock if tiers total remaining is less than current quantity
+        const sumTiersQty = tiers.reduce((sum, t) => sum + parseFloat(t.quantity_remaining || 0), 0);
+        if (previousQty > sumTiersQty) {
+            const fallbackQty = previousQty - sumTiersQty;
+            tiers.unshift({
+                id: 'tier_fallback_' + Date.now(),
+                quantity: fallbackQty,
+                quantity_remaining: fallbackQty,
+                buying_price: parseFloat(existing.buying_price || 0),
+                selling_price: parseFloat(existing.selling_price || 0),
+                created_at: existing.last_updated || new Date()
+            });
+        }
+
+        // Add the new load/tier
+        tiers.push({
+            id: 'tier_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+            quantity: receivedQty,
+            quantity_remaining: receivedQty,
+            buying_price: parseFloat(buying_price || existing.buying_price || 0) || 0,
+            selling_price: parseFloat(selling_price || existing.selling_price || 0) || 0,
+            created_at: new Date()
+        });
+
         const updateData = {
             quantity: newQty,
             batch_id,
@@ -354,6 +534,7 @@ export const receiveInventoryStock = async (req, res) => {
             selling_price: selling_price || existing.selling_price || 0,
             storage_location: storage_location || existing.storage_location || null,
             supplier_id: existing.supplier_id || null,
+            supplier_info: JSON.stringify(tiers),
             last_updated: new Date()
         };
 
@@ -366,6 +547,12 @@ export const receiveInventoryStock = async (req, res) => {
 
         if (updateError) throw updateError;
 
+        const notesObj = {
+            notes: notes || 'Received new supplier order',
+            buying_price: buying_price || existing.buying_price || 0,
+            selling_price: selling_price || existing.selling_price || 0
+        };
+
         await supabase.from('stock_history').insert([{
             inventory_id: id,
             action: 'ADDED',
@@ -374,10 +561,20 @@ export const receiveInventoryStock = async (req, res) => {
             new_quantity: newQty,
             method: method || 'SUPPLIER',
             admin_name: admin_name || 'Admin',
-            notes: notes || 'Received new supplier order'
+            notes: JSON.stringify(notesObj)
         }]);
 
         await inventoryService.updateInventoryQuantity(id, newQty);
+
+        const finalSupplierId = existing.supplier_id;
+        if (finalSupplierId) {
+            await handleSupplierPaymentOnPurchase(
+                finalSupplierId, 
+                receivedQty, 
+                buying_price || existing.buying_price || 0, 
+                existing.ingredient_name
+            );
+        }
 
         res.status(200).json({
             message: 'Inventory stock received successfully.',
@@ -539,6 +736,303 @@ export const completePayoutRequest = async (req, res) => {
     } catch (err) {
         console.error('Error completing payout:', err);
         res.status(500).json({ message: 'Internal server error.' });
+    }
+};
+
+/**
+ * Emulated batches GET endpoint using supplier_payout_requests.
+ * @route GET /api/inventory/batches
+ */
+export const fetchEmulatedBatches = async (req, res) => {
+    try {
+        const { data: payouts, error: fetchError } = await supabase
+            .from('supplier_payout_requests')
+            .select('*, suppliers(supplier_name)')
+            .order('authorized_at', { ascending: false });
+
+        if (fetchError) throw fetchError;
+
+        const emulatedBatches = (payouts || []).map(p => {
+            const amount = parseFloat(p.amount || 0);
+
+            // Parse partial payments from notes
+            let paid_amount = 0;
+            let notesTextForParsing = p.notes || '';
+            if (p.notes && p.notes.startsWith('{')) {
+                try {
+                    const parsed = JSON.parse(p.notes);
+                    paid_amount = parseFloat(parsed.paid_amount || 0);
+                    notesTextForParsing = parsed.legacy_notes || '';
+                } catch (e) {
+                    console.error('Failed to parse notes in fetchEmulatedBatches:', e);
+                }
+            }
+
+            const isCompleted = p.status === 'COMPLETED';
+            if (isCompleted && paid_amount === 0) {
+                paid_amount = amount;
+            }
+
+            const remaining_balance = Math.max(0, amount - paid_amount);
+            const isPartial = paid_amount > 0 && remaining_balance > 0;
+            const paymentStatus = remaining_balance <= 0 ? 'PAID' : (isPartial ? 'PARTIAL' : 'UNPAID');
+
+            // Parse items from notes
+            const parseNotesToItems = (notes) => {
+                if (!notes) return [];
+                const regex = /(?:Purchased|Added)\s+(\d+(?:\.\d+)?)\s*x\s+(.*?)\s*\(Rs\.\s*(\d+(?:\.\d+)?)\s*each\)/gi;
+                const items = [];
+                let match;
+                while ((match = regex.exec(notes)) !== null) {
+                    const qty = parseFloat(match[1]);
+                    const name = match[2].trim();
+                    const price = parseFloat(match[3]);
+                    items.push({
+                        inventory_id: name,
+                        buying_price_at_time: price,
+                        quantity_added: qty,
+                        inventory: {
+                            ingredient_name: name,
+                            item_code: ''
+                        }
+                    });
+                }
+                return items;
+            };
+
+            return {
+                id: p.id,
+                db_id: p.id,
+                batch_number: p.payout_number,
+                supplier_id: p.supplier_id,
+                net_value: amount,
+                paid_amount: paid_amount,
+                remaining_balance: remaining_balance,
+                batch_date: p.authorized_at,
+                payment_status: paymentStatus,
+                status: remaining_balance <= 0 ? 'COMPLETED' : 'PENDING',
+                suppliers: {
+                    id: p.supplier_id,
+                    supplier_name: p.suppliers?.supplier_name || 'Unknown Supplier'
+                },
+                notes: p.notes,
+                inventory_batch_items: parseNotesToItems(notesTextForParsing)
+            };
+        });
+
+        res.status(200).json(emulatedBatches);
+    } catch (err) {
+        console.error('Error fetching emulated batches:', err);
+        res.status(500).json({ message: 'Internal server error while fetching payment batches.' });
+    }
+};
+
+/**
+ * Emulated batch POST endpoint to handle replacement/new batches.
+ * @route POST /api/inventory/batches
+ */
+export const createEmulatedBatch = async (req, res) => {
+    try {
+        const { batch_number, supplier_id, net_value, notes } = req.body;
+
+        const payoutNumber = batch_number || 'PAY-' + Date.now().toString().slice(-6) + Math.floor(1000 + Math.random() * 9000);
+        const amount = parseFloat(net_value || 0);
+
+        const { data, error } = await supabase
+            .from('supplier_payout_requests')
+            .insert([{
+                payout_number: payoutNumber,
+                supplier_id,
+                amount,
+                status: amount > 0 ? 'PENDING' : 'COMPLETED',
+                notes: notes || 'Emulated batch creation',
+                authorized_at: new Date().toISOString()
+            }])
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        res.status(201).json({
+            id: data.id,
+            batch_number: data.payout_number,
+            supplier_id: data.supplier_id,
+            net_value: parseFloat(data.amount || 0),
+            status: data.status
+        });
+    } catch (err) {
+        console.error('Error creating emulated batch:', err);
+        res.status(500).json({ message: 'Internal server error creating payment batch.' });
+    }
+};
+
+/**
+ * Emulated batch pay endpoint.
+ * @route POST /api/inventory/batches/:id/pay
+ */
+export const payEmulatedBatch = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { amount, method, reference, notes } = req.body;
+
+        const { data: payout, error: getError } = await supabase
+            .from('supplier_payout_requests')
+            .select('*, suppliers(supplier_name)')
+            .eq('id', id)
+            .single();
+
+        if (getError || !payout) {
+            return res.status(404).json({ message: 'Payment record not found.' });
+        }
+
+        const payoutTotalAmount = parseFloat(payout.amount || 0);
+        const newPaymentAmount = parseFloat(amount || payoutTotalAmount);
+
+        let currentPaid = 0;
+        let previousPayments = [];
+        let legacyNotes = '';
+
+        if (payout.notes) {
+            if (payout.notes.startsWith('{')) {
+                try {
+                    const parsed = JSON.parse(payout.notes);
+                    currentPaid = parseFloat(parsed.paid_amount || 0);
+                    previousPayments = parsed.payments || [];
+                    legacyNotes = parsed.legacy_notes || '';
+                } catch (e) {
+                    legacyNotes = payout.notes;
+                }
+            } else {
+                legacyNotes = payout.notes;
+            }
+        }
+
+        const newPaidAmount = currentPaid + newPaymentAmount;
+        const isFullyPaid = newPaidAmount >= payoutTotalAmount;
+
+        const paymentRecord = {
+            amount: newPaymentAmount,
+            method: method || 'Cash',
+            reference: reference || 'N/A',
+            notes: notes || '',
+            date: new Date().toISOString()
+        };
+
+        const updatedPayments = [...previousPayments, paymentRecord];
+
+        const notesJson = JSON.stringify({
+            paid_amount: newPaidAmount,
+            payments: updatedPayments,
+            legacy_notes: legacyNotes
+        });
+
+        const updates = {
+            status: isFullyPaid ? 'COMPLETED' : 'PENDING',
+            completed_at: isFullyPaid ? new Date().toISOString() : null,
+            payment_method: method || 'Cash',
+            notes: notesJson
+        };
+
+        const { data, error } = await supabase
+            .from('supplier_payout_requests')
+            .update(updates)
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        // If cashier logged in, automatically record as cash out
+        const { role, username, userId } = req.user || {};
+        if (role === 'CASHIER') {
+            let cashierName = username;
+            if (!cashierName && userId) {
+                const { data: userData } = await supabase
+                    .from('users')
+                    .select('username')
+                    .eq('id', userId)
+                    .single();
+                if (userData) cashierName = userData.username;
+            }
+
+            if (cashierName) {
+                const { data: activeShift, error: shiftError } = await supabase
+                    .from('cash_shifts')
+                    .select('shift_id')
+                    .eq('cashier_name', cashierName)
+                    .in('status', ['OPEN', 'REPORT_SUBMITTED'])
+                    .maybeSingle();
+
+                if (shiftError) {
+                    console.error('[PAYMENT] Error fetching active shift:', shiftError);
+                }
+
+                if (activeShift) {
+                    const supplierName = payout.suppliers?.supplier_name || 'Supplier';
+                    const reasonText = `Supplier Payment: ${supplierName} (Ref: ${payout.payout_number} via ${method || 'Cash'})`;
+                    const { error: moveError } = await supabase
+                        .from('cash_movements')
+                        .insert({
+                            shift_id: activeShift.shift_id,
+                            type: 'cash_out',
+                            amount: newPaymentAmount,
+                            reason: reasonText
+                        });
+                    
+                    if (moveError) {
+                        console.error('[PAYMENT] Error recording automatic cash out movement:', moveError);
+                    } else {
+                        console.log('[PAYMENT] Automatic cash out movement recorded successfully.');
+                    }
+                } else {
+                    console.log('[PAYMENT] No active shift found for cashier, skipped automatic cash out.');
+                }
+            }
+        }
+
+        res.status(200).json({
+            message: isFullyPaid ? 'Payment settled successfully.' : 'Partial payment recorded successfully.',
+            payout_request: {
+                payout_number: data.payout_number,
+                remaining_balance: Math.max(0, payoutTotalAmount - newPaidAmount)
+            }
+        });
+    } catch (err) {
+        console.error('Error settling payment:', err);
+        res.status(500).json({ message: 'Internal server error while settling payment.' });
+    }
+};
+
+/**
+ * Emulated batch update (PUT) endpoint.
+ * @route PUT /api/inventory/batches/:id
+ */
+export const updateEmulatedBatch = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { net_value, notes } = req.body;
+
+        const updates = {};
+        if (net_value !== undefined) updates.amount = parseFloat(net_value);
+        if (notes !== undefined) updates.notes = notes;
+
+        const { data, error } = await supabase
+            .from('supplier_payout_requests')
+            .update(updates)
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        res.status(200).json({
+            id: data.id,
+            batch_number: data.payout_number,
+            net_value: parseFloat(data.amount)
+        });
+    } catch (err) {
+        console.error('Error updating payment batch:', err);
+        res.status(500).json({ message: 'Internal server error updating payment batch.' });
     }
 };
 

@@ -158,7 +158,7 @@ const DashboardPage = ({ onNavigate }) => {
                                 onClick={() => onNavigate('cashier-new-order')}
                                 className="cashier-welcome-btn"
                             >
-                                POS Sales
+                                Create Order
                             </button>
                             <button
                                 type="button"

@@ -10,7 +10,11 @@ import {
     createInventoryCategory,
     deleteInventoryCategory,
     fetchPayoutRequests,
-    completePayoutRequest
+    completePayoutRequest,
+    fetchEmulatedBatches,
+    createEmulatedBatch,
+    payEmulatedBatch,
+    updateEmulatedBatch
 } from '../controllers/inventoryController.js';
 import {
     fetchSupplierReturns as fetchReturns,
@@ -27,6 +31,12 @@ const router = express.Router();
 router.get('/categories', protect, authorize('ADMIN', 'CASHIER'), fetchInventoryCategories);
 router.post('/categories', protect, authorize('ADMIN'), createInventoryCategory);
 router.delete('/categories/:id', protect, authorize('ADMIN'), deleteInventoryCategory);
+
+// Emulated Batch/Payout Routes (Must be before /:id to not conflict)
+router.get('/batches', protect, authorize('ADMIN', 'CASHIER'), fetchEmulatedBatches);
+router.post('/batches', protect, authorize('ADMIN'), createEmulatedBatch);
+router.post('/batches/:id/pay', protect, authorize('ADMIN', 'CASHIER'), payEmulatedBatch);
+router.put('/batches/:id', protect, authorize('ADMIN'), updateEmulatedBatch);
 
 // Payout Routes
 router.get('/payout-requests', protect, authorize('ADMIN', 'CASHIER'), fetchPayoutRequests);

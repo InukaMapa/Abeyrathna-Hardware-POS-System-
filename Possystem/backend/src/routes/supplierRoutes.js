@@ -14,7 +14,7 @@ const router = express.Router();
 /**
  * Supplier Routes
  */
-router.get('/', protect, authorize('ADMIN'), fetchSuppliers);
+router.get('/', protect, authorize('ADMIN', 'CASHIER'), fetchSuppliers);
 router.post('/', protect, authorize('ADMIN'), addSupplier);
 router.get('/:id/inventory-value', protect, authorize('ADMIN'), getSupplierInventoryValue);
 router.put('/:id', protect, authorize('ADMIN'), updateSupplier);

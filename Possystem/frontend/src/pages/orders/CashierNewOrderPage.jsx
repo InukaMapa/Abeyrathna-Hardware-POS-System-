@@ -13,17 +13,38 @@ const getAuthHeaders = () => {
     return h;
 };
 
-const getPriceTiers = (item) => (
-    Array.isArray(item?.priceTiers) && item.priceTiers.length > 0
+const getPriceTiers = (item) => {
+    const tiers = Array.isArray(item?.priceTiers) && item.priceTiers.length > 0
         ? item.priceTiers
         : [{
+            id: 'tier_init_' + item?.id,
             quantity_remaining: item?.quantity || 0,
             selling_price: item?.price || 0,
-            buying_price: item?.buyingPrice || 0
-        }]
-);
+            buying_price: item?.buyingPrice || 0,
+            created_at: new Date()
+        }];
+    
+    // Ensure all tiers have an id
+    return tiers.map((t, idx) => ({
+        ...t,
+        id: t.id || `tier_${idx}_${item?.id}`
+    }));
+};
+
+const getAvailableTiers = (item) => {
+    return getPriceTiers(item).filter(t => parseFloat(t.quantity_remaining || 0) > 0);
+};
 
 const calculateTieredLine = (item, quantity) => {
+    // If a specific tier batch is selected for this cart item, use its price directly (short circuit FIFO)
+    if (item.batchId) {
+        const price = parseFloat(item.price || 0);
+        return {
+            total: price * quantity,
+            allocations: [{ quantity, price }]
+        };
+    }
+
     let remaining = quantity;
     let total = 0;
     const allocations = [];
@@ -72,17 +93,31 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
     const [checkingShift, setCheckingShift] = useState(true);
     const [hasOpenShift, setHasOpenShift] = useState(false);
 
+    /* ── multiple price modal state ── */
+    const [priceModalItem, setPriceModalItem] = useState(null);
+    const [selectedTierId, setSelectedTierId] = useState(null);
+    const [modalQuantity, setModalQuantity] = useState(1);
+
     // Initialize cart from editOrder if present
     useEffect(() => {
         if (editOrder && editOrder.order_items) {
-            const initialCart = editOrder.order_items.map(item => ({
-                id: item.item_id,
-                name: item.item_name,
-                price: parseFloat(item.item_price) || 0,
-                buyingPrice: parseFloat(item.buying_price || item.buying_price_at_time || 0),
-                // image is not in order_items but will be merged or handled
-                quantity: item.quantity
-            }));
+            const initialCart = editOrder.order_items.map(item => {
+                let batchId = null;
+                if (Array.isArray(item.selected_variants)) {
+                    const batchVariant = item.selected_variants.find(v => v.type === 'STOCK_BATCH');
+                    if (batchVariant) {
+                        batchId = batchVariant.batch_item_id;
+                    }
+                }
+                return {
+                    id: item.item_id,
+                    name: item.item_name,
+                    price: parseFloat(item.item_price) || 0,
+                    buyingPrice: parseFloat(item.buying_price || item.buying_price_at_time || 0),
+                    quantity: item.quantity,
+                    batchId: batchId
+                };
+            });
             setCartItems(initialCart);
         }
     }, [editOrder]);
@@ -175,39 +210,62 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
     }, [inventoryItems, selectedCategory, searchQuery]);
 
     /* ── cart helpers ── */
-    const addToCart = (item) => {
+    const addToCartWithTier = (item, tier, qty = 1) => {
         setCartItems(prev => {
-            const existing = prev.find(c => c.id === item.id);
-            if (existing) {
-                return prev.map(c =>
-                    c.id === item.id
-                        ? { ...c, quantity: c.quantity + 1 }
+            const existingIndex = prev.findIndex(c => c.id === item.id && c.batchId === tier.id);
+            if (existingIndex > -1) {
+                return prev.map((c, index) =>
+                    index === existingIndex
+                        ? { ...c, quantity: c.quantity + qty }
                         : c
                 );
             }
             return [...prev, {
                 id: item.id,
                 name: item.name,
-                price: parseFloat(item.price) || 0,
-                buyingPrice: parseFloat(item.buyingPrice || 0),
+                price: parseFloat(tier.selling_price || item.price || 0),
+                buyingPrice: parseFloat(tier.buying_price || item.buyingPrice || 0),
                 priceTiers: item.priceTiers || [],
                 image: item.image,
-                quantity: 1,
+                quantity: qty,
+                batchId: tier.id
             }];
         });
     };
 
-    const changeQty = (id, delta) => {
+    const changeQty = (id, batchId, delta) => {
         setCartItems(prev => {
-            const updated = prev.map(c =>
-                c.id === id ? { ...c, quantity: c.quantity + delta } : c
-            ).filter(c => c.quantity > 0);
+            const updated = prev.map(c => {
+                if (c.id === id && c.batchId === batchId) {
+                    return { ...c, quantity: c.quantity + delta };
+                }
+                return c;
+            }).filter(c => c.quantity > 0);
             return updated;
         });
     };
 
-    const removeFromCart = (id) =>
-        setCartItems(prev => prev.filter(c => c.id !== id));
+    const removeFromCart = (id, batchId) =>
+        setCartItems(prev => prev.filter(c => !(c.id === id && c.batchId === batchId)));
+
+    const handleItemClick = (item) => {
+        const availableTiers = getAvailableTiers(item);
+        if (availableTiers.length > 1) {
+            setPriceModalItem(item);
+            setSelectedTierId(availableTiers[0].id);
+            setModalQuantity(1);
+        } else if (availableTiers.length === 1) {
+            addToCartWithTier(item, availableTiers[0], 1);
+        } else {
+            const fallbackTier = {
+                id: 'tier_init_' + item.id,
+                selling_price: item.price,
+                buying_price: item.buyingPrice,
+                quantity_remaining: 0
+            };
+            addToCartWithTier(item, fallbackTier, 1);
+        }
+    };
 
     const cartTotal = cartItems.reduce((s, c) => s + calculateTieredLine(c, c.quantity).total, 0);
     const cartCount = cartItems.reduce((s, c) => s + c.quantity, 0);
@@ -230,7 +288,7 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
                 return;
             }
 
-            addToCart(foundItem);
+            handleItemClick(foundItem);
             setBarcodeInput('');
             setShowCart(true);
         } else {
@@ -293,6 +351,7 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
                 items: cartItems.map(c => ({
                     id: c.id,
                     quantity: c.quantity,
+                    batchId: c.batchId,
                     variants: [],
                 })),
             };
@@ -311,12 +370,13 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
                 }
 
                 alert(`✅ Order #${editOrder.order_id} updated successfully!`);
-                onNavigate('order-details', { orderId: editOrder.order_id });
+                onNavigate('bill-open', { orderId: editOrder.order_id });
             } else {
                 // Create new order
                 const res = await createOrder(orderData);
-                alert(`✅ Order #${res.id || res.orderId || ''} created successfully!`);
-                onNavigate('orders');
+                const orderId = res.id || res.orderId;
+                alert(`✅ Order #${orderId || ''} created successfully!`);
+                onNavigate('bill-open', { orderId });
             }
         } catch (err) {
             console.error('Order logic failed:', err);
@@ -383,7 +443,7 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
                         <button
                             onClick={() => {
                                 if (editOrder) {
-                                    onNavigate('order-details', { orderId: editOrder.order_id });
+                                    onNavigate('bill-open', { orderId: editOrder.order_id });
                                 } else {
                                     onNavigate('orders');
                                 }
@@ -530,12 +590,14 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
                                     ) : (
                                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-4">
                                             {filteredItems.map(item => {
-                                                const inCart = cartItems.find(c => c.id === item.id);
+                                                const itemCartRows = cartItems.filter(c => c.id === item.id);
+                                                const totalCartQty = itemCartRows.reduce((sum, c) => sum + c.quantity, 0);
+                                                const inCart = itemCartRows.length > 0;
                                                 return (
                                                     <div
                                                         key={item.id}
                                                         id={`item-${item.id}`}
-                                                        onClick={() => addToCart(item)}
+                                                        onClick={() => handleItemClick(item)}
                                                         className={`cashier-order-item-card relative rounded-2xl overflow-hidden cursor-pointer group transition-all duration-200 border ${inCart
                                                             ? 'border-red-600 ring-2 ring-red-600/30 shadow-lg shadow-red-600/10'
                                                             : 'border-[#333] hover:border-red-600/40'
@@ -587,7 +649,7 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
                                                         {/* In-cart badge */}
                                                         {inCart && (
                                                             <div className="absolute top-2 right-2 bg-red-600 text-white text-[10px] font-black rounded-full w-6 h-6 flex items-center justify-center shadow-lg">
-                                                                {inCart.quantity}
+                                                                {totalCartQty}
                                                             </div>
                                                         )}
 
@@ -753,7 +815,7 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
                                     {cartItems.map(item => {
                                         const tieredLine = calculateTieredLine(item, item.quantity);
                                         return (
-                                        <div key={item.id} className="bg-[#161616] border border-[#2a2a2a] rounded-xl p-3 flex gap-3">
+                                        <div key={`${item.id}-${item.batchId}`} className="bg-[#161616] border border-[#2a2a2a] rounded-xl p-3 flex gap-3">
                                             {/* Thumbnail */}
                                             <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 bg-[#252525]">
                                                 {item.image
@@ -770,6 +832,11 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
                                             {/* Info */}
                                             <div className="flex-1 min-w-0">
                                                 <p className="font-bold text-white text-xs leading-tight truncate mb-1">{item.name}</p>
+                                                {item.batchId && (
+                                                    <p className="text-[9px] text-[#ffb74d] font-bold uppercase tracking-wider mb-1">
+                                                        Batch: {item.batchId.startsWith('tier_init_') ? 'Initial Stock' : item.batchId.slice(-6).toUpperCase()}
+                                                    </p>
+                                                )}
                                                 <p className="text-[10px] text-gray-500 font-medium mb-1">
                                                     Buying price: Rs. {(parseFloat(item.buyingPrice || 0)).toFixed(2)}
                                                 </p>
@@ -790,17 +857,17 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
                                                 <div className="flex items-center gap-2">
                                                     <div className="flex items-center gap-1 bg-[#0d0d0d] rounded-lg border border-[#333] p-0.5">
                                                         <button
-                                                            onClick={() => changeQty(item.id, -1)}
+                                                            onClick={() => changeQty(item.id, item.batchId, -1)}
                                                             className="w-6 h-6 flex items-center justify-center rounded text-gray-400 hover:text-white hover:bg-[#333] transition-all text-sm font-bold"
                                                         >−</button>
                                                         <span className="w-6 text-center text-xs font-black text-white">{item.quantity}</span>
                                                         <button
-                                                            onClick={() => changeQty(item.id, +1)}
+                                                            onClick={() => changeQty(item.id, item.batchId, +1)}
                                                             className="w-6 h-6 flex items-center justify-center rounded text-gray-400 hover:text-white hover:bg-[#333] transition-all text-sm font-bold"
                                                         >+</button>
                                                     </div>
                                                     <button
-                                                        onClick={() => removeFromCart(item.id)}
+                                                        onClick={() => removeFromCart(item.id, item.batchId)}
                                                         className="ml-auto p-1.5 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white hover:shadow-lg hover:shadow-red-500/30 rounded-lg transition-all active:scale-95"
                                                         title="Remove"
                                                     >
@@ -882,6 +949,335 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
 
                 </div>
             </div>
+
+            {priceModalItem && (
+                <div style={{
+                    position: 'fixed',
+                    inset: 0,
+                    zIndex: 1000,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+                    padding: '16px',
+                    backdropFilter: 'blur(3px)',
+                    animation: 'fadeIn 0.2s ease-out'
+                }}>
+                    <div style={{
+                        backgroundColor: '#ffffff',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '20px',
+                        width: '100%',
+                        maxWidth: '480px',
+                        overflow: 'hidden',
+                        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        fontFamily: 'system-ui, -apple-system, sans-serif'
+                    }}>
+                        {/* Header */}
+                        <div style={{
+                            padding: '20px 24px',
+                            borderBottom: '1px solid #f1f5f9',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            backgroundColor: '#ffffff'
+                        }}>
+                            <div>
+                                <h3 style={{
+                                    margin: 0,
+                                    fontSize: '1rem',
+                                    fontWeight: 500,
+                                    color: '#0f172a',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.05em'
+                                }}>
+                                    Select Price Tier
+                                </h3>
+                                <p style={{
+                                    margin: '4px 0 0',
+                                    fontSize: '0.75rem',
+                                    fontWeight: 400,
+                                    color: '#ff9800',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.05em'
+                                }}>
+                                    {priceModalItem.name}
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => setPriceModalItem(null)}
+                                style={{
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    width: '30px',
+                                    height: '30px',
+                                    borderRadius: '50%',
+                                    border: '1px solid #e2e8f0',
+                                    backgroundColor: '#ffffff',
+                                    color: '#64748b',
+                                    padding: 0,
+                                    transition: 'all 0.15s ease'
+                                }}
+                            >
+                                <svg style={{ width: '16px', height: '16px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        {/* Content */}
+                        <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                            <p style={{
+                                margin: 0,
+                                fontSize: '0.78rem',
+                                color: '#64748b',
+                                lineHeight: 1.5,
+                                fontWeight: 400
+                            }}>
+                                This item has multiple pricing options available in stock. Please select the correct batch to add to cart:
+                            </p>
+
+                            <div style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '8px',
+                                maxHeight: '200px',
+                                overflowY: 'auto',
+                                paddingRight: '2px'
+                            }}>
+                                {getAvailableTiers(priceModalItem).map(tier => {
+                                    const isSelected = selectedTierId === tier.id;
+                                    return (
+                                        <div
+                                            key={tier.id}
+                                            onClick={() => setSelectedTierId(tier.id)}
+                                            style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'space-between',
+                                                padding: '12px 16px',
+                                                border: isSelected ? '1px solid #94a3b8' : '1px solid #e2e8f0',
+                                                borderRadius: '12px',
+                                                cursor: 'pointer',
+                                                backgroundColor: isSelected ? '#f8fafc' : '#ffffff',
+                                                transition: 'all 0.15s ease',
+                                                boxShadow: isSelected ? '0 1px 3px rgba(0,0,0,0.02)' : 'none'
+                                            }}
+                                        >
+                                            <div style={{ display: 'flex', alignItems: 'center' }}>
+                                                <div style={{
+                                                    width: '16px',
+                                                    height: '16px',
+                                                    borderRadius: '50%',
+                                                    border: '1px solid #cbd5e1',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    marginRight: '12px',
+                                                    backgroundColor: '#ffffff'
+                                                }}>
+                                                    {isSelected && (
+                                                        <div style={{
+                                                            width: '8px',
+                                                            height: '8px',
+                                                            borderRadius: '50%',
+                                                            backgroundColor: '#475569'
+                                                        }} />
+                                                    )}
+                                                </div>
+                                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                    <p style={{
+                                                        fontSize: '0.85rem',
+                                                        fontWeight: 400,
+                                                        color: '#0f172a',
+                                                        margin: 0
+                                                    }}>
+                                                        Rs. {parseFloat(tier.selling_price || 0).toFixed(2)}
+                                                    </p>
+                                                    <p style={{
+                                                        fontSize: '0.7rem',
+                                                        color: '#64748b',
+                                                        margin: '2px 0 0',
+                                                        fontWeight: 400
+                                                    }}>
+                                                        Buying Price: Rs. {parseFloat(tier.buying_price || 0).toFixed(2)}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div style={{ textAlign: 'right' }}>
+                                                <span style={{
+                                                    fontSize: '0.72rem',
+                                                    fontWeight: 400,
+                                                    color: '#475569',
+                                                    backgroundColor: '#f1f5f9',
+                                                    border: '1px solid #e2e8f0',
+                                                    padding: '3px 8px',
+                                                    borderRadius: '9999px'
+                                                }}>
+                                                    {tier.quantity_remaining} {priceModalItem.unit || 'pcs'} left
+                                                </span>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            {/* Quantity Selector */}
+                            <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                padding: '12px 16px',
+                                backgroundColor: '#f8fafc',
+                                border: '1px solid #e2e8f0',
+                                borderRadius: '12px',
+                                marginTop: '8px'
+                            }}>
+                                <span style={{
+                                    fontSize: '0.75rem',
+                                    fontWeight: 400,
+                                    color: '#475569',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.05em'
+                                }}>
+                                    Quantity
+                                </span>
+                                <div style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    border: '1px solid #e2e8f0',
+                                    borderRadius: '10px',
+                                    padding: '2px',
+                                    backgroundColor: '#ffffff'
+                                }}>
+                                    <button
+                                        type="button"
+                                        onClick={() => setModalQuantity(q => Math.max(1, q - 1))}
+                                        style={{
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            width: '26px',
+                                            height: '26px',
+                                            borderRadius: '8px',
+                                            border: '1px solid #e2e8f0',
+                                            backgroundColor: '#ffffff',
+                                            color: '#64748b',
+                                            fontSize: '0.9rem',
+                                            padding: 0,
+                                            lineHeight: 1
+                                        }}
+                                    >
+                                        −
+                                    </button>
+                                    <span style={{
+                                        width: '28px',
+                                        textAlign: 'center',
+                                        fontSize: '0.8rem',
+                                        fontWeight: 400,
+                                        color: '#0f172a'
+                                    }}>
+                                        {modalQuantity}
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const activeTier = getAvailableTiers(priceModalItem).find(t => t.id === selectedTierId);
+                                            const maxQty = activeTier ? parseFloat(activeTier.quantity_remaining || 0) : 9999;
+                                            setModalQuantity(q => Math.min(maxQty, q + 1));
+                                        }}
+                                        style={{
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            width: '26px',
+                                            height: '26px',
+                                            borderRadius: '8px',
+                                            border: '1px solid #e2e8f0',
+                                            backgroundColor: '#ffffff',
+                                            color: '#64748b',
+                                            fontSize: '0.9rem',
+                                            padding: 0,
+                                            lineHeight: 1
+                                        }}
+                                    >
+                                        +
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div style={{
+                            padding: '16px 24px',
+                            backgroundColor: '#f8fafc',
+                            borderTop: '1px solid #e2e8f0',
+                            display: 'flex',
+                            justifyContent: 'flex-end',
+                            gap: '10px'
+                        }}>
+                            <button
+                                type="button"
+                                onClick={() => setPriceModalItem(null)}
+                                style={{
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    padding: '8px 16px',
+                                    border: '1px solid #e2e8f0',
+                                    borderRadius: '8px',
+                                    backgroundColor: '#ffffff',
+                                    color: '#475569',
+                                    fontSize: '0.72rem',
+                                    fontWeight: 400,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.05em',
+                                    transition: 'all 0.15s ease'
+                                }}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    const tier = getAvailableTiers(priceModalItem).find(t => t.id === selectedTierId);
+                                    if (tier) {
+                                        addToCartWithTier(priceModalItem, tier, modalQuantity);
+                                        setPriceModalItem(null);
+                                    }
+                                }}
+                                style={{
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    padding: '8px 16px',
+                                    border: '1px solid #94a3b8',
+                                    borderRadius: '8px',
+                                    backgroundColor: '#ffffff',
+                                    color: '#0f172a',
+                                    fontSize: '0.72rem',
+                                    fontWeight: 400,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.05em',
+                                    transition: 'all 0.15s ease',
+                                    boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
+                                }}
+                            >
+                                Add to Cart
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </DashboardLayout>
     );
 };
