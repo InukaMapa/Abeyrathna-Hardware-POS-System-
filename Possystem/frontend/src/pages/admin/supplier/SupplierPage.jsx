@@ -2,19 +2,21 @@ import React, { useRef, useState, useEffect } from 'react';
 import axios from 'axios';
 import DashboardLayout from '../../../components/layout/DashboardLayout';
 import AddSupplierModal from './AddSupplierModal';
-// import SupplierProfileModal from './SupplierProfileModal'; // To be created
+import AddInventoryModal from '../inventory/AddInventoryModal';
+import ReceiveInventoryModal from '../inventory/ReceiveInventoryModal';
 import {
-    Plus, Search, User, Mail, Phone, Building, Trash2, Edit,
+    Plus, Search, User, Mail, Phone, Building, Edit,
     FileText, CreditCard, RefreshCcw, LayoutDashboard,
     TrendingUp, AlertCircle, CheckCircle2, MoreHorizontal,
     Eye, Filter, ArrowUpRight, ArrowLeft, ArrowRight, DollarSign, Package, Printer, MapPin, X,
-    Receipt, Landmark, Activity, Download, Save
+    Receipt, Landmark, Activity, Download, Save, PackagePlus,
+    ToggleLeft, ToggleRight
 } from 'lucide-react';
 import { API_BASE_URL, ENDPOINTS } from '../../../config/api';
 import '../../../styles/dashboard.css';
 import { deleteSupplier, updateSupplier } from '../../../services/supplierService';
 
-const SupplierPage = ({ onNavigate, focusSection }) => {
+const SupplierPage = ({ onNavigate, focusSection, supplierParams }) => {
     const [suppliers, setSuppliers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
@@ -32,6 +34,12 @@ const [paymentStats, setPaymentStats] = useState({ totalItems: 0, totalInvoiced:
     const [selectedTransaction, setSelectedTransaction] = useState(null);
     const [profileBatches, setProfileBatches] = useState([]);
     const [profileReturns, setProfileReturns] = useState([]);
+    const [profileProducts, setProfileProducts] = useState([]);
+    const [productSearchQuery, setProductSearchQuery] = useState('');
+    const [loadingProducts, setLoadingProducts] = useState(false);
+    const [categories, setCategories] = useState([]);
+    const [isAddProductModalOpen, setAddProductModalOpen] = useState(false);
+    const [receivingItem, setReceivingItem] = useState(null);
     const [batchItems, setBatchItems] = useState({});
     const [isGlobalPaymentsOpen, setGlobalPaymentsOpen] = useState(false);
     const [isEditingBankDetails, setIsEditingBankDetails] = useState(false);
@@ -55,6 +63,7 @@ const [paymentStats, setPaymentStats] = useState({ totalItems: 0, totalInvoiced:
         } else {
             document.body.classList.remove('modal-open');
         }
+        setProductSearchQuery('');
     }, [selectedSupplier]);
 
     const fetchBatches = async () => {
@@ -212,28 +221,47 @@ const [paymentStats, setPaymentStats] = useState({ totalItems: 0, totalInvoiced:
         supplierBatches.forEach(batch => {
             // Invoice entry (Purchase)
             entries.push({
-                id: batch.id,
-                date: batch.batch_date,
+                id: batch.id + '_inv',
+                date: batch.batch_date || batch.created_at,
                 ref: batch.batch_number,
                 type: 'INVOICE',
                 amount: batch.raw_net_value,
                 status: batch.payment_status === 'PAID' ? 'SETTLED' : 'DUE',
-                raw_date: new Date(batch.batch_date)
+                raw_date: new Date(batch.batch_date || batch.created_at)
             });
 
             // Payment entries (Settlements)
-            if (batch.supplier_payout_requests) {
-                batch.supplier_payout_requests.forEach(p => {
-                    entries.push({
-                        id: p.id,
-                        date: p.authorized_at,
-                        ref: p.payout_number,
-                        type: 'PAYMENT',
-                        amount: p.amount,
-                        status: p.status === 'COMPLETED' ? 'ACCEPTED' : 'PENDING',
-                        method: p.payment_method,
-                        raw_date: new Date(p.authorized_at)
-                    });
+            if (batch.notes && batch.notes.startsWith('{')) {
+                try {
+                    const parsed = JSON.parse(batch.notes);
+                    if (Array.isArray(parsed.payments)) {
+                        parsed.payments.forEach((p, idx) => {
+                            entries.push({
+                                id: `${batch.id}_pay_${idx}`,
+                                date: p.date,
+                                ref: p.reference || batch.batch_number,
+                                type: 'PAYMENT',
+                                amount: p.amount,
+                                status: 'ACCEPTED',
+                                method: p.method,
+                                raw_date: new Date(p.date)
+                            });
+                        });
+                    }
+                } catch (e) {
+                    console.error('Error parsing batch notes in getLedgerEntries:', e);
+                }
+            } else if (batch.raw_paid_amount > 0) {
+                // Fallback for old/legacy completed payments that don't have JSON payments list
+                entries.push({
+                    id: batch.id + '_pay_legacy',
+                    date: batch.payment_date || batch.updated_at || batch.batch_date,
+                    ref: batch.payment_reference || batch.batch_number,
+                    type: 'PAYMENT',
+                    amount: batch.raw_paid_amount,
+                    status: 'ACCEPTED',
+                    method: batch.payment_method || 'Cash',
+                    raw_date: new Date(batch.payment_date || batch.updated_at || batch.batch_date)
                 });
             }
         });
@@ -292,9 +320,22 @@ const [paymentStats, setPaymentStats] = useState({ totalItems: 0, totalInvoiced:
         } catch (error) { console.error('Error fetching global returns:', error); }
     };
 
+    const fetchCategories = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await axios.get(`${API_BASE_URL}/inventory/categories`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setCategories(response.data || []);
+        } catch (error) {
+            console.error('Error fetching categories:', error);
+        }
+    };
+
     useEffect(() => {
         fetchSuppliers();
         fetchGlobalReturns();
+        fetchCategories();
     }, []);
 
     useEffect(() => {
@@ -305,12 +346,32 @@ const [paymentStats, setPaymentStats] = useState({ totalItems: 0, totalInvoiced:
         }
     }, [focusSection]);
 
+    const hasProcessedParams = useRef(false);
+
+    useEffect(() => {
+        hasProcessedParams.current = false;
+    }, [supplierParams]);
+
+    useEffect(() => {
+        if (supplierParams && supplierParams.supplierId && suppliers.length > 0 && !hasProcessedParams.current) {
+            const targetSupplier = suppliers.find(s => s.id === supplierParams.supplierId || s.id === parseInt(supplierParams.supplierId));
+            if (targetSupplier) {
+                hasProcessedParams.current = true;
+                setSelectedSupplier(targetSupplier);
+            }
+        }
+    }, [suppliers, supplierParams]);
+
     useEffect(() => {
         if (selectedSupplier) {
             setSellerNote("Key strategic partner for hardware and power tools. High reliability score with consistent inventory fulfillment.");
             setIsEditingNote(false);
             setNoteDate("15 May 24");
-            setActiveProfileTab('Overview');
+            if (supplierParams?.supplierId && (selectedSupplier.id === supplierParams.supplierId || selectedSupplier.id === parseInt(supplierParams.supplierId)) && supplierParams.activeTab) {
+                setActiveProfileTab(supplierParams.activeTab);
+            } else {
+                setActiveProfileTab('Overview');
+            }
             setSelectedTransaction(null);
             setIsEditingBankDetails(false);
             setBankDetailsForm({
@@ -319,8 +380,9 @@ const [paymentStats, setPaymentStats] = useState({ totalItems: 0, totalInvoiced:
                 bank_branch: selectedSupplier.bank_branch || ''
             });
             fetchReturnsForSupplier(selectedSupplier.id);
+            fetchProductsForSupplier(selectedSupplier.id);
         }
-    }, [selectedSupplier]);
+    }, [selectedSupplier, supplierParams]);
 
 // Compute supplier summary stats
 useEffect(() => {
@@ -389,24 +451,65 @@ useEffect(() => {
         } catch (err) { console.error(err); }
     };
 
+    const fetchProductsForSupplier = async (supplierId) => {
+        try {
+            setLoadingProducts(true);
+            const token = localStorage.getItem('token');
+            const res = await axios.get(`${API_BASE_URL}/inventory?supplier_id=${supplierId}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setProfileProducts(res.data);
+        } catch (err) {
+            console.error('Error fetching supplier products:', err);
+        } finally {
+            setLoadingProducts(false);
+        }
+    };
+
     const filteredSuppliers = suppliers.filter(supplier => {
         const matchesSearch = (supplier.supplier_name?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
             (supplier.company_name?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
             (supplier.supplier_id?.toLowerCase() || '').includes(searchQuery.toLowerCase());
 
-        return matchesSearch;
+        const matchesStatus = filterStatus === 'ALL' || (supplier.status || 'ACTIVE') === filterStatus;
+
+        return matchesSearch && matchesStatus;
     });
 
-    const handleDeleteSupplier = async (id) => {
-        if (window.confirm('Are you sure you want to delete this supplier? This will remove all linked data.')) {
-            try {
-                await deleteSupplier(id);
-                fetchSuppliers();
-            } catch (err) {
-                console.error('Error deleting supplier:', err);
-                const errMsg = err.message || (err.response && err.response.data && err.response.data.message) || 'Failed to delete supplier. Please try again.';
-                alert(errMsg);
+    const filteredProfileProducts = profileProducts.filter(item => {
+        const query = productSearchQuery.toLowerCase().trim();
+        if (!query) return true;
+        return (item.ingredient_name?.toLowerCase() || '').includes(query) ||
+            (item.item_code?.toLowerCase() || '').includes(query) ||
+            (item.category?.toLowerCase() || '').includes(query);
+    });
+
+    const handleToggleStatus = async (supplier) => {
+        const currentStatus = supplier.status || 'ACTIVE';
+        const newStatus = currentStatus === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+        
+        if (newStatus === 'INACTIVE') {
+            const hasPending = profileBatches.some(b => 
+                (b.supplier_id === supplier.id || b.supplier_id === parseInt(supplier.id)) && 
+                b.remaining_balance > 0
+            );
+            if (hasPending) {
+                alert('Cannot deactivate supplier. Pending payments must be settled first.');
+                return;
             }
+        }
+        
+        const confirmMsg = `Are you sure you want to set this supplier to ${newStatus}?`;
+        if (!window.confirm(confirmMsg)) return;
+
+        try {
+            await updateSupplier(supplier.id, { status: newStatus });
+            setSuppliers(prev => prev.map(s => s.id === supplier.id ? { ...s, status: newStatus } : s));
+            alert(`Supplier status updated to ${newStatus} successfully.`);
+        } catch (err) {
+            console.error('Error updating supplier status:', err);
+            const errMsg = err.message || (err.response && err.response.data && err.response.data.message) || 'Failed to update supplier status.';
+            alert(errMsg);
         }
     };
 
@@ -933,11 +1036,19 @@ useEffect(() => {
                                                                      <Edit className="w-4 h-4" />
                                                                  </button>
                                                                  <button
-                                                                     onClick={() => handleDeleteSupplier(supplier.id)}
-                                                                     className="p-3 bg-[#121212] text-[#A0A0A0] hover:text-[#ff5252] hover:border-[#ff5252] border border-[#333] rounded-xl transition-all group-hover:bg-[#1E1E1E]"
-                                                                     title="Delete Supplier"
+                                                                     onClick={() => handleToggleStatus(supplier)}
+                                                                     className={`p-3 bg-[#121212] border border-[#333] rounded-xl transition-all group-hover:bg-[#1E1E1E] ${
+                                                                         (supplier.status || 'ACTIVE') === 'ACTIVE'
+                                                                             ? 'text-[#4caf50] hover:text-[#ff5252] hover:border-[#ff5252]/50'
+                                                                             : 'text-[#A0A0A0] hover:text-[#4caf50] hover:border-[#4caf50]/50'
+                                                                     }`}
+                                                                     title={(supplier.status || 'ACTIVE') === 'ACTIVE' ? "Deactivate Supplier" : "Activate Supplier"}
                                                                  >
-                                                                     <Trash2 className="w-4 h-4" />
+                                                                     {(supplier.status || 'ACTIVE') === 'ACTIVE' ? (
+                                                                         <ToggleRight className="w-4 h-4" />
+                                                                     ) : (
+                                                                         <ToggleLeft className="w-4 h-4" />
+                                                                     )}
                                                                  </button>
                                                             </div>
                                                         </td>
@@ -1005,6 +1116,29 @@ useEffect(() => {
                             />
                         )}
 
+                        {isAddProductModalOpen && (
+                            <AddInventoryModal
+                                categories={categories}
+                                initialSupplierId={selectedSupplier?.id}
+                                onClose={() => setAddProductModalOpen(false)}
+                                onSuccess={() => {
+                                    setAddProductModalOpen(false);
+                                    fetchProductsForSupplier(selectedSupplier?.id);
+                                }}
+                            />
+                        )}
+
+                        {receivingItem && (
+                            <ReceiveInventoryModal
+                                initialItem={receivingItem}
+                                onClose={() => setReceivingItem(null)}
+                                onSuccess={() => {
+                                    setReceivingItem(null);
+                                    fetchProductsForSupplier(selectedSupplier?.id);
+                                }}
+                            />
+                        )}
+
                         {editingSupplier && (
                             <AddSupplierModal
                                 initialData={editingSupplier}
@@ -1040,25 +1174,6 @@ useEffect(() => {
                                                         <div className="flex items-center gap-1.5">
                                                             <Phone className="w-3 h-3 text-gray-400" />
                                                             <span className="text-[11px] font-medium text-gray-500">{selectedSupplier.phone_number}</span>
-                                                        </div>
-                                                        <div className="flex items-center gap-1.5 ml-2 border-l border-gray-300 pl-4">
-                                                            <span className="text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em]">Active Inventory Batches:</span>
-                                                            <div className="flex gap-2">
-                                                                {profileBatches
-                                                                    .filter(b => b.supplier_id === selectedSupplier.id && b.calc_status !== 'COMPLETED')
-                                                                    .slice(0, 3)
-                                                                    .map((batch, idx) => {
-                                                                        const isMismatch = Math.abs(parseFloat(batch.net_value) - parseFloat(batch.actual_transaction_value)) > 1;
-                                                                        return (
-                                                                            <span key={idx} className={`text-[9px] font-bold px-2.5 py-1 rounded border uppercase tracking-tighter flex items-center gap-1.5 ${isMismatch ? 'bg-red-500/10 text-red-500 border-red-500/20' : 'bg-green-100 text-green-700 border-green-200 animate-pulse'}`}>
-                                                                                {batch.batch_number} {isMismatch && <AlertCircle className="w-2.5 h-2.5" />}
-                                                                            </span>
-                                                                        );
-                                                                    })}
-                                                                {profileBatches.filter(b => b.supplier_id === selectedSupplier.id && b.calc_status !== 'COMPLETED').length === 0 && (
-                                                                    <span className="bg-gray-100 text-gray-400 text-[8px] font-bold px-2 py-1 rounded border border-gray-200 uppercase tracking-tighter">No Active Batches</span>
-                                                                )}
-                                                            </div>
                                                         </div>
                                                         <div className="flex items-center gap-1.5 ml-2 border-l border-gray-300 pl-4">
                                                             <span className="text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em]">Available Cash Notes:</span>
@@ -1129,7 +1244,7 @@ useEffect(() => {
 
                                     {/* Minimalist Tabs */}
                                     <div className="supplier-profile-tabs px-8 flex gap-8 border-b border-gray-200">
-                                        {['Overview', 'History', 'Ledger', 'Returns'].map((tab) => (
+                                        {['Overview', 'Products', 'History', 'Ledger', 'Returns'].map((tab) => (
                                             <button
                                                 key={tab}
                                                 onClick={() => {
@@ -1145,6 +1260,145 @@ useEffect(() => {
                                     </div>
 
                                     <div className="supplier-profile-content flex-1 overflow-y-auto p-8 pt-6 custom-scrollbar bg-white">
+                                        {activeProfileTab === 'Products' && (
+                                            <div className="space-y-4 animate-fade-in">
+                                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+                                                    <div>
+                                                        <h4 className="text-[11px] font-bold text-gray-900 uppercase tracking-[0.3em]">Supplier Products</h4>
+                                                        <p className="text-[9px] text-gray-400 mt-1 uppercase">Products supplied by this partner</p>
+                                                    </div>
+                                                    <div className="flex items-center gap-3 w-full md:w-auto">
+                                                        <div className="relative flex-1 md:flex-initial">
+                                                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                                                            <input
+                                                                type="text"
+                                                                placeholder="Search products by name, code..."
+                                                                className="pl-9 pr-8 py-1.5 w-full md:w-64 bg-gray-50 text-gray-800 rounded-full border border-gray-200 focus:outline-none focus:border-green-600 focus:bg-white transition-all text-xs placeholder:text-gray-400"
+                                                                value={productSearchQuery}
+                                                                onChange={(e) => setProductSearchQuery(e.target.value)}
+                                                            />
+                                                            {productSearchQuery && (
+                                                                <span
+                                                                    role="button"
+                                                                    onClick={() => setProductSearchQuery('')}
+                                                                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer flex items-center justify-center p-1 rounded-full hover:bg-gray-200 transition-colors"
+                                                                    title="Clear search"
+                                                                >
+                                                                    <X className="w-3.5 h-3.5" />
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <button
+                                                            onClick={() => setAddProductModalOpen(true)}
+                                                            className="supplier-profile-inline-btn shrink-0"
+                                                            style={{
+                                                                background: 'linear-gradient(135deg, var(--primary-green), var(--dark-green))',
+                                                                color: 'white',
+                                                                borderRadius: '20px',
+                                                                border: 'none',
+                                                                padding: '6px 14px',
+                                                                display: 'inline-flex',
+                                                                alignItems: 'center',
+                                                                gap: '6px',
+                                                                cursor: 'pointer'
+                                                            }}
+                                                        >
+                                                            <Plus className="w-3.5 h-3.5" style={{ color: 'white', stroke: 'white' }} /> Add Product
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                <div className="bg-gray-50 border border-gray-200 rounded-3xl overflow-hidden">
+                                                    <table className="w-full text-left">
+                                                        <thead>
+                                                            <tr className="border-b border-gray-200 bg-gray-50">
+                                                                <th className="px-6 py-4 text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em]">Item Name</th>
+                                                                <th className="px-6 py-4 text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em]">Code</th>
+                                                                <th className="px-6 py-4 text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em]">Category</th>
+                                                                <th className="px-6 py-4 text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em]">Quantity</th>
+                                                                <th className="px-6 py-4 text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em] text-center">Status</th>
+                                                                <th className="px-6 py-4 text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em] text-right">Buying Price</th>
+                                                                <th className="px-6 py-4 text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em] text-right">Selling Price</th>
+                                                                <th className="px-6 py-4 text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em] text-right">Actions</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody className="divide-y divide-white/[0.03]">
+                                                            {loadingProducts ? (
+                                                                <tr>
+                                                                    <td colSpan="8" className="p-12 text-center text-[#A0A0A0]">
+                                                                        <RefreshCcw className="w-6 h-6 animate-spin mx-auto mb-2 text-green-700" />
+                                                                        Loading products...
+                                                                    </td>
+                                                                </tr>
+                                                            ) : profileProducts.length === 0 ? (
+                                                                <tr>
+                                                                    <td colSpan="8" className="p-20 text-center">
+                                                                        <Package className="w-8 h-8 text-gray-300 mx-auto mb-4" />
+                                                                        <p className="text-xs text-gray-400 font-medium">No products registered for this supplier.</p>
+                                                                    </td>
+                                                                </tr>
+                                                            ) : filteredProfileProducts.length === 0 ? (
+                                                                <tr>
+                                                                    <td colSpan="8" className="p-20 text-center">
+                                                                        <Search className="w-8 h-8 text-gray-300 mx-auto mb-4" />
+                                                                        <p className="text-xs text-gray-400 font-medium">No products match your search query.</p>
+                                                                    </td>
+                                                                </tr>
+                                                            ) : (
+                                                                filteredProfileProducts.map((item, idx) => (
+                                                                    <tr key={idx} onClick={() => onNavigate('inventory-detail', { id: item.id })} className="hover:bg-gray-50 transition-colors group cursor-pointer">
+                                                                        <td className="px-6 py-5">
+                                                                            <span className="text-[10px] font-bold text-gray-700">{item.ingredient_name}</span>
+                                                                            <div className="text-[9px] text-gray-400 mt-0.5">{item.unit}</div>
+                                                                        </td>
+                                                                        <td className="px-6 py-5">
+                                                                            <span className="text-[10px] font-mono text-gray-500">{item.item_code || '-'}</span>
+                                                                        </td>
+                                                                        <td className="px-6 py-5">
+                                                                            <span className="inventory-category-pill bg-gray-100 text-gray-600 px-2 py-0.5 rounded text-[9px] font-bold">
+                                                                                {item.category || 'Uncategorized'}
+                                                                            </span>
+                                                                        </td>
+                                                                        <td className="px-6 py-5">
+                                                                            <span className="text-xs font-black text-gray-800">{item.quantity} {item.unit}</span>
+                                                                        </td>
+                                                                        <td className="px-6 py-5 text-center">
+                                                                            <span className={`px-2 py-1 rounded-full text-[9px] font-bold border flex items-center w-fit mx-auto gap-1
+                                                                                ${item.status === 'Out of Stock' ? 'bg-[#ff5252]/10 text-[#ff5252] border-[#ff5252]/30' :
+                                                                                    item.status === 'Low Stock' ? 'bg-[#ffb74d]/10 text-[#ffb74d] border-[#ffb74d]/30' :
+                                                                                        'bg-[#4ade80]/10 text-[#4ade80] border-[#4ade80]/30'}`}
+                                                                            >
+                                                                                {item.status}
+                                                                            </span>
+                                                                        </td>
+                                                                        <td className="px-6 py-5 text-right">
+                                                                            <span className="text-xs font-bold text-gray-900">Rs. {parseFloat(item.buying_price || 0).toFixed(2)}</span>
+                                                                        </td>
+                                                                        <td className="px-6 py-5 text-right">
+                                                                            <span className="text-xs font-bold text-gray-900">Rs. {parseFloat(item.selling_price || 0).toFixed(2)}</span>
+                                                                        </td>
+                                                                        <td className="px-6 py-5 text-right">
+                                                                            <div className="flex items-center justify-end gap-2">
+                                                                                <button
+                                                                                    onClick={(e) => {
+                                                                                        e.stopPropagation();
+                                                                                        setReceivingItem(item);
+                                                                                    }}
+                                                                                    className="inventory-action-btn"
+                                                                                    title="Receive Stock"
+                                                                                >
+                                                                                    <PackagePlus size={15} />
+                                                                                </button>
+                                                                            </div>
+                                                                        </td>
+                                                                    </tr>
+                                                                ))
+                                                            )}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        )}
                                         {activeProfileTab === 'Overview' && (
                                             <div className="grid grid-cols-3 gap-10 animate-fade-in">
                                                 <div className="col-span-2 space-y-10">
@@ -1443,46 +1697,14 @@ useEffect(() => {
                                                                 <span className="text-gray-900 font-medium">{selectedTransaction.date}</span>
                                                             </div>
                                                             <div className="flex justify-between items-center text-xs">
-                                                                <span className="text-gray-500">Total Items Added</span>
-                                                                <span className={`font-bold ${selectedTransaction.items >= selectedTransaction.target_items ? 'text-green-700' : 'text-yellow-500'}`}>
-                                                                    {selectedTransaction.items} / {selectedTransaction.target_items}
-                                                                </span>
+                                                                <span className="text-gray-500">Total Items</span>
+                                                                <span className="text-gray-900 font-bold">{selectedTransaction.items}</span>
                                                             </div>
                                                             <div className="flex flex-col gap-2 border-t border-gray-200 pt-4">
                                                                 <div className="flex justify-between items-center text-xs">
-                                                                    <span className="text-gray-500">Expected Net Value</span>
-                                                                    <div className="flex items-center gap-2">
-                                                                        <span className="text-gray-900 font-bold">{selectedTransaction.amount}</span>
-                                                                        <button
-                                                                            onClick={async () => {
-                                                                                const newVal = prompt("Enter Correct Net Transaction Value", selectedTransaction.amount.replace('Rs. ', '').replace(/,/g, ''));
-                                                                                if (newVal) {
-                                                                                    try {
-                                                                                        await axios.put(`${API_BASE_URL}/inventory/batches/${selectedTransaction.db_id}`, { net_value: newVal }, {
-                                                                                            headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-                                                                                        });
-                                                                                        fetchBatches();
-                                                                                        setSelectedTransaction(null);
-                                                                                        alert("Batch Value Updated!");
-                                                                                    } catch (e) { alert("Failed to update"); }
-                                                                                }
-                                                                            }}
-                                                                            className="supplier-profile-inline-btn p-1 hover:bg-gray-200 rounded group"
-                                                                        >
-                                                                            <Edit className="w-3 h-3 text-green-700 group-hover:scale-110 transition-transform" />
-                                                                        </button>
-                                                                    </div>
+                                                                    <span className="text-gray-500 font-semibold">Total Value</span>
+                                                                    <span className="text-green-700 font-black text-sm">{selectedTransaction.amount}</span>
                                                                 </div>
-                                                                <div className="flex justify-between items-center text-xs">
-                                                                    <span className="text-gray-500">Actual Item Total</span>
-                                                                    <span className="text-gray-900 font-bold">Rs. {selectedTransaction.actual_amount.toLocaleString()}</span>
-                                                                </div>
-                                                                {Math.abs(parseFloat(selectedTransaction.amount.replace('Rs. ', '').replace(/,/g, '')) - selectedTransaction.actual_amount) > 1 && (
-                                                                    <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-2 mt-2 animate-pulse">
-                                                                        <AlertCircle className="w-3 h-3 text-red-500" />
-                                                                        <span className="text-[9px] font-bold text-red-500 uppercase tracking-tighter">Financial Mismatch Detected!</span>
-                                                                    </div>
-                                                                )}
                                                             </div>
                                                         </div>
                                                     </div>

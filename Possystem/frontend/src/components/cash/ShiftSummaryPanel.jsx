@@ -34,8 +34,16 @@ const ShiftSummaryPanel = ({ shiftId, onSummaryUpdate }) => {
         if (shiftId) fetchSummary();
     }, [shiftId]);
 
-    // Expose refresh function to parent via ref if needed, or just let it refresh on render
-    // For now, we'll just use a manual refresh button UI if needed.
+    useEffect(() => {
+        const handleMovementAdded = () => {
+            if (shiftId) fetchSummary();
+        };
+
+        window.addEventListener('cash-movement-added', handleMovementAdded);
+        return () => {
+            window.removeEventListener('cash-movement-added', handleMovementAdded);
+        };
+    }, [shiftId]);
 
     if (loading) return <div className="cash-card">Loading summary...</div>;
     if (error) return <div className="cash-card error">{error}</div>;

@@ -108,6 +108,16 @@ const ShiftReportModal = ({ isOpen, onClose, shift, onApproved, selectedCount = 
                 return;
             }
 
+            if (type === 'bank_card') {
+                response = await fetch(`${API_BASE_URL}/cash/shift-electronic-payments/${shift.shift_id}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Failed to fetch payment details');
+                setDetailRows(Array.isArray(data.payments) ? data.payments : []);
+                return;
+            }
+
             response = await fetch(`${API_BASE_URL}/cash/shift-electronic-payments/${shift.shift_id}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -245,9 +255,15 @@ const ShiftReportModal = ({ isOpen, onClose, shift, onApproved, selectedCount = 
                             <section className="official-report-section official-formula-section">
                                 <h4 className="report-subtitle">Official Total Calculation</h4>
                                 <div className="official-formula-card">
-                                    <div className="official-formula-line">
-                                        <span>Full Total</span>
-                                        <strong>{formatCurrency(fullReportTotal)}</strong>
+                                    <div className="official-formula-line" style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'stretch' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                                            <span>Total Profit of the Day</span>
+                                            <strong>{formatCurrency(summary?.total_profit || 0)}</strong>
+                                        </div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', borderTop: '1px solid #E2E8F0', paddingTop: '8px' }}>
+                                            <span style={{ color: '#475569' }}>Full Total (Net Cash Position)</span>
+                                            <strong style={{ color: '#0f172a' }}>{formatCurrency(fullReportTotal)}</strong>
+                                        </div>
                                     </div>
                                     <div className="official-formula-expression">
                                         <div>
@@ -255,22 +271,22 @@ const ShiftReportModal = ({ isOpen, onClose, shift, onApproved, selectedCount = 
                                             <b>{formatCurrency(openingCash)}</b>
                                         </div>
                                         <em>+</em>
-                                        <div>
+                                        <div className="is-clickable" {...getSummaryActionProps('cash_in', 'Cash In Details')}>
                                             <span>Cash In</span>
                                             <b>{formatCurrency(cashIn)}</b>
                                         </div>
                                         <em>+</em>
-                                        <div>
+                                        <div className="is-clickable" {...getSummaryActionProps('cash_sales', 'Shift Cash Sales Details')}>
                                             <span>Cash Sales</span>
                                             <b>{formatCurrency(cashSales)}</b>
                                         </div>
                                         <em>+</em>
-                                        <div>
+                                        <div className="is-clickable" {...getSummaryActionProps('bank_card', 'Bank & Card Payments Details')}>
                                             <span>Bank & Card Payments</span>
                                             <b>{formatCurrency(electronicPaymentTotal)}</b>
                                         </div>
                                         <em>-</em>
-                                        <div>
+                                        <div className="is-clickable" {...getSummaryActionProps('cash_out', 'Cash Out Details')}>
                                             <span>Cash Out</span>
                                             <b>{formatCurrency(cashOut)}</b>
                                         </div>
@@ -435,14 +451,25 @@ const ShiftReportModal = ({ isOpen, onClose, shift, onApproved, selectedCount = 
                         </div>
                     </div>
                 )}
-
-                <div className="modal-footer">
+                <div className="modal-footer" style={{ gap: '10px' }}>
+                    <button 
+                        type="button" 
+                        className="shift-report-action" 
+                        onClick={() => window.print()} 
+                        style={{ marginRight: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}
+                    >
+                        <svg style={{ width: '15px', height: '15px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                        </svg>
+                        Print Report
+                    </button>
                     <button className="shift-report-action" onClick={onClose}>Close</button>
                     {userRole === 'ADMIN' && shift.status === 'PENDING_APPROVAL' && (
                         <button
                             className="shift-report-action"
                             onClick={handleApprove}
                             disabled={approving}
+                            style={{ backgroundColor: '#22c55e', color: '#ffffff', borderColor: '#22c55e' }}
                         >
                             {approving ? 'Approving...' : 'Approve & Close Shift'}
                         </button>
@@ -451,6 +478,12 @@ const ShiftReportModal = ({ isOpen, onClose, shift, onApproved, selectedCount = 
             </div>
 
             <style>{`
+                @media print {
+                    .modal-overlay { background: none; backdrop-filter: none; position: static; }
+                    .shift-report-modal { border: none; box-shadow: none; width: 100%; max-width: none; max-height: none; overflow: visible; }
+                    .modal-header, .modal-footer, .is-clickable { display: none !important; }
+                    .modal-body { overflow: visible; padding: 0; }
+                }
                 .modal-overlay {
                     position: fixed;
                     top: 0; left: 0; right: 0; bottom: 0;
@@ -627,6 +660,17 @@ const ShiftReportModal = ({ isOpen, onClose, shift, onApproved, selectedCount = 
                     border: 1px solid #E2E8F0;
                     border-radius: 12px;
                     background: #FFFFFF;
+                }
+                .official-formula-expression > div.is-clickable {
+                    cursor: pointer;
+                    transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+                }
+                .official-formula-expression > div.is-clickable:hover,
+                .official-formula-expression > div.is-clickable:focus-visible {
+                    background-color: #F8FCFA !important;
+                    border-color: rgba(22, 163, 74, 0.42) !important;
+                    box-shadow: 0 8px 22px rgba(15, 23, 42, 0.045) !important;
+                    outline: none;
                 }
                 .official-formula-expression em {
                     width: 22px;
@@ -919,6 +963,56 @@ const ShiftReportModal = ({ isOpen, onClose, shift, onApproved, selectedCount = 
                         width: 100%;
                         min-width: 0;
                         min-height: 18px;
+                    }
+                }
+                @media print {
+                    body * {
+                        visibility: hidden;
+                    }
+                    .modal-overlay,
+                    .shift-report-modal,
+                    .report-content,
+                    .report-content * {
+                        visibility: visible;
+                    }
+                    .modal-overlay {
+                        position: absolute;
+                        left: 0;
+                        top: 0;
+                        width: 100%;
+                        background: none;
+                        backdrop-filter: none;
+                        display: block;
+                        z-index: auto;
+                    }
+                    .shift-report-modal {
+                        border: none;
+                        box-shadow: none;
+                        width: 100%;
+                        max-width: 100%;
+                        max-height: none;
+                        overflow: visible;
+                        margin: 0;
+                        padding: 0;
+                    }
+                    .modal-header,
+                    .modal-footer,
+                    .shift-report-close {
+                        display: none !important;
+                    }
+                    .modal-body {
+                        overflow: visible;
+                        padding: 0;
+                    }
+                    .official-report-letterhead {
+                        border: 1px solid #cbd5e1 !important;
+                    }
+                    table {
+                        page-break-inside: auto;
+                    }
+                    tr {
+                        page-break-inside: avoid;
+                        page-break-after: auto;
                     }
                 }
             `}</style>

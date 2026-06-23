@@ -25,6 +25,7 @@ import ReturnManagementPage from './pages/admin/supplier/ReturnManagementPage';
 import ReportsPage from './pages/admin/ReportsPage';
 import StaffManagementPage from './pages/admin/StaffManagementPage';
 import PrinterSettingsPage from './pages/dashboard/PrinterSettingsPage';
+import SupplierPaymentsPage from './pages/dashboard/SupplierPaymentsPage';
 import './styles/dashboard.css';
 
 function AppContent() {
@@ -43,6 +44,7 @@ function AppContent() {
   // State to hold order object when editing from details
   const [editOrderData, setEditOrderData] = useState(null);
   const [supplierFocusSection, setSupplierFocusSection] = useState(null);
+  const [supplierParams, setSupplierParams] = useState(null);
 
   // Restore last page after auth initializes
   useEffect(() => {
@@ -52,7 +54,8 @@ function AppContent() {
       'dashboard', 'inventory', 'inventory-detail', 'reports', 'cash-management',
       'supplier', 'supplier-returns', 'supplier-recent-purchases', 'return-management',
       'staff-management', 'create-order', 'cashier-new-order', 'cash-counter',
-      'profile', 'orders', 'order-details', 'bill-open', 'printer-settings'
+      'profile', 'orders', 'order-details', 'bill-open', 'printer-settings',
+      'supplier-payments'
     ];
 
     try {
@@ -130,6 +133,7 @@ function AppContent() {
     }
     if (page === 'supplier') {
       setSupplierFocusSection(params.focusSection || null);
+      setSupplierParams(params.supplierParams || null);
     }
   };
 
@@ -171,7 +175,7 @@ function AppContent() {
       )}
       {currentPage === 'supplier' && (
         <ProtectedRoute allowedRoles={['ADMIN']} onNavigate={navigateTo}>
-          <SupplierPage onNavigate={navigateTo} focusSection={supplierFocusSection} />
+          <SupplierPage onNavigate={navigateTo} focusSection={supplierFocusSection} supplierParams={supplierParams} />
         </ProtectedRoute>
       )}
       {currentPage === 'supplier-returns' && (
@@ -209,6 +213,11 @@ function AppContent() {
       {currentPage === 'cash-counter' && (
         <ProtectedRoute allowedRoles={['CASHIER']} onNavigate={navigateTo}>
           <CashCounterPage onNavigate={navigateTo} />
+        </ProtectedRoute>
+      )}
+      {currentPage === 'supplier-payments' && (
+        <ProtectedRoute allowedRoles={['CASHIER']} onNavigate={navigateTo}>
+          <SupplierPaymentsPage onNavigate={navigateTo} />
         </ProtectedRoute>
       )}
 

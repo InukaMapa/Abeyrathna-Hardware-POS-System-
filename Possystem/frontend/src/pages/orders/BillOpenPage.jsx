@@ -100,6 +100,27 @@ const BillOpenPage = ({ orderId, onNavigate }) => {
         }
     };
 
+    const handleRemoveItem = async (orderItemId) => {
+        if (!window.confirm('Remove this item from the order?')) return;
+        setActionLoading(true);
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`${API_BASE_URL}/orders/items/${orderItemId}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (response.ok) {
+                await loadData();
+            } else {
+                alert('Failed to remove item.');
+            }
+        } catch (err) {
+            alert('Error removing item.');
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
     // Derived Calculations
     const subtotal = items.reduce((sum, item) => sum + (item.editablePrice * item.editableQty), 0);
     const totalItemDiscounts = items.reduce((sum, item) => sum + (parseFloat(item.itemDiscount) || 0), 0);
@@ -519,10 +540,10 @@ const BillOpenPage = ({ orderId, onNavigate }) => {
                 <div className="bg-[#1E1E1E] border border-[#333] rounded-2xl shadow-xl p-6 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6">
                     <div className="flex items-center gap-4">
                         <button
-                            onClick={() => onNavigate('order-details', { orderId })}
+                            onClick={() => onNavigate('orders')}
                             className="bill-open-back-btn"
-                            title="Back to order details"
-                            aria-label="Back to order details"
+                            title="Back to orders"
+                            aria-label="Back to orders"
                         >
                             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -565,70 +586,108 @@ const BillOpenPage = ({ orderId, onNavigate }) => {
                 {/* TWO-COLUMN LAYOUT */}
                 <div className="flex flex-col lg:flex-row gap-6">
 
-                    {/* LEFT COLUMN: 2. ITEM LIST */}
-                    <div className="flex-[2] bg-[#1E1E1E] border border-[#333] rounded-2xl shadow-xl flex flex-col overflow-hidden">
-                        <div className="px-6 py-4 border-b border-[#333] bg-[#161616] flex justify-between items-center">
-                            <h3 className="text-xs font-black text-gray-300 uppercase tracking-widest flex items-center gap-2">
-                                <svg className="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-                                Billed Items
-                            </h3>
-                            <span className="bill-readonly-badge text-[10px] font-bold text-red-400 uppercase tracking-widest border border-red-500/20 bg-red-500/10 px-2 py-1 rounded">Read-Only</span>
-                        </div>
-                        <div className="overflow-x-auto flex-1">
-                            <table className="w-full text-left border-collapse">
-                                <thead className="bg-[#121212] border-b border-[#333] uppercase text-[10px] tracking-widest text-gray-500 font-black">
-                                    <tr>
-                                        <th className="px-4 py-3">Item details</th>
-                                        <th className="px-4 py-3">SKU / Unit</th>
-                                        <th className="px-4 py-3 text-center">Qty</th>
-                                        <th className="px-4 py-3 text-right">Unit Price</th>
-                                        <th className="px-4 py-3 text-right">Buying Price</th>
-                                        <th className="px-4 py-3 text-right">Discount</th>
-                                        <th className="px-4 py-3 text-right border-l border-[#333]">Net Total</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {items.map((item, index) => {
-                                        const netTotal = (item.editablePrice * item.editableQty) - (parseFloat(item.itemDiscount) || 0);
-                                        return (
-                                            <tr key={item.order_item_id} className="border-b border-[#333] hover:bg-[#252525] transition-colors group">
-                                                <td className="px-4 py-3">
-                                                    <span className="font-bold text-white text-sm">{item.item_name}</span>
-                                                </td>
-                                                <td className="px-4 py-3 font-mono text-gray-500 text-xs">SYS-{item.item_id}</td>
-                                                <td className="px-4 py-3 text-center">
-                                                    <span className="font-bold text-white text-base bg-[#252525] px-3 py-1 rounded">{item.editableQty}</span>
-                                                </td>
-                                                <td className="px-4 py-3 text-right">
-                                                    <span className="font-mono text-gray-300 font-bold">{parseFloat(item.editablePrice).toFixed(2)}</span>
-                                                </td>
-                                                <td className="px-4 py-3 text-right">
-                                                    <span className="bill-buying-price-label">Rs. {parseFloat(item.buyingPrice || 0).toFixed(2)}</span>
-                                                </td>
-                                                <td className="px-4 py-3 text-right">
-                                                    <input
-                                                        type="number"
-                                                        min="0" step="0.01"
-                                                        className="w-16 bg-transparent border-b border-dashed border-[#555] px-1 py-1 text-right text-red-400 font-mono font-bold outline-none focus:border-red-500"
-                                                        value={item.itemDiscount}
-                                                        onChange={(e) => handleItemChange(index, 'discount', e.target.value)}
-                                                        placeholder="0"
-                                                    />
-                                                </td>
-                                                <td className="px-4 py-3 text-right border-l border-[#333]">
-                                                    <span className="font-extrabold text-white text-base tabular-nums">{netTotal.toFixed(2)}</span>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
-                                    {items.length === 0 && (
+                    {/* LEFT COLUMN: 2. ITEM LIST & CATALOG ACTION */}
+                    <div className="flex-[2] flex flex-col gap-6">
+                        <div className="bg-[#1E1E1E] border border-[#333] rounded-2xl shadow-xl flex flex-col overflow-hidden">
+                            <div className="px-6 py-4 border-b border-[#333] bg-[#161616] flex justify-between items-center">
+                                <h3 className="text-xs font-black text-gray-300 uppercase tracking-widest flex items-center gap-2">
+                                    <svg className="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                                    Billed Items
+                                </h3>
+                                {isCompleted ? (
+                                    <span className="bill-readonly-badge text-[10px] font-bold text-red-400 uppercase tracking-widest border border-red-500/20 bg-red-500/10 px-2 py-1 rounded">Read-Only</span>
+                                ) : (
+                                    <span className="bill-active-badge text-[10px] font-bold text-emerald-400 uppercase tracking-widest border border-emerald-500/20 bg-emerald-500/10 px-2 py-1 rounded">Active / Editable</span>
+                                )}
+                            </div>
+                            <div className="overflow-x-auto flex-1">
+                                <table className="w-full text-left border-collapse">
+                                    <thead className="bg-[#121212] border-b border-[#333] uppercase text-[10px] tracking-widest text-gray-500 font-black">
                                         <tr>
-                                            <td colSpan="7" className="text-center py-12 text-gray-600 font-bold uppercase tracking-widest text-xs">No items in the cart</td>
+                                            <th className="px-4 py-3">Item details</th>
+                                            <th className="px-4 py-3">SKU / Unit</th>
+                                            <th className="px-4 py-3 text-center">Qty</th>
+                                            <th className="px-4 py-3 text-right">Unit Price</th>
+                                            <th className="px-4 py-3 text-right">Buying Price</th>
+                                            <th className="px-4 py-3 text-right">Discount</th>
+                                            <th className="px-4 py-3 text-right border-l border-[#333]">Net Total</th>
+                                            {!isCompleted && <th className="px-4 py-3 text-center">Actions</th>}
                                         </tr>
-                                    )}
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody>
+                                        {items.map((item, index) => {
+                                            const netTotal = (item.editablePrice * item.editableQty) - (parseFloat(item.itemDiscount) || 0);
+                                            return (
+                                                <tr key={item.order_item_id} className="border-b border-[#333] hover:bg-[#252525] transition-colors group">
+                                                    <td className="px-4 py-3">
+                                                        <span className="font-bold text-white text-sm">{item.item_name}</span>
+                                                    </td>
+                                                    <td className="px-4 py-3 font-mono text-gray-500 text-xs">SYS-{item.item_id}</td>
+                                                    <td className="px-4 py-3 text-center">
+                                                        <span className="font-bold text-white text-base bg-[#252525] px-3 py-1 rounded">{item.editableQty}</span>
+                                                    </td>
+                                                    <td className="px-4 py-3 text-right">
+                                                        <span className="font-mono text-gray-300 font-bold">{parseFloat(item.editablePrice).toFixed(2)}</span>
+                                                    </td>
+                                                    <td className="px-4 py-3 text-right">
+                                                        <span className="bill-buying-price-label">Rs. {parseFloat(item.buyingPrice || 0).toFixed(2)}</span>
+                                                    </td>
+                                                    <td className="px-4 py-3 text-right">
+                                                        <input
+                                                            type="number"
+                                                            min="0" step="0.01"
+                                                            className="w-16 bg-transparent border-b border-dashed border-[#555] px-1 py-1 text-right text-red-400 font-mono font-bold outline-none focus:border-red-500"
+                                                            value={item.itemDiscount}
+                                                            onChange={(e) => handleItemChange(index, 'discount', e.target.value)}
+                                                            placeholder="0"
+                                                        />
+                                                    </td>
+                                                    <td className="px-4 py-3 text-right border-l border-[#333]">
+                                                        <span className="font-extrabold text-white text-base tabular-nums">{netTotal.toFixed(2)}</span>
+                                                    </td>
+                                                    {!isCompleted && (
+                                                        <td className="px-4 py-3 text-center">
+                                                            <button
+                                                                onClick={() => handleRemoveItem(item.order_item_id)}
+                                                                disabled={actionLoading}
+                                                                className="p-2 bg-red-600/10 text-red-500 rounded-lg hover:bg-red-600 hover:text-white transition-colors disabled:opacity-50"
+                                                                title="Remove Item"
+                                                            >
+                                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                                </svg>
+                                                            </button>
+                                                        </td>
+                                                    )}
+                                                </tr>
+                                            );
+                                        })}
+                                        {items.length === 0 && (
+                                            <tr>
+                                                <td colSpan={!isCompleted ? 8 : 7} className="text-center py-12 text-gray-600 font-bold uppercase tracking-widest text-xs">No items in the cart</td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
+
+                        {/* Add Item Section */}
+                        {!isCompleted && (
+                            <div className="bg-[#1E1E1E] border border-[#333] rounded-2xl p-6 shadow-xl flex items-center justify-between">
+                                <div>
+                                    <h4 className="text-sm font-bold text-white uppercase tracking-widest">Need more items?</h4>
+                                    <p className="text-xs text-gray-500 uppercase tracking-widest mt-1">Open catalog to browse and add.</p>
+                                </div>
+                                <button
+                                    onClick={() => onNavigate('cashier-new-order', { editOrder: order })}
+                                    disabled={actionLoading}
+                                    className="hardware-order-action-btn bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-xl text-sm font-black uppercase tracking-widest transition-all shadow-lg active:scale-95 disabled:opacity-50"
+                                >
+                                    OPEN CATALOG TO ADD ITEMS
+                                </button>
+                            </div>
+                        )}
                     </div>
 
                     {/* RIGHT COLUMN: SUMMARY, PAYMENT & ACTIONS */}

@@ -8,6 +8,15 @@ import {
 } from 'lucide-react';
 import { API_BASE_URL } from '../../../config/api';
 
+const parseReturnNotes = (notesStr) => {
+    try {
+        if (notesStr && notesStr.startsWith('{')) {
+            return JSON.parse(notesStr);
+        }
+    } catch (e) {}
+    return { notes: notesStr || '', buying_price: null, tier_id: null };
+};
+
 const SupplierReturnsPage = ({ onNavigate }) => {
     const [returns, setReturns] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -47,6 +56,7 @@ const SupplierReturnsPage = ({ onNavigate }) => {
 
     const [selectedBatchInfo, setSelectedBatchInfo] = useState(null);
     const [selectedItemInfo, setSelectedItemInfo] = useState(null);
+    const [selectedTierId, setSelectedTierId] = useState('');
 
     useEffect(() => {
         fetchInitialData();
@@ -78,7 +88,18 @@ const SupplierReturnsPage = ({ onNavigate }) => {
         e.preventDefault();
         try {
             const token = localStorage.getItem('token');
-            await axios.post(`${API_BASE_URL}/inventory/returns`, formData, {
+            const selectedTier = (selectedItemInfo?.stock_price_tiers || []).find(t => t.id === selectedTierId);
+            
+            const payload = {
+                ...formData,
+                notes: JSON.stringify({
+                    tier_id: selectedTierId,
+                    buying_price: selectedTier ? selectedTier.buying_price : null,
+                    notes: formData.notes
+                })
+            };
+
+            await axios.post(`${API_BASE_URL}/inventory/returns`, payload, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setShowForm(false);
@@ -90,25 +111,18 @@ const SupplierReturnsPage = ({ onNavigate }) => {
     const handleItemSelect = (itemId) => {
         const item = inventoryItems.find(i => i.id === itemId);
         setSelectedItemInfo(item);
-
-        if (item && item.batch_id) {
-            const batch = batches.find(b => b.id === item.batch_id);
-            setSelectedBatchInfo(batch);
-            setFormData({
-                ...formData,
-                item_id: itemId,
-                batch_id: batch?.id || '',
-                supplier_id: batch?.supplier_id || ''
-            });
-        } else {
-            setFormData({ ...formData, item_id: itemId });
-            setSelectedBatchInfo(null);
-        }
+        setSelectedTierId('');
+        setFormData({ ...formData, item_id: itemId, quantity: '' });
+        setSelectedBatchInfo(null);
     };
 
     const stats = {
         total: returns.length,
-        value: returns.reduce((sum, r) => sum + (parseFloat(r.quantity) * parseFloat(r.inventory?.buying_price || 0)), 0),
+        value: returns.reduce((sum, r) => {
+            const parsed = parseReturnNotes(r.notes);
+            const price = parsed.buying_price !== null ? parsed.buying_price : (r.inventory?.buying_price || 0);
+            return sum + (parseFloat(r.quantity) * parseFloat(price));
+        }, 0),
         pending: returns.filter(r => r.status === 'PENDING').length,
         replacements: returns.filter(r => r.replacement_status === 'PENDING').length
     };
@@ -134,7 +148,22 @@ const SupplierReturnsPage = ({ onNavigate }) => {
                         <p className="text-white/40 text-sm font-medium">Manage item returns, warranty claims, and replacements.</p>
                     </div>
                     <button
-                        onClick={() => setShowForm(true)}
+                        onClick={() => {
+                            setFormData({
+                                item_id: '',
+                                batch_id: '',
+                                supplier_id: '',
+                                quantity: '',
+                                return_type: 'Damaged item return',
+                                reason: '',
+                                warehouse_location: 'Main Store',
+                                notes: ''
+                            });
+                            setSelectedItemInfo(null);
+                            setSelectedBatchInfo(null);
+                            setSelectedTierId('');
+                            setShowForm(true);
+                        }}
                         className="supplier-returns-action-btn"
                     >
                         <Plus className="w-5 h-5" />
@@ -295,9 +324,10 @@ const SupplierReturnsPage = ({ onNavigate }) => {
                                 value={formData.supplier_id}
                                 onChange={(e) => {
                                     const supplierId = e.target.value;
-                                    setFormData({ ...formData, supplier_id: supplierId, item_id: '', batch_id: '' });
+                                    setFormData({ ...formData, supplier_id: supplierId, item_id: '', batch_id: '', quantity: '' });
                                     setSelectedItemInfo(null);
                                     setSelectedBatchInfo(null);
+                                    setSelectedTierId('');
                                 }}
                                 required
                                 className="w-full bg-white border border-green-200 rounded-xl px-4 py-3 text-sm text-gray-800 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 transition-all"
@@ -321,38 +351,63 @@ const SupplierReturnsPage = ({ onNavigate }) => {
                                     {formData.supplier_id ? '-- Choose Item --' : 'Select a supplier first'}
                                 </option>
                                 {inventoryItems
-                                    .filter(i => {
-                                        const batch = batches.find(b => b.id === i.batch_id);
-                                        return batch && batch.supplier_id === formData.supplier_id;
-                                    })
+                                    .filter(i => i.supplier_id === formData.supplier_id)
                                     .map(i => (
                                         <option key={i.id} value={i.id}>
                                             {i.ingredient_name} ({i.item_code}) - Avail: {i.quantity}
                                         </option>
                                     ))}
-                                {formData.supplier_id && inventoryItems.filter(i => {
-                                    const batch = batches.find(b => b.id === i.batch_id);
-                                    return batch && batch.supplier_id === formData.supplier_id;
-                                }).length === 0 && (
+                                {formData.supplier_id && inventoryItems.filter(i => i.supplier_id === formData.supplier_id).length === 0 && (
                                     <option disabled>No products available for the selected supplier.</option>
                                 )}
                             </select>
                         </div>
                     </div>
 
+                                        {selectedItemInfo && (selectedItemInfo.stock_price_tiers || []).length > 0 && (
+                                            <div>
+                                                <label className="text-[11px] font-bold text-green-800 mb-2 block">Select Stock Load (Buying Price)</label>
+                                                <select
+                                                    value={selectedTierId}
+                                                    onChange={(e) => {
+                                                        setSelectedTierId(e.target.value);
+                                                        setFormData({ ...formData, quantity: '' });
+                                                    }}
+                                                    required
+                                                    className="w-full bg-white border border-green-200 rounded-xl px-4 py-3 text-sm text-gray-800 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 transition-all"
+                                                >
+                                                    <option value="">-- Choose Stock Load --</option>
+                                                    {(selectedItemInfo.stock_price_tiers || []).map((tier, idx) => (
+                                                        <option key={tier.id} value={tier.id}>
+                                                            Load {idx + 1} - Rs. {tier.buying_price} (Avail: {tier.quantity_remaining}) - {new Date(tier.created_at).toLocaleDateString()}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        )}
                                         <div>
                                             <label className="text-[11px] font-bold text-green-800 mb-2 block">Return Quantity</label>
                                             <input
                                                 type="number"
                                                 placeholder="0.00"
                                                 value={formData.quantity}
-                                                max={selectedItemInfo?.quantity || 1000}
+                                                max={
+                                                    selectedTierId
+                                                        ? (selectedItemInfo?.stock_price_tiers || []).find(t => t.id === selectedTierId)?.quantity_remaining || 0
+                                                        : selectedItemInfo?.quantity || 1000
+                                                }
                                                 onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
                                                 required
                                                 className="w-full bg-white border border-green-200 rounded-xl px-4 py-3 text-sm text-gray-800 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 transition-all"
                                             />
                                             {selectedItemInfo && (
-                                                <p className="text-[10px] text-green-700 font-bold mt-1.5 uppercase">Max Available: {selectedItemInfo.quantity}</p>
+                                                <p className="text-[10px] text-green-700 font-bold mt-1.5 uppercase">
+                                                    Max Available: {
+                                                        selectedTierId
+                                                            ? (selectedItemInfo.stock_price_tiers || []).find(t => t.id === selectedTierId)?.quantity_remaining || 0
+                                                            : selectedItemInfo.quantity
+                                                    }
+                                                </p>
                                             )}
                                         </div>
                                     
@@ -361,15 +416,23 @@ const SupplierReturnsPage = ({ onNavigate }) => {
                                     <div className="supplier-returns-batch-box p-5 bg-[#F3F9F5] border border-green-200 rounded-2xl grid grid-cols-2 gap-y-4">
                                         <div>
                                             <p className="text-[9px] font-bold text-green-700 uppercase tracking-widest">Supplier Source</p>
-                                            <p className="text-xs font-bold text-gray-900 mt-1">{selectedBatchInfo?.suppliers?.supplier_name || 'Select Item First'}</p>
+                                            <p className="text-xs font-bold text-gray-900 mt-1">{suppliers.find(s => s.id === formData.supplier_id)?.supplier_name || 'Select Item First'}</p>
                                         </div>
                                         <div>
-                                            <p className="text-[9px] font-bold text-green-700 uppercase tracking-widest">Invoice / Batch No</p>
-                                            <p className="text-xs font-bold text-gray-900 mt-1">{selectedBatchInfo?.batch_number || 'N/A'}</p>
+                                            <p className="text-[9px] font-bold text-green-700 uppercase tracking-widest">Load Buying Price</p>
+                                            <p className="text-xs font-bold text-gray-900 mt-1">
+                                                {selectedTierId && selectedItemInfo
+                                                    ? `Rs. ${(selectedItemInfo.stock_price_tiers || []).find(t => t.id === selectedTierId)?.buying_price || 0}`
+                                                    : selectedItemInfo ? `Rs. ${selectedItemInfo.buying_price}` : 'N/A'}
+                                            </p>
                                         </div>
                                         <div>
-                                            <p className="text-[9px] font-bold text-green-700 uppercase tracking-widest">Purchase Date</p>
-                                            <p className="text-xs font-bold text-gray-900 mt-1">{selectedBatchInfo ? new Date(selectedBatchInfo.batch_date).toLocaleDateString() : 'N/A'}</p>
+                                            <p className="text-[9px] font-bold text-green-700 uppercase tracking-widest">Purchase / Load Date</p>
+                                            <p className="text-xs font-bold text-gray-900 mt-1">
+                                                {selectedTierId && selectedItemInfo
+                                                    ? new Date((selectedItemInfo.stock_price_tiers || []).find(t => t.id === selectedTierId)?.created_at).toLocaleDateString()
+                                                    : selectedItemInfo?.last_updated ? new Date(selectedItemInfo.last_updated).toLocaleDateString() : 'N/A'}
+                                            </p>
                                         </div>
                                         <div>
                                             <p className="text-[9px] font-bold text-green-700 uppercase tracking-widest">Return Making Day</p>
@@ -498,6 +561,28 @@ const SupplierReturnsPage = ({ onNavigate }) => {
                                         <p className="text-xs text-white/50 leading-relaxed italic">
                                             "{selectedReturnView.reason || 'No detailed reason provided.'}"
                                         </p>
+                                        {(() => {
+                                            const parsed = parseReturnNotes(selectedReturnView.notes);
+                                            return (
+                                                <>
+                                                    {parsed.notes && (
+                                                        <p className="text-xs text-white/40 mt-2 font-semibold">
+                                                            Notes: {parsed.notes}
+                                                        </p>
+                                                    )}
+                                                    {parsed.buying_price !== null && (
+                                                        <p className="text-xs text-white/40 mt-1 font-semibold">
+                                                            Returned Set Buying Price: Rs. {parsed.buying_price}
+                                                        </p>
+                                                    )}
+                                                    {parsed.resolution_notes && (
+                                                        <p className="text-xs text-[#D4AF37] mt-2 font-bold uppercase tracking-wider">
+                                                            Resolution Notes: {parsed.resolution_notes}
+                                                        </p>
+                                                    )}
+                                                </>
+                                            );
+                                        })()}
                                     </div>
                                 </div>
 

@@ -1,36 +1,64 @@
 import { supabase } from '../config/db.js';
 import { addOrderItem as addOrderItemService, getOrderItemWithVariants } from '../services/orderService.js';
 
-const getStockAllocations = async (inventoryItem, requestedQuantity) => {
+const getStockAllocations = async (inventoryItem, requestedQuantity, selectedBatchId = null) => {
     const quantity = parseInt(requestedQuantity, 10);
     if (!Number.isFinite(quantity) || quantity <= 0) return [];
 
-    const { data: batches, error } = await supabase
-        .from('inventory_batch_items')
-        .select('id, quantity_remaining, quantity_added, selling_price_at_time, buying_price_at_time, created_at')
-        .eq('inventory_id', inventoryItem.id)
-        .gt('quantity_remaining', 0)
-        .order('created_at', { ascending: true });
-
-    if (error) {
-        console.warn('[ORDER] Could not fetch stock batches for FIFO pricing:', error.message);
+    let tiers = [];
+    if (inventoryItem.supplier_info) {
+        try {
+            tiers = JSON.parse(inventoryItem.supplier_info);
+            if (!Array.isArray(tiers)) tiers = [];
+        } catch (e) {
+            tiers = [];
+        }
     }
+
+    // Fallback for existing stock if tiers is empty and quantity > 0
+    if (tiers.length === 0 && parseFloat(inventoryItem.quantity || 0) > 0) {
+        tiers.push({
+            id: 'tier_init_' + inventoryItem.id,
+            quantity: parseFloat(inventoryItem.quantity),
+            quantity_remaining: parseFloat(inventoryItem.quantity),
+            buying_price: parseFloat(inventoryItem.buying_price || 0),
+            selling_price: parseFloat(inventoryItem.selling_price || 0),
+            created_at: inventoryItem.last_updated || new Date()
+        });
+    }
+
+    if (selectedBatchId) {
+        const tier = tiers.find(t => t.id === selectedBatchId);
+        if (tier) {
+            const unitPrice = parseFloat(tier.selling_price || inventoryItem.selling_price || 0);
+            const buyingPrice = parseFloat(tier.buying_price || inventoryItem.buying_price || 0);
+            return [{
+                batchItemId: tier.id,
+                quantity: quantity,
+                unitPrice,
+                buyingPrice
+            }];
+        }
+    }
+
+    // Sort by created_at ascending (FIFO)
+    tiers.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
 
     let remaining = quantity;
     const allocations = [];
 
-    for (const batch of batches || []) {
+    for (const tier of tiers) {
         if (remaining <= 0) break;
 
-        const available = parseFloat(batch.quantity_remaining ?? batch.quantity_added ?? 0);
+        const available = parseFloat(tier.quantity_remaining ?? tier.quantity ?? 0);
         if (available <= 0) continue;
 
         const allocatedQty = Math.min(remaining, available);
-        const unitPrice = parseFloat(batch.selling_price_at_time || inventoryItem.selling_price || 0);
-        const buyingPrice = parseFloat(batch.buying_price_at_time || inventoryItem.buying_price || 0);
+        const unitPrice = parseFloat(tier.selling_price || inventoryItem.selling_price || 0);
+        const buyingPrice = parseFloat(tier.buying_price || inventoryItem.buying_price || 0);
 
         allocations.push({
-            batchItemId: batch.id,
+            batchItemId: tier.id,
             quantity: allocatedQty,
             unitPrice,
             buyingPrice
@@ -54,61 +82,76 @@ const getStockAllocations = async (inventoryItem, requestedQuantity) => {
 const consumeOrderStock = async (orderId) => {
     const { data: orderItems, error } = await supabase
         .from('order_items')
-        .select('item_id, quantity, selected_variants')
+        .select('item_id, quantity')
         .eq('order_id', orderId);
 
     if (error) throw error;
 
     const inventoryDeltas = new Map();
-    const batchDeltas = new Map();
 
     for (const item of orderItems || []) {
         const qty = parseFloat(item.quantity || 0);
         if (!item.item_id || qty <= 0) continue;
 
         inventoryDeltas.set(item.item_id, (inventoryDeltas.get(item.item_id) || 0) + qty);
-
-        const stockAllocation = Array.isArray(item.selected_variants)
-            ? item.selected_variants.find(entry => entry?.type === 'STOCK_BATCH')
-            : null;
-
-        if (stockAllocation?.batch_item_id) {
-            batchDeltas.set(
-                stockAllocation.batch_item_id,
-                (batchDeltas.get(stockAllocation.batch_item_id) || 0) + qty
-            );
-        }
-    }
-
-    for (const [batchItemId, qty] of batchDeltas.entries()) {
-        const { data: batchItem, error: batchFetchError } = await supabase
-            .from('inventory_batch_items')
-            .select('quantity_remaining')
-            .eq('id', batchItemId)
-            .single();
-
-        if (batchFetchError || !batchItem) continue;
-
-        const nextRemaining = Math.max(0, parseFloat(batchItem.quantity_remaining || 0) - qty);
-        await supabase
-            .from('inventory_batch_items')
-            .update({ quantity_remaining: nextRemaining })
-            .eq('id', batchItemId);
     }
 
     for (const [inventoryId, qty] of inventoryDeltas.entries()) {
         const { data: inventoryItem, error: invFetchError } = await supabase
             .from('inventory')
-            .select('quantity')
+            .select('quantity, supplier_info, buying_price, selling_price, last_updated')
             .eq('id', inventoryId)
             .single();
 
         if (invFetchError || !inventoryItem) continue;
 
-        const nextQuantity = Math.max(0, parseFloat(inventoryItem.quantity || 0) - qty);
+        let tiers = [];
+        if (inventoryItem.supplier_info) {
+            try {
+                tiers = JSON.parse(inventoryItem.supplier_info);
+                if (!Array.isArray(tiers)) tiers = [];
+            } catch (e) {
+                tiers = [];
+            }
+        }
+
+        // Fallback for existing stock if tiers is empty and quantity > 0
+        if (tiers.length === 0 && parseFloat(inventoryItem.quantity || 0) > 0) {
+            tiers.push({
+                id: 'tier_init_' + inventoryItem.id,
+                quantity: parseFloat(inventoryItem.quantity),
+                quantity_remaining: parseFloat(inventoryItem.quantity),
+                buying_price: parseFloat(inventoryItem.buying_price || 0),
+                selling_price: parseFloat(inventoryItem.selling_price || 0),
+                created_at: inventoryItem.last_updated || new Date()
+            });
+        }
+
+        // Sort tiers by created_at ascending (FIFO)
+        tiers.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+
+        let remainingToDeduct = qty;
+        for (const tier of tiers) {
+            if (remainingToDeduct <= 0) break;
+
+            const available = parseFloat(tier.quantity_remaining ?? tier.quantity ?? 0);
+            if (available <= 0) continue;
+
+            const deduct = Math.min(remainingToDeduct, available);
+            tier.quantity_remaining = parseFloat((available - deduct).toFixed(4));
+            remainingToDeduct -= deduct;
+        }
+
+        // Update overall quantity as sum of remaining tier quantities
+        const nextQuantity = Math.max(0, tiers.reduce((sum, t) => sum + parseFloat(t.quantity_remaining || 0), 0));
+
         await supabase
             .from('inventory')
-            .update({ quantity: nextQuantity, last_updated: new Date() })
+            .update({
+                quantity: nextQuantity,
+                supplier_info: JSON.stringify(tiers),
+                last_updated: new Date()
+            })
             .eq('id', inventoryId);
     }
 };
@@ -232,7 +275,7 @@ export const createOrder = async (req, res) => {
         const itemIds = items.map(i => i.id || i.menu_item_id).filter(Boolean);
         const { data: inventoryItems, error: invError } = await supabase
             .from('inventory')
-            .select('id, selling_price, buying_price, ingredient_name')
+            .select('id, selling_price, buying_price, ingredient_name, supplier_info, quantity, last_updated')
             .in('id', itemIds);
 
         if (invError) {
@@ -257,7 +300,7 @@ export const createOrder = async (req, res) => {
                 return res.status(400).json({ error: `Invalid quantity for item ${invItem.ingredient_name}` });
             }
 
-            const allocations = await getStockAllocations(invItem, quantity);
+            const allocations = await getStockAllocations(invItem, quantity, reqItem.batch_id || reqItem.batchId);
 
             for (const allocation of allocations) {
                 const subtotal = allocation.unitPrice * allocation.quantity;
@@ -989,7 +1032,7 @@ export const updateOrderCart = async (req, res) => {
 
         const { data: inventoryItems, error: invError } = await supabase
             .from('inventory')
-            .select('id, selling_price, buying_price, ingredient_name')
+            .select('id, selling_price, buying_price, ingredient_name, supplier_info, quantity, last_updated')
             .in('id', itemIds);
 
         if (invError) throw invError;
@@ -1005,7 +1048,7 @@ export const updateOrderCart = async (req, res) => {
             const quantity = parseInt(reqItem.quantity, 10);
             if (isNaN(quantity) || quantity <= 0) continue;
 
-            const allocations = await getStockAllocations(invItem, quantity);
+            const allocations = await getStockAllocations(invItem, quantity, reqItem.batch_id || reqItem.batchId);
 
             for (const allocation of allocations) {
                 const subtotal = allocation.unitPrice * allocation.quantity;

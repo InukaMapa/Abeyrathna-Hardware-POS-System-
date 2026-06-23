@@ -145,8 +145,8 @@ const getElectronicPaymentType = (method) => {
 };
 
 const fetchClosedOrdersForShift = async (shift, staffIdOverride = null) => {
-    const orderSelect = 'order_id, total_amount, cash_amount, payment_method, payment_details, closed_at, staff_id';
-    const legacyOrderSelect = 'order_id, total_amount, cash_amount, payment_method, closed_at, staff_id';
+    const orderSelect = 'order_id, total_amount, cash_amount, payment_method, payment_details, closed_at, staff_id, order_items(order_item_id, item_id, quantity, item_price, subtotal, selected_variants)';
+    const legacyOrderSelect = 'order_id, total_amount, cash_amount, payment_method, closed_at, staff_id, order_items(order_item_id, item_id, quantity, item_price, subtotal, selected_variants)';
     const endTime = shift.end_time || new Date().toISOString();
     const shiftStaffId = staffIdOverride || await getShiftStaffId(shift);
 
@@ -355,6 +355,42 @@ export const getShiftSummary = async (req, res) => {
         const expectedCash = openingCash + cashSales + cashIn - cashOut;
         const fullTotal = openingCash + cashSales + bankTransferTotal + cardPaymentTotal + cashIn - cashOut;
 
+        // Calculate total profit of the day for all sales in this shift
+        const itemIds = [...new Set(closedOrders.flatMap(order => 
+            (order.order_items || []).map(item => item.item_id).filter(Boolean)
+        ))];
+
+        const { data: inventoryItems, error: inventoryError } = itemIds.length > 0
+            ? await supabase
+                .from('inventory')
+                .select('id, buying_price')
+                .in('id', itemIds)
+            : { data: [], error: null };
+
+        if (inventoryError) throw inventoryError;
+
+        const inventoryMap = new Map(inventoryItems.map(item => [item.id, parseFloat(item.buying_price || 0)]));
+
+        let totalProfit = 0;
+        closedOrders.forEach(order => {
+            let orderBuyingCost = 0;
+            (order.order_items || []).forEach(item => {
+                const batchAllocation = Array.isArray(item.selected_variants)
+                    ? item.selected_variants.find(entry => entry?.type === 'STOCK_BATCH')
+                    : null;
+                const batchBuyingPrice = Number(batchAllocation?.buying_price || 0);
+                
+                const buyingPrice = batchBuyingPrice > 0 
+                    ? batchBuyingPrice 
+                    : (inventoryMap.get(item.item_id) || 0);
+
+                const qty = parseFloat(item.quantity || 0);
+                orderBuyingCost += buyingPrice * qty;
+            });
+            const orderProfit = parseFloat(order.total_amount || 0) - orderBuyingCost;
+            totalProfit += orderProfit;
+        });
+
         res.status(200).json({
             opening_cash: shift.opening_cash,
             cash_sales: cashSales,
@@ -365,7 +401,8 @@ export const getShiftSummary = async (req, res) => {
             cash_in: cashIn,
             cash_out: cashOut,
             expected_cash: expectedCash,
-            full_total: fullTotal
+            full_total: fullTotal,
+            total_profit: Number(totalProfit.toFixed(2))
         });
     } catch (error) {
         console.error('[CASH] Get Summary Error:', error);

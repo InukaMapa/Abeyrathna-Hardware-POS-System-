@@ -247,7 +247,7 @@ const OrdersPage = ({ onNavigate }) => {
                                     <tr
                                         key={order.order_id}
                                         className="transition-colors group cursor-pointer"
-                                        onClick={() => onNavigate('order-details', { orderId: order.order_id })}
+                                        onClick={() => onNavigate('bill-open', { orderId: order.order_id })}
                                     >
                                         <td className="p-5 orders-id-cell">#{order.order_id}</td>
                                         <td className="p-5 orders-main-cell">{order.customer_phone || <span className="opacity-40">-</span>}</td>

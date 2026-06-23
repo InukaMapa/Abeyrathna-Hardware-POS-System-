@@ -68,19 +68,64 @@ export const createSupplierReturn = async (req, res) => {
 
         if (error) throw error;
 
-        // 3. Optional: Deduct from inventory?
-        // Usually returns should reduce local stock if they are physically sent back.
+        // 3. Deduct from inventory (update general quantity and specific tier quantity_remaining)
         const { data: item, error: itemError } = await supabase
             .from('inventory')
-            .select('quantity')
+            .select('quantity, supplier_info')
             .eq('id', item_id)
             .single();
 
         if (!itemError) {
             const newQty = Math.max(0, parseFloat(item.quantity) - parseFloat(quantity));
+            
+            let tier_id = null;
+            if (notes) {
+                try {
+                    if (notes.startsWith('{')) {
+                        const parsed = JSON.parse(notes);
+                        tier_id = parsed.tier_id;
+                    }
+                } catch (e) {
+                    console.error('Failed to parse notes in return deduction:', e);
+                }
+            }
+
+            let updatedSupplierInfo = item.supplier_info;
+            if (item.supplier_info) {
+                try {
+                    let tiers = JSON.parse(item.supplier_info);
+                    if (Array.isArray(tiers)) {
+                        let remainingToDeduct = parseFloat(quantity);
+                        if (tier_id) {
+                            const tier = tiers.find(t => t.id === tier_id);
+                            if (tier) {
+                                tier.quantity_remaining = Math.max(0, parseFloat(tier.quantity_remaining || 0) - remainingToDeduct);
+                            }
+                        } else {
+                            // FIFO Fallback
+                            for (let i = 0; i < tiers.length; i++) {
+                                if (remainingToDeduct <= 0) break;
+                                const avail = parseFloat(tiers[i].quantity_remaining || 0);
+                                if (avail > 0) {
+                                    const deduct = Math.min(avail, remainingToDeduct);
+                                    tiers[i].quantity_remaining = avail - deduct;
+                                    remainingToDeduct -= deduct;
+                                }
+                            }
+                        }
+                        updatedSupplierInfo = JSON.stringify(tiers);
+                    }
+                } catch (e) {
+                    console.error('Error updating supplier_info tiers during return deduction:', e);
+                }
+            }
+
             await supabase
                 .from('inventory')
-                .update({ quantity: newQty })
+                .update({ 
+                    quantity: newQty,
+                    supplier_info: updatedSupplierInfo
+                })
                 .eq('id', item_id);
         }
 
@@ -141,13 +186,24 @@ export const resolveSupplierReturn = async (req, res) => {
 
         if (fetchErr) throw fetchErr;
 
+        let mergedNotes = notes || ret.notes;
+        if (ret.notes && ret.notes.startsWith('{')) {
+            try {
+                const parsed = JSON.parse(ret.notes);
+                parsed.resolution_notes = notes || '';
+                mergedNotes = JSON.stringify(parsed);
+            } catch (e) {
+                // Keep as is
+            }
+        }
+
         const updates = {
             status: resolution_type === 'REFUND' ? 'CASH_REFUNDED' : 'COMPLETED',
             resolution_type,
             refund_amount: (resolution_type === 'REFUND' || resolution_type === 'CREDIT_NOTE') ? parseFloat(refund_amount) : null,
             credit_note_number: resolution_type === 'CREDIT_NOTE' ? credit_note_number : null,
             resolved_at: new Date().toISOString(),
-            notes: notes || ret.notes
+            notes: mergedNotes
         };
 
         const { data: updatedReturn, error: updateErr } = await supabase
