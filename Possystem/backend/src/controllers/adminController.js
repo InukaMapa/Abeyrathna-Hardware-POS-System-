@@ -319,7 +319,8 @@ export const getSalesReport = async (req, res) => {
                     item_name,
                     quantity,
                     item_price,
-                    subtotal
+                    subtotal,
+                    selected_variants
                 )
             `)
             .eq('status', 'CLOSED')
@@ -382,7 +383,11 @@ export const getSalesReport = async (req, res) => {
                 const subtotal = Number(item.subtotal || 0);
                 categoryTotals.set(category, (categoryTotals.get(category) || 0) + subtotal);
 
-                const buyingPrice = Number(inventoryItem?.buying_price || 0);
+                const batchAllocation = Array.isArray(item.selected_variants)
+                    ? item.selected_variants.find(entry => entry?.type === 'STOCK_BATCH')
+                    : null;
+                const batchBuyingPrice = Number(batchAllocation?.buying_price || 0);
+                const buyingPrice = batchBuyingPrice > 0 ? batchBuyingPrice : Number(inventoryItem?.buying_price || 0);
                 const qty = Number(item.quantity || 0);
                 orderBuyingCost += buyingPrice * qty;
 
@@ -448,7 +453,8 @@ export const getProductReport = async (req, res) => {
                     item_name,
                     quantity,
                     item_price,
-                    subtotal
+                    subtotal,
+                    selected_variants
                 )
             `)
             .eq('status', 'CLOSED')
@@ -526,7 +532,13 @@ export const getProductReport = async (req, res) => {
                 const product = ensureProduct(item.item_id, item.item_name);
                 const quantity = Number(item.quantity || 0);
                 const revenue = Number(item.subtotal || 0);
-                const cost = product.buying_price * quantity;
+
+                const batchAllocation = Array.isArray(item.selected_variants)
+                    ? item.selected_variants.find(entry => entry?.type === 'STOCK_BATCH')
+                    : null;
+                const batchBuyingPrice = Number(batchAllocation?.buying_price || 0);
+                const buyingPrice = batchBuyingPrice > 0 ? batchBuyingPrice : product.buying_price;
+                const cost = buyingPrice * quantity;
 
                 product.soldQty += quantity;
                 product.revenue += revenue;
