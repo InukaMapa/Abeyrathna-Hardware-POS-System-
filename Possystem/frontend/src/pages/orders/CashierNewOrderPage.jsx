@@ -428,7 +428,7 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
                 alert(`✅ Order #${editOrder.order_id} updated & saved on hold.`);
             } else {
                 const res = await createOrder(orderData);
-                const orderId = res.id || res.orderId;
+                const orderId = res.id || res.orderId || res.order_id;
                 alert(`✅ Order #${orderId || ''} saved on hold.`);
             }
             onNavigate('orders');
@@ -482,7 +482,7 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
                 }
             } else {
                 const res = await createOrder(orderData);
-                orderId = res.id || res.orderId;
+                orderId = res.id || res.orderId || res.order_id;
             }
 
             const token = localStorage.getItem('token');
