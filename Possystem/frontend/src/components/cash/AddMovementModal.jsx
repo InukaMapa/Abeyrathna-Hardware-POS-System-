@@ -14,91 +14,12 @@ const AddMovementModal = ({ isOpen, onClose, shiftId, type, onMovementAdded }) =
     const [loadingShift, setLoadingShift] = useState(false);
     const [shiftError, setShiftError] = useState(null);
 
-    const [payoutRequests, setPayoutRequests] = useState([]);
-    const [refundBatches, setRefundBatches] = useState([]);
-    const [selectedPayoutId, setSelectedPayoutId] = useState('');
-    const [selectedRefundId, setSelectedRefundId] = useState('');
-
     useEffect(() => {
         if (isOpen) {
             fetchActiveShiftAndDetails();
             setFormData({ amount: '', reason: '' });
-            setSelectedPayoutId('');
-            setSelectedRefundId('');
         }
     }, [isOpen, shiftId, type]);
-
-    const extractMovementRefs = (movements) => new Set(
-        movements
-            .map(movement => String(movement.reason || '').match(/\b(PAY-\d+|RFB-\d+)\b/i)?.[1]?.toUpperCase())
-            .filter(Boolean)
-    );
-
-    const fetchUsedMovementRefs = async (activeShiftId) => {
-        try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`${API_BASE_URL}/cash/shift-movements/${activeShiftId}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const data = await response.json();
-            return Array.isArray(data) ? extractMovementRefs(data) : new Set();
-        } catch (err) {
-            console.error('Failed to fetch shift movements:', err);
-            return new Set();
-        }
-    };
-
-    const fetchRefunds = async (activeShiftId, activeStartTime, usedRefs) => {
-        try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`${API_BASE_URL}/inventory/refund-batches`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const data = await response.json();
-            if (Array.isArray(data)) {
-                const onlyPending = (items) => items.filter(item => String(item.status || 'PENDING').toUpperCase() === 'PENDING');
-                const isAfterAvailableTime = (item) => {
-                    if (!activeStartTime) return true;
-                    const itemTime = item.authorized_at || item.created_at || item.requested_at || item.received_at;
-                    if (!itemTime) return false;
-                    return new Date(itemTime).getTime() >= new Date(activeStartTime).getTime();
-                };
-                setRefundBatches(
-                    onlyPending(data)
-                        .filter(isAfterAvailableTime)
-                        .filter(r => !usedRefs.has(String(r.batch_number || '').toUpperCase()))
-                );
-            }
-        } catch (err) {
-            console.error('Failed to fetch refunds:', err);
-        }
-    };
-
-    const fetchPayouts = async (activeShiftId, activeStartTime, usedRefs) => {
-        try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`${API_BASE_URL}/inventory/payout-requests`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const data = await response.json();
-            if (Array.isArray(data)) {
-                const onlyPending = (items) => items.filter(item => String(item.status || 'PENDING').toUpperCase() === 'PENDING');
-                const isAfterAvailableTime = (item) => {
-                    if (!activeStartTime) return true;
-                    const itemTime = item.authorized_at || item.created_at || item.requested_at || item.received_at;
-                    if (!itemTime) return false;
-                    return new Date(itemTime).getTime() >= new Date(activeStartTime).getTime();
-                };
-                setPayoutRequests(
-                    onlyPending(data)
-                        .filter(isAfterAvailableTime)
-                        .filter(p => !usedRefs.has(String(p.payout_number || '').toUpperCase()))
-                );
-            }
-        } catch (err) {
-            console.error('Failed to fetch payouts:', err);
-        }
-    };
 
     const fetchActiveShiftAndDetails = async () => {
         setLoadingShift(true);
@@ -124,18 +45,6 @@ const AddMovementModal = ({ isOpen, onClose, shiftId, type, onMovementAdded }) =
             }
 
             setActiveShift(active);
-
-            // Now fetch details (refund batches/supplier payouts)
-            const activeShiftId = active.shift_id;
-            const activeStartTime = active.start_time;
-
-            const usedRefs = await fetchUsedMovementRefs(activeShiftId);
-
-            if (type === 'cash_in') {
-                await fetchRefunds(activeShiftId, activeStartTime, usedRefs);
-            } else {
-                await fetchPayouts(activeShiftId, activeStartTime, usedRefs);
-            }
         } catch (err) {
             setShiftError(err.message);
         } finally {
@@ -147,40 +56,6 @@ const AddMovementModal = ({ isOpen, onClose, shiftId, type, onMovementAdded }) =
 
     const title = type === 'cash_in' ? 'Record Cash In' : 'Record Cash Out';
     const buttonLabel = type === 'cash_in' ? 'Record Cash In' : 'Record Cash Out';
-
-    const handlePayoutSelect = (e) => {
-        const payoutId = e.target.value;
-        setSelectedPayoutId(payoutId);
-
-        if (payoutId) {
-            const payout = payoutRequests.find(p => p.id === parseInt(payoutId));
-            if (payout) {
-                setFormData({
-                    amount: payout.amount,
-                    reason: `Supplier Payout: ${payout.suppliers?.supplier_name} (Ref: ${payout.payout_number})`
-                });
-            }
-        } else {
-            setFormData({ amount: '', reason: '' });
-        }
-    };
-
-    const handleRefundSelect = (e) => {
-        const refundId = e.target.value;
-        setSelectedRefundId(refundId);
-
-        if (refundId) {
-            const refund = refundBatches.find(r => r.id === parseInt(refundId));
-            if (refund) {
-                setFormData({
-                    amount: refund.amount,
-                    reason: `Supplier Refund (Cash In): ${refund.suppliers?.supplier_name} (Ref: ${refund.batch_number})`
-                });
-            }
-        } else {
-            setFormData({ amount: '', reason: '' });
-        }
-    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -197,7 +72,7 @@ const AddMovementModal = ({ isOpen, onClose, shiftId, type, onMovementAdded }) =
         try {
             const token = localStorage.getItem('token');
 
-            // 1. Add standard movement
+            // Add standard movement
             const response = await fetch(`${API_BASE_URL}/cash/add-movement`, {
                 method: 'POST',
                 headers: {
@@ -215,33 +90,11 @@ const AddMovementModal = ({ isOpen, onClose, shiftId, type, onMovementAdded }) =
             const data = await response.json();
             if (!response.ok) throw new Error(data.error || 'Failed to record movement');
 
-            // 2. If it was a payout, mark the payout as completed
-            if (type === 'cash_out' && selectedPayoutId) {
-                const completeResponse = await fetch(`${API_BASE_URL}/inventory/payout-requests/${selectedPayoutId}/complete`, {
-                    method: 'POST',
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                const completeData = await completeResponse.json().catch(() => ({}));
-                if (!completeResponse.ok) throw new Error(completeData.message || 'Failed to complete payout batch');
-            }
-
-            // 3. If it was a refund, mark the refund batch as received
-            if (type === 'cash_in' && selectedRefundId) {
-                const completeResponse = await fetch(`${API_BASE_URL}/inventory/refund-batches/${selectedRefundId}/complete`, {
-                    method: 'POST',
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                const completeData = await completeResponse.json().catch(() => ({}));
-                if (!completeResponse.ok) throw new Error(completeData.message || 'Failed to complete refund batch');
-            }
-
             // Dispatch global event to sync active components
             window.dispatchEvent(new CustomEvent('cash-movement-added', { detail: data.movement }));
 
             if (onMovementAdded) onMovementAdded(data.movement);
             setFormData({ amount: '', reason: '' });
-            setSelectedPayoutId('');
-            setSelectedRefundId('');
             onClose();
         } catch (err) {
             setError(err.message);
@@ -343,80 +196,6 @@ const AddMovementModal = ({ isOpen, onClose, shiftId, type, onMovementAdded }) =
                     </div>
                 ) : (
                     <form onSubmit={handleSubmit} style={{ padding: '24px' }}>
-                        {type === 'cash_in' && (
-                            <div className="form-group" style={{ marginBottom: '16px' }}>
-                                <label style={{
-                                    display: 'block',
-                                    marginBottom: '8px',
-                                    fontSize: '0.72rem',
-                                    fontWeight: '600',
-                                    textTransform: 'uppercase',
-                                    color: 'var(--text-secondary)',
-                                    letterSpacing: '0.05em'
-                                }}>
-                                    Authorized Refund Batches (Optional)
-                                </label>
-                                <select
-                                    value={selectedRefundId}
-                                    onChange={handleRefundSelect}
-                                    style={{
-                                        width: '100%',
-                                        padding: '10px 12px',
-                                        borderRadius: '8px',
-                                        border: '1.5px solid var(--border-color)',
-                                        background: '#fff',
-                                        color: 'var(--text-primary)',
-                                        outline: 'none',
-                                        fontSize: '0.9rem'
-                                    }}
-                                >
-                                    <option value="">-- General Cash In --</option>
-                                    {refundBatches.map(r => (
-                                        <option key={r.id} value={r.id}>
-                                            {r.batch_number} - {r.suppliers?.supplier_name} (Rs. {parseFloat(r.amount).toLocaleString()})
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-                        )}
-
-                        {type === 'cash_out' && (
-                            <div className="form-group" style={{ marginBottom: '16px' }}>
-                                <label style={{
-                                    display: 'block',
-                                    marginBottom: '8px',
-                                    fontSize: '0.72rem',
-                                    fontWeight: '600',
-                                    textTransform: 'uppercase',
-                                    color: 'var(--text-secondary)',
-                                    letterSpacing: '0.05em'
-                                }}>
-                                    Authorized Supplier Payouts (Optional)
-                                </label>
-                                <select
-                                    value={selectedPayoutId}
-                                    onChange={handlePayoutSelect}
-                                    style={{
-                                        width: '100%',
-                                        padding: '10px 12px',
-                                        borderRadius: '8px',
-                                        border: '1.5px solid var(--border-color)',
-                                        background: '#fff',
-                                        color: 'var(--text-primary)',
-                                        outline: 'none',
-                                        fontSize: '0.9rem'
-                                    }}
-                                >
-                                    <option value="">-- General Expense --</option>
-                                    {payoutRequests.map(p => (
-                                        <option key={p.id} value={p.id}>
-                                            {p.payout_number} - {p.suppliers?.supplier_name} (Rs. {parseFloat(p.amount).toLocaleString()})
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-                        )}
-
                         <div className="form-group" style={{ marginBottom: '16px' }}>
                             <label style={{
                                 display: 'block',
@@ -447,7 +226,6 @@ const AddMovementModal = ({ isOpen, onClose, shiftId, type, onMovementAdded }) =
                                 required
                                 min="0.01"
                                 step="0.01"
-                                readOnly={!!selectedPayoutId || !!selectedRefundId}
                             />
                         </div>
 

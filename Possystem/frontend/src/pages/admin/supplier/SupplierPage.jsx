@@ -893,9 +893,18 @@ useEffect(() => {
                             <p className="text-[#666] text-xs font-bold uppercase tracking-widest ml-11">Abeyrathna Trade Center / Procurement Control</p>
                         </div>
 
-                        <div className="flex items-center gap-3 w-full md:w-auto">
-                            <button className="supplier-header-action">
-                                <Printer className="w-4 h-4" /> Print Ledger
+                        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                            <button
+                                onClick={() => setGlobalPaymentsOpen(true)}
+                                className="supplier-header-action"
+                            >
+                                <DollarSign className="w-4 h-4" /> Payments
+                            </button>
+                            <button
+                                onClick={() => onNavigate('supplier-returns')}
+                                className="supplier-header-action"
+                            >
+                                <RefreshCcw className="w-4 h-4" /> Return Items
                             </button>
                             <button
                                 onClick={() => setAddModalOpen(true)}
@@ -939,8 +948,8 @@ useEffect(() => {
 
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
 
-                        {/* Left/Main Section (Col 8) */}
-                        <div className="lg:col-span-8 space-y-8">
+                        {/* Left/Main Section (Col 12) */}
+                        <div className="lg:col-span-12 space-y-8">
 
                             {/* Search & Filter Bar */}
                             <div className="bg-[#1E1E1E] p-3 rounded-2xl border border-[#333] flex flex-col md:flex-row items-center gap-3 shadow-xl">
@@ -1029,6 +1038,17 @@ useEffect(() => {
                                                                     <Eye className="w-4 h-4" />
                                                                 </button>
                                                                 <button
+                                                                    onClick={() => {
+                                                                        setSelectedSupplier(supplier);
+                                                                        setActiveProfileTab('Products');
+                                                                        setAddProductModalOpen(true);
+                                                                    }}
+                                                                    className="p-3 bg-[#121212] text-[#A0A0A0] hover:text-green-500 hover:border-green-500/50 border border-[#333] rounded-xl transition-all group-hover:bg-[#1E1E1E]"
+                                                                    title="Add Product"
+                                                                >
+                                                                    <PackagePlus className="w-4 h-4" />
+                                                                </button>
+                                                                <button
                                                                      onClick={() => setEditingSupplier(supplier)}
                                                                      className="p-3 bg-[#121212] text-[#A0A0A0] hover:text-white border border-[#333] rounded-xl transition-all group-hover:bg-[#1E1E1E]"
                                                                      title="Edit Profile"
@@ -1070,39 +1090,7 @@ useEffect(() => {
                             </div>
                         </div>
 
-                        {/* Right/Side Section (Col 4) */}
-                        <div className="lg:col-span-4 space-y-8">
 
-                            {/* Operations Control Center */}
-                            <div ref={recentPurchasesRef} id="recent-purchases" className="bg-[#1E1E1E] rounded-3xl border border-[#333] overflow-hidden shadow-2xl scroll-mt-8">
-                                <div className="p-6 bg-[#D4AF37]/5 border-b border-[#333]">
-                                    <h3 className="text-xs font-black text-[#D4AF37] uppercase tracking-[0.2em] flex items-center gap-2">
-                                        <TrendingUp className="w-4 h-4" /> Quick Actions
-                                    </h3>
-                                </div>
-                                <div className="p-6 grid grid-cols-1 gap-4">
-                                    {[
-                                        {
-                                            label: 'Payments', sub: 'Process settlements', icon: DollarSign, color: '#4caf50', onClick: () => {
-                                                setGlobalPaymentsOpen(true);
-                                            }
-                                        },
-                                        { label: 'Return Items', sub: 'Inventory damage', icon: RefreshCcw, color: '#ff5252', onClick: () => onNavigate('supplier-returns') }
-                                    ].map((act, i) => (
-                                        <button key={i} onClick={act.onClick} className="supplier-quick-action">
-                                            <div style={{ backgroundColor: `rgba(255, 255, 255, 0.1)`, color: 'white' }} className="p-3 rounded-xl transition-all">
-                                                <act.icon className="w-5 h-5" />
-                                            </div>
-                                            <div>
-                                                <div className="text-xs font-black text-white uppercase tracking-wider">{act.label}</div>
-                                                <div className="text-[10px] text-white/70 font-bold uppercase tracking-tight">{act.sub}</div>
-                                            </div>
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                        </div>
 
                         {/* --- Modals Component System --- */}
 
