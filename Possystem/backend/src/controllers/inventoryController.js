@@ -942,26 +942,41 @@ export const payEmulatedBatch = async (req, res) => {
 
         if (error) throw error;
 
-        // If cashier logged in, automatically record as cash out
+        // Automatically record as cash out if there is an active shift
         const { role, username, userId } = req.user || {};
-        if (role === 'CASHIER') {
+        if (userId) {
             let cashierName = username;
-            if (!cashierName && userId) {
-                const { data: userData } = await supabase
-                    .from('users')
-                    .select('username')
-                    .eq('id', userId)
-                    .single();
-                if (userData) cashierName = userData.username;
+            let cashierFullName = '';
+            
+            const { data: userData } = await supabase
+                .from('users')
+                .select('username, full_name')
+                .eq('id', userId)
+                .maybeSingle();
+                
+            if (userData) {
+                cashierName = userData.username;
+                cashierFullName = userData.full_name;
             }
 
             if (cashierName) {
-                const { data: activeShift, error: shiftError } = await supabase
+                let shiftQuery = supabase
                     .from('cash_shifts')
                     .select('shift_id')
-                    .eq('cashier_name', cashierName)
-                    .in('status', ['OPEN', 'REPORT_SUBMITTED'])
-                    .maybeSingle();
+                    .in('status', ['OPEN', 'REPORT_SUBMITTED']);
+                
+                const conditions = [];
+                if (cashierName) {
+                    conditions.push(`cashier_name.ilike."${cashierName}"`);
+                }
+                if (cashierFullName) {
+                    conditions.push(`cashier_name.ilike."${cashierFullName}"`);
+                }
+                if (conditions.length > 0) {
+                    shiftQuery = shiftQuery.or(conditions.join(','));
+                }
+                
+                const { data: activeShift, error: shiftError } = await shiftQuery.maybeSingle();
 
                 if (shiftError) {
                     console.error('[PAYMENT] Error fetching active shift:', shiftError);
@@ -969,14 +984,16 @@ export const payEmulatedBatch = async (req, res) => {
 
                 if (activeShift) {
                     const supplierName = payout.suppliers?.supplier_name || 'Supplier';
-                    const reasonText = `Supplier Payment: ${supplierName} (Ref: ${payout.payout_number} via ${method || 'Cash'})`;
+                    const notesDetail = notes ? ` - Notes: ${notes}` : '';
+                    const reasonText = `Supplier Payment: ${supplierName} (Ref: ${payout.payout_number} via ${method || 'Cash'})${notesDetail}`;
                     const { error: moveError } = await supabase
                         .from('cash_movements')
                         .insert({
                             shift_id: activeShift.shift_id,
                             type: 'cash_out',
                             amount: newPaymentAmount,
-                            reason: reasonText
+                            reason: reasonText,
+                            time: new Date().toISOString()
                         });
                     
                     if (moveError) {
@@ -985,7 +1002,7 @@ export const payEmulatedBatch = async (req, res) => {
                         console.log('[PAYMENT] Automatic cash out movement recorded successfully.');
                     }
                 } else {
-                    console.log('[PAYMENT] No active shift found for cashier, skipped automatic cash out.');
+                    console.log('[PAYMENT] No active shift found for cashier/admin, skipped automatic cash out.');
                 }
             }
         }

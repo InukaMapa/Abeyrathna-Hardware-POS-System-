@@ -3,7 +3,6 @@ import DashboardLayout from '../../components/layout/DashboardLayout';
 import ShiftStartForm from '../../components/cash/ShiftStartForm';
 import CashierProfileCard from '../../components/cash/CashierProfileCard';
 import DenominationCounter from '../../components/cash/DenominationCounter';
-import MovementForm from '../../components/cash/MovementForm';
 import ShiftSummaryPanel from '../../components/cash/ShiftSummaryPanel';
 import ShiftReportModal from '../../components/cash/ShiftReportModal';
 import { API_BASE_URL } from '../../config/api';
@@ -358,11 +357,6 @@ const CashCounterPage = ({ onNavigate }) => {
                                         shiftId={currentShift.shift_id}
                                         onSummaryUpdate={setSummaryData}
                                         key={currentShift.shift_id}
-                                    />
-                                    <MovementForm
-                                        shiftId={currentShift.shift_id}
-                                        availableAfter={currentShift.start_time}
-                                        onMovementAdded={() => setSummaryData({ ...summaryData })}
                                     />
                                 </div>
 

@@ -6745,63 +6745,94 @@ button.inventory-category-add.inventory-category-add:disabled {
 }
 
 /* Thermal receipt preview and print output */
+.dashboard-page:has(.bill-complete-screen) {
+    overflow: hidden !important;
+    padding: 8px !important;
+    height: calc(100vh - var(--header-height, 64px)) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    align-items: center !important;
+}
+
 .bill-complete-screen {
     background: #F4FAF6;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .bill-complete-card {
-    width: min(560px, 100%);
+    width: 100%;
+    max-width: 700px;
     background: #FFFFFF;
     border: 1px solid #D7E7DC;
-    border-radius: 8px;
+    border-radius: 12px;
     box-shadow: 0 24px 70px rgba(15, 23, 42, 0.12);
     overflow: hidden;
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    max-height: 98vh;
 }
 
 .bill-complete-header {
-    padding: 28px 24px 24px;
+    padding: 16px;
     text-align: center;
-    border-top: 8px solid #16A34A;
     border-bottom: 1px solid #E5EEE8;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
 }
 
 .bill-complete-check {
-    width: 58px;
-    height: 58px;
+    width: 32px;
+    height: 32px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    margin-bottom: 14px;
+    margin-bottom: 4px;
     color: #16A34A;
     background: #DCFCE7;
     border-radius: 50%;
 }
 
 .bill-complete-check svg {
-    width: 30px;
-    height: 30px;
+    width: 16px;
+    height: 16px;
 }
 
 .bill-complete-header h2 {
     margin: 0;
     color: #0F172A;
-    font-size: 1.55rem;
+    font-size: 1.05rem;
     font-weight: 700;
-    letter-spacing: 0;
+    letter-spacing: -0.01em;
+    line-height: 1.25;
 }
 
 .bill-complete-header p {
-    margin: 6px 0 0;
+    margin: 2px 0 0;
     color: #475569;
-    font-size: 0.82rem;
+    font-size: 0.72rem;
     font-weight: 700;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.04em;
     text-transform: uppercase;
 }
 
 .bill-receipt-shell {
-    padding: 28px;
+    padding: 12px;
     background: #F8FAFC;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    overflow-y: auto;
 }
 
 .thermal-receipt {
@@ -6969,8 +7000,9 @@ button.inventory-category-add.inventory-category-add:disabled {
 }
 
 .bill-complete-actions {
-    padding: 24px 28px 28px;
+    padding: 10px 12px;
     background: #FFFFFF;
+    border-top: 1px solid #E5EEE8;
 }
 
 @media print {
