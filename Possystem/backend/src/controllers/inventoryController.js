@@ -615,15 +615,198 @@ export const updateInventoryItem = async (req, res) => {
 };
 
 /**
+ * Validate deletion of an inventory item.
+ * @route GET /api/inventory/:id/validate-delete
+ */
+export const validateDeleteInventoryItem = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Fetch the item
+        const { data: item, error: fetchError } = await supabase
+            .from('inventory')
+            .select('ingredient_name, quantity')
+            .eq('id', id)
+            .maybeSingle();
+
+        if (fetchError || !item) {
+            return res.status(404).json({ message: 'Product not found.' });
+        }
+
+        const quantity = parseFloat(item.quantity || 0);
+        const stockExists = quantity > 0;
+
+        // Check pending supplier payments
+        const { data: payouts, error: payoutError } = await supabase
+            .from('supplier_payout_requests')
+            .select('notes, status')
+            .eq('status', 'PENDING');
+
+        if (payoutError) throw payoutError;
+
+        const parseNames = (notes) => {
+            if (!notes) return [];
+            const regex = /(?:Purchased|Added)\s+(\d+(?:\.\d+)?)\s*x\s+(.*?)\s*\(Rs\.\s*(\d+(?:\.\d+)?)\s*each\)/gi;
+            const names = [];
+            let match;
+            while ((match = regex.exec(notes)) !== null) {
+                names.push(match[2].trim().toLowerCase());
+            }
+            return names;
+        };
+
+        const lowerName = item.ingredient_name.trim().toLowerCase();
+        const pendingPayments = (payouts || []).some(p => {
+            let notes = p.notes || '';
+            if (notes.startsWith('{')) {
+                try {
+                    const parsed = JSON.parse(notes);
+                    notes = parsed.legacy_notes || '';
+                } catch (e) {
+                    // ignore
+                }
+            }
+            const namesInPayout = parseNames(notes);
+            if (namesInPayout.length === 0) {
+                return notes.toLowerCase().includes(lowerName);
+            }
+            return namesInPayout.includes(lowerName);
+        });
+
+        // Check supplier returns
+        const { data: returns, error: returnsError } = await supabase
+            .from('supplier_returns')
+            .select('id')
+            .eq('item_id', id)
+            .limit(1);
+
+        if (returnsError) throw returnsError;
+        const hasReturns = returns && returns.length > 0;
+
+        const canDelete = !stockExists && !pendingPayments && !hasReturns;
+
+        let reason = null;
+        if (stockExists && pendingPayments && hasReturns) {
+            reason = 'all_failed';
+        } else if (stockExists && pendingPayments) {
+            reason = 'both_failed';
+        } else if (stockExists && hasReturns) {
+            reason = 'stock_and_returns';
+        } else if (pendingPayments && hasReturns) {
+            reason = 'payments_and_returns';
+        } else if (stockExists) {
+            reason = 'stock_exists';
+        } else if (pendingPayments) {
+            reason = 'pending_payments';
+        } else if (hasReturns) {
+            reason = 'has_returns';
+        }
+
+        return res.status(200).json({
+            canDelete,
+            reason,
+            quantity,
+            pendingPayments,
+            hasReturns
+        });
+    } catch (err) {
+        console.error('Error validating delete:', err);
+        return res.status(500).json({ message: 'Internal server error validating product deletion.' });
+    }
+};
+
+/**
  * Delete inventory item.
  * @route DELETE /api/inventory/:id
  */
 export const deleteInventoryItem = async (req, res) => {
     try {
         const { id } = req.params;
+
+        // Fetch the item
+        const { data: item, error: fetchError } = await supabase
+            .from('inventory')
+            .select('ingredient_name, quantity')
+            .eq('id', id)
+            .maybeSingle();
+
+        if (fetchError || !item) {
+            return res.status(404).json({ message: 'Product not found.' });
+        }
+
+        const quantity = parseFloat(item.quantity || 0);
+        const stockExists = quantity > 0;
+
+        // Check pending supplier payments
+        const { data: payouts, error: payoutError } = await supabase
+            .from('supplier_payout_requests')
+            .select('notes, status')
+            .eq('status', 'PENDING');
+
+        if (payoutError) throw payoutError;
+
+        const parseNames = (notes) => {
+            if (!notes) return [];
+            const regex = /(?:Purchased|Added)\s+(\d+(?:\.\d+)?)\s*x\s+(.*?)\s*\(Rs\.\s*(\d+(?:\.\d+)?)\s*each\)/gi;
+            const names = [];
+            let match;
+            while ((match = regex.exec(notes)) !== null) {
+                names.push(match[2].trim().toLowerCase());
+            }
+            return names;
+        };
+
+        const lowerName = item.ingredient_name.trim().toLowerCase();
+        const pendingPayments = (payouts || []).some(p => {
+            let notes = p.notes || '';
+            if (notes.startsWith('{')) {
+                try {
+                    const parsed = JSON.parse(notes);
+                    notes = parsed.legacy_notes || '';
+                } catch (e) {
+                    // ignore
+                }
+            }
+            const namesInPayout = parseNames(notes);
+            if (namesInPayout.length === 0) {
+                return notes.toLowerCase().includes(lowerName);
+            }
+            return namesInPayout.includes(lowerName);
+        });
+
+        // Check supplier returns
+        const { data: returns, error: returnsError } = await supabase
+            .from('supplier_returns')
+            .select('id')
+            .eq('item_id', id)
+            .limit(1);
+
+        if (returnsError) throw returnsError;
+        const hasReturns = returns && returns.length > 0;
+
+        if (stockExists || pendingPayments || hasReturns) {
+            let message = '';
+            if (stockExists && pendingPayments && hasReturns) {
+                message = 'This product cannot be deleted because inventory is still available, there are outstanding supplier payments, and it has associated supplier returns.';
+            } else if (stockExists && pendingPayments) {
+                message = 'This product cannot be deleted because inventory is still available and there are outstanding supplier payments. Set inventory to 0 and clear all payments before deleting.';
+            } else if (stockExists && hasReturns) {
+                message = 'This product cannot be deleted because there is still inventory in stock and it has associated supplier returns.';
+            } else if (pendingPayments && hasReturns) {
+                message = 'This product cannot be deleted because there are outstanding supplier payments and it has associated supplier returns.';
+            } else if (stockExists) {
+                message = 'This product cannot be deleted because there is still inventory in stock. Reduce the inventory quantity to 0 before deleting.';
+            } else if (pendingPayments) {
+                message = 'This product cannot be deleted because there are outstanding supplier payments associated with it. Clear all supplier payments before deleting.';
+            } else if (hasReturns) {
+                message = 'This product cannot be deleted because it has associated supplier returns. Products with return history cannot be permanently deleted.';
+            }
+            return res.status(400).json({ message });
+        }
+
         const { error } = await supabase.from('inventory').delete().eq('id', id);
         if (error) throw error;
-        res.status(200).json({ message: 'Item deleted successfully' });
+        res.status(200).json({ message: 'Product deleted successfully.' });
     } catch (err) {
         console.error('Error deleting item:', err);
         res.status(500).json({ message: 'Server error' });

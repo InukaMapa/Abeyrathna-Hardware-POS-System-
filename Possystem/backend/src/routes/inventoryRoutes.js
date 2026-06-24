@@ -6,6 +6,7 @@ import {
     addInventoryItem,
     fetchInventoryItemDetails,
     deleteInventoryItem,
+    validateDeleteInventoryItem,
     fetchInventoryCategories,
     createInventoryCategory,
     deleteInventoryCategory,
@@ -47,10 +48,10 @@ router.post('/returns', protect, authorize('ADMIN'), createReturn);
 router.put('/returns/:id/status', protect, authorize('ADMIN'), updateStatus);
 router.post('/returns/:id/resolve', protect, authorize('ADMIN'), resolveReturn);
 
-// ADMIN-only routes for inventory management
 router.post('/', protect, authorize('ADMIN'), addInventoryItem); // Add new or add stock
 router.get('/', protect, authorize('ADMIN', 'CASHIER'), fetchInventoryList);
 router.post('/:id/receive', protect, authorize('ADMIN'), receiveInventoryStock); // Receive stock for existing item
+router.get('/:id/validate-delete', protect, authorize('ADMIN'), validateDeleteInventoryItem); // Validate delete before confirmation
 router.get('/:id', protect, authorize('ADMIN', 'CASHIER'), fetchInventoryItemDetails); // Get details
 router.put('/:id', protect, authorize('ADMIN'), updateInventoryItem); // Edit details
 router.delete('/:id', protect, authorize('ADMIN'), deleteInventoryItem); // Delete
