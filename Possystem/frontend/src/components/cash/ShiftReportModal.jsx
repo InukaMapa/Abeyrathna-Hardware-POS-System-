@@ -220,10 +220,10 @@ const ShiftReportModal = ({ isOpen, onClose, shift, onApproved, selectedCount = 
                             <section className="official-report-section">
                                 <h4 className="report-subtitle">Shift Details</h4>
                                 <div className="official-report-grid">
-                                    <div><span>Shift ID</span><strong>{shift.shift_id}</strong></div>
+
                                     <div><span>Started</span><strong>{new Date(shift.start_time).toLocaleString()}</strong></div>
                                     <div><span>Ended</span><strong>{shift.end_time ? new Date(shift.end_time).toLocaleString() : 'Running'}</strong></div>
-                                    <div><span>Saved Count</span><strong>{selectedCount?.created_at ? new Date(selectedCount.created_at).toLocaleString() : 'Latest available'}</strong></div>
+
                                 </div>
                             </section>
 
@@ -297,43 +297,6 @@ const ShiftReportModal = ({ isOpen, onClose, shift, onApproved, selectedCount = 
                                 </div>
                             </section>
 
-                            <section className="official-report-section">
-                                <h4 className="report-subtitle">Denomination Breakdown</h4>
-                                <div className="official-table-wrap">
-                                    <table className="official-report-table">
-                                        <thead>
-                                            <tr>
-                                                <th>Denomination</th>
-                                                <th>Quantity</th>
-                                                <th>Line Total</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {denominations.map((den) => {
-                                                const qty = Number(counts?.[den.key] || 0);
-                                                return (
-                                                    <tr key={den.key}>
-                                                        <td>{den.label}</td>
-                                                        <td>{qty}</td>
-                                                        <td>Rs. {(qty * den.value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                                                    </tr>
-                                                );
-                                            })}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </section>
-
-                            <section className="official-report-section">
-                                <h4 className="report-subtitle">Conclusion</h4>
-                                <div className="official-conclusion">
-                                    <p>{conclusionText}</p>
-                                    <div className="official-signature-grid">
-                                        <div><span>Cashier Signature</span></div>
-                                        <div><span>Admin Verification</span></div>
-                                    </div>
-                                </div>
-                            </section>
                         </div>
                     )}
                 </div>
