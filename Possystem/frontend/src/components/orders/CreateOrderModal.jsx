@@ -104,7 +104,7 @@ const CreateOrderModal = ({ table, isOpen, onClose, onSuccess }) => {
             
             // Call success callback with the order ID
             if (onSuccess) {
-                onSuccess(response.id || response.orderId);
+                onSuccess(response.id || response.orderId || response.order_id);
             }
         } catch (err) {
             console.error('Failed to create order:', err);
