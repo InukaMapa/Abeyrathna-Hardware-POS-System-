@@ -373,7 +373,6 @@ export const getShiftSummary = async (req, res) => {
 
         let totalProfit = 0;
         closedOrders.forEach(order => {
-            let orderBuyingCost = 0;
             (order.order_items || []).forEach(item => {
                 const batchAllocation = Array.isArray(item.selected_variants)
                     ? item.selected_variants.find(entry => entry?.type === 'STOCK_BATCH')
@@ -384,11 +383,15 @@ export const getShiftSummary = async (req, res) => {
                     ? batchBuyingPrice 
                     : (inventoryMap.get(item.item_id) || 0);
 
-                const qty = parseFloat(item.quantity || 0);
-                orderBuyingCost += buyingPrice * qty;
+                const qty = parseFloat(item.quantity) || 0;
+                const subtotal = parseFloat(item.subtotal) || 0;
+                const sellingPrice = parseFloat(item.item_price) || (qty > 0 ? subtotal / qty : 0);
+                
+                const itemProfit = (sellingPrice - buyingPrice) * qty;
+                if (!isNaN(itemProfit)) {
+                    totalProfit += itemProfit;
+                }
             });
-            const orderProfit = parseFloat(order.total_amount || 0) - orderBuyingCost;
-            totalProfit += orderProfit;
         });
 
         res.status(200).json({

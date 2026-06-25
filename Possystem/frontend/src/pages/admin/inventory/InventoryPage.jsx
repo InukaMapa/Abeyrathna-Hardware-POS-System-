@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, PackagePlus, Edit, FileText, AlertTriangle, AlertCircle, Loader, Settings, Package } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { Search, Plus, PackagePlus, Edit, FileText, AlertTriangle, AlertCircle, Loader, Settings, Package, Trash2, CheckCircle, X } from 'lucide-react';
 import axios from 'axios';
 import AddInventoryModal from './AddInventoryModal';
 import ReceiveInventoryModal from './ReceiveInventoryModal';
@@ -24,6 +25,14 @@ const InventoryPage = ({ onNavigate }) => {
     const [showScanModal, setShowScanModal] = useState(false);
     const [showCategoryModal, setShowCategoryModal] = useState(false);
     const [editingItem, setEditingItem] = useState(null);
+    const [deleteModal, setDeleteModal] = useState({
+        show: false,
+        item: null,
+        title: '',
+        message: '',
+        type: 'confirm'
+    });
+    const [deleteLoading, setDeleteLoading] = useState(false);
 
     const fetchCategories = async () => {
         try {
@@ -64,17 +73,102 @@ const InventoryPage = ({ onNavigate }) => {
         }
     };
 
-    const handleDelete = async (id) => {
-        if (!window.confirm('Are you sure you want to delete this item?')) return;
+    const handleDeleteClick = async (item) => {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await axios.get(`${API_BASE_URL}/inventory/${item.id}/validate-delete`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            
+            const { canDelete, reason } = response.data;
+            
+            if (canDelete) {
+                setDeleteModal({
+                    show: true,
+                    item,
+                    title: 'Delete Product',
+                    message: 'Are you sure you want to permanently delete this product? This action cannot be undone.',
+                    type: 'confirm'
+                });
+            } else {
+                let message = '';
+                let title = '';
+                if (reason === 'all_failed') {
+                    title = 'Cannot Delete Product';
+                    message = 'This product cannot be deleted because inventory is still available, there are outstanding supplier payments, and it has associated supplier returns.';
+                } else if (reason === 'both_failed') {
+                    title = 'Cannot Delete Product';
+                    message = 'This product cannot be deleted because inventory is still available and there are outstanding supplier payments. Set inventory to 0 and clear all payments before deleting.';
+                } else if (reason === 'stock_and_returns') {
+                    title = 'Cannot Delete Product';
+                    message = 'This product cannot be deleted because there is still inventory in stock and it has associated supplier returns.';
+                } else if (reason === 'payments_and_returns') {
+                    title = 'Cannot Delete Product';
+                    message = 'This product cannot be deleted because there are outstanding supplier payments and it has associated supplier returns.';
+                } else if (reason === 'stock_exists') {
+                    title = 'Stock Exists';
+                    message = 'This product cannot be deleted because there is still inventory in stock. Reduce the inventory quantity to 0 before deleting.';
+                } else if (reason === 'pending_payments') {
+                    title = 'Pending Supplier Payments';
+                    message = 'This product cannot be deleted because there are outstanding supplier payments associated with it. Clear all supplier payments before deleting.';
+                } else if (reason === 'has_returns') {
+                    title = 'Return History Exists';
+                    message = 'This product cannot be deleted because it has associated supplier returns. Products with return history cannot be permanently deleted.';
+                } else {
+                    title = 'Validation Error';
+                    message = 'This product cannot be deleted because it does not meet the deletion requirements.';
+                }
+                
+                setDeleteModal({
+                    show: true,
+                    item: null,
+                    title,
+                    message,
+                    type: 'warning'
+                });
+            }
+        } catch (error) {
+            console.error('Error validating delete:', error);
+            setDeleteModal({
+                show: true,
+                item: null,
+                title: 'Error',
+                message: 'Unable to delete the product. Please try again later.',
+                type: 'warning'
+            });
+        }
+    };
+
+    const handleConfirmDelete = async (id) => {
+        setDeleteLoading(true);
         try {
             const token = localStorage.getItem('token');
             await axios.delete(`${API_BASE_URL}/inventory/${id}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            fetchInventory();
+            
+            // Remove the product from the list immediately without manual refresh
+            setInventory(prev => prev.filter(item => item.id !== id));
+            
+            setDeleteModal({
+                show: true,
+                item: null,
+                title: 'Success',
+                message: 'Product deleted successfully.',
+                type: 'success'
+            });
         } catch (error) {
             console.error('Error deleting item:', error);
-            alert('Failed to delete item');
+            const errorMsg = error.response?.data?.message || 'Unable to delete the product. Please try again later.';
+            setDeleteModal({
+                show: true,
+                item: null,
+                title: 'Error',
+                message: errorMsg,
+                type: 'warning'
+            });
+        } finally {
+            setDeleteLoading(false);
         }
     };
 
@@ -272,6 +366,13 @@ const InventoryPage = ({ onNavigate }) => {
                                                     >
                                                         <Edit />
                                                     </button>
+                                                    <button
+                                                        onClick={() => handleDeleteClick(item)}
+                                                        className="inventory-action-btn inventory-action-danger"
+                                                        title="Delete Product"
+                                                    >
+                                                        <Trash2 />
+                                                    </button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -330,6 +431,58 @@ const InventoryPage = ({ onNavigate }) => {
                             fetchInventory();
                         }}
                     />
+                )}
+
+                {deleteModal.show && createPortal(
+                    <div className="delete-product-overlay">
+                        <div className="delete-product-modal">
+                            <div className={`delete-product-header ${deleteModal.type}-header`}>
+                                <h3 className={deleteModal.type === 'warning' ? 'warning-title' : deleteModal.type === 'success' ? 'success-title' : ''}>
+                                    {deleteModal.type === 'warning' && <AlertTriangle className="w-5 h-5" />}
+                                    {deleteModal.type === 'success' && <CheckCircle className="w-5 h-5" />}
+                                    {deleteModal.type === 'confirm' && <Trash2 className="w-5 h-5" />}
+                                    {deleteModal.title}
+                                </h3>
+                                <button 
+                                    onClick={() => setDeleteModal({ show: false, item: null })}
+                                    className="delete-product-close"
+                                    title="Close"
+                                >
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+                            <div className="delete-product-body">
+                                <p>{deleteModal.message}</p>
+                            </div>
+                            <div className="delete-product-actions">
+                                {deleteModal.type === 'confirm' ? (
+                                    <>
+                                        <button 
+                                            onClick={() => setDeleteModal({ show: false, item: null })}
+                                            className="delete-product-btn cancel"
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button 
+                                            onClick={() => handleConfirmDelete(deleteModal.item.id)}
+                                            className="delete-product-btn confirm-delete"
+                                            disabled={deleteLoading}
+                                        >
+                                            {deleteLoading ? <Loader className="w-4 h-4 animate-spin" /> : 'Delete'}
+                                        </button>
+                                    </>
+                                ) : (
+                                    <button 
+                                        onClick={() => setDeleteModal({ show: false, item: null })}
+                                        className={`delete-product-btn ${deleteModal.type === 'success' ? 'ok-success-btn' : 'ok-btn'}`}
+                                    >
+                                        OK
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </div>,
+                    document.body
                 )}
             </div>
         </DashboardLayout>
