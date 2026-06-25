@@ -691,9 +691,9 @@ useEffect(() => {
                             </div>
                         </div>
                     ) : (
-                        <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-8 h-full min-h-0">
+                        <div className="flex-1 flex justify-center h-full min-h-0">
                             {/* LEFT: Details View */}
-                            <div className="supplier-payment-detail-panel bg-[#121212] border border-white/5 rounded-[32px] p-8 flex flex-col max-h-[70vh] overflow-hidden">
+                            <div className="supplier-payment-detail-panel bg-[#121212] border border-white/5 rounded-[32px] p-8 flex flex-col max-h-[70vh] overflow-hidden w-full max-w-3xl">
                                 <h3 className="text-xs font-black text-white/40 uppercase tracking-[0.2em] mb-6 border-b border-white/5 pb-4">Transaction Profile</h3>
 
                                 <div className="space-y-6 overflow-y-auto custom-scrollbar pr-4">
@@ -765,8 +765,8 @@ useEffect(() => {
                                                     {(!selectedPaymentProcessing.lineItems || selectedPaymentProcessing.lineItems.length === 0) && (
                                                         <tr><td colSpan="4" className="text-center py-8 text-white/40 text-xs">
                                                             <div className="flex flex-col items-center justify-center gap-2">
-                                                                <Package className="w-6 h-6 text-white/20 mb-1" />
-                                                                <p>Not add items to the system yet. Only create the batch.</p>
+                                                                 <Package className="w-6 h-6 text-white/20 mb-1" />
+                                                                 <p>Not add items to the system yet. Only create the batch.</p>
                                                             </div>
                                                         </td></tr>
                                                     )}
@@ -774,105 +774,6 @@ useEffect(() => {
                                             </table>
                                         </div>
                                     </div>
-                                </div>
-                            </div>
-
-                            {/* RIGHT: Payment Actions Form */}
-                            <div className="supplier-payment-form-panel bg-[#121212] border border-white/5 rounded-[32px] p-8 flex flex-col h-full shadow-[0_0_40px_rgba(76,175,80,0.03)] border-t-[3px] border-t-[#4caf50]">
-                                <h3 className="text-xs font-black text-[#4caf50] uppercase tracking-[0.2em] mb-6 border-b border-white/5 pb-4 flex items-center gap-2">
-                                    <CreditCard className="w-4 h-4" /> Settlement Processor
-                                </h3>
-
-                                <div className="space-y-6 flex-1">
-                                    <div className="grid grid-cols-3 gap-3">
-                                        {['Full', 'Partial', 'Credit'].map(type => (
-                                            <button
-                                                key={type}
-                                                onClick={() => {
-                                                    setPaymentForm({
-                                                        ...paymentForm,
-                                                        type: type,
-                                                        amount: type === 'Full' ? selectedPaymentProcessing.remaining_balance : ''
-                                                    });
-                                                }}
-                                                className={`supplier-payment-type-btn ${paymentForm.type === type ? 'is-active' : ''}`}
-                                            >
-                                                {type} Payment
-                                            </button>
-                                        ))}
-                                    </div>
-
-                                    <div className="bg-white/5 p-5 rounded-2xl border border-white/5 space-y-4 shadow-inner">
-                                        <div>
-                                            <label className="text-[10px] text-white/40 font-bold uppercase tracking-widest mb-2 block">Settlement Amount (Rs.) {paymentForm.type === 'Partial' && '*'}</label>
-                                            <input
-                                                type="number"
-                                                readOnly={paymentForm.type === 'Full'}
-                                                value={paymentForm.amount}
-                                                onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })}
-                                                className={`w-full bg-[#1E1E1E] text-xl font-black text-white px-4 py-3 rounded-xl border focus:outline-none transition-all ${paymentForm.type === 'Full' ? 'border-white/5 opacity-50 cursor-not-allowed' : 'border-white/20 focus:border-[#4caf50]/50'}`}
-                                                placeholder="Enter amount..."
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="text-[9px] text-white/40 font-bold uppercase tracking-widest mb-1.5 block">Payment Date</label>
-                                            <input
-                                                type="date"
-                                                value={paymentForm.date}
-                                                onChange={(e) => setPaymentForm({ ...paymentForm, date: e.target.value })}
-                                                className="w-full bg-white/5 text-xs text-white px-3 py-2.5 rounded-lg border border-white/10 focus:outline-none focus:border-[#D4AF37]/50"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="text-[9px] text-white/40 font-bold uppercase tracking-widest mb-1.5 block">Payment Method</label>
-                                            <select
-                                                value={paymentForm.method}
-                                                onChange={(e) => setPaymentForm({ ...paymentForm, method: e.target.value })}
-                                                className="w-full bg-white/5 text-xs text-white px-3 py-2.5 rounded-lg border border-white/10 focus:outline-none focus:border-[#D4AF37]/50"
-                                            >
-                                                <option value="Cash" className="bg-[#121212] text-white">Cash Transfer</option>
-                                                <option value="Bank" className="bg-[#121212] text-white">Bank Deposit</option>
-                                                <option value="Cheque" className="bg-[#121212] text-white">Bank Cheque</option>
-                                            </select>
-                                        </div>
-                                    </div>
-
-                                    {(paymentForm.method === 'Bank' || paymentForm.method === 'Cheque') && (
-                                        <div>
-                                            <label className="text-[9px] text-white/40 font-bold uppercase tracking-widest mb-1.5 block">Bank Reference / Cheque No.</label>
-                                            <input
-                                                type="text"
-                                                value={paymentForm.reference}
-                                                onChange={(e) => setPaymentForm({ ...paymentForm, reference: e.target.value })}
-                                                className="w-full bg-white/5 text-xs font-bold text-white px-3 py-2.5 rounded-lg border border-white/10 focus:outline-none focus:border-[#D4AF37]/50"
-                                                placeholder="Enter reference number..."
-                                            />
-                                        </div>
-                                    )}
-
-                                    <div>
-                                        <label className="text-[9px] text-white/40 font-bold uppercase tracking-widest mb-1.5 block">Internal Notes (Optional)</label>
-                                        <textarea
-                                            value={paymentForm.notes}
-                                            onChange={(e) => setPaymentForm({ ...paymentForm, notes: e.target.value })}
-                                            className="w-full bg-white/5 text-xs text-white px-3 py-2.5 rounded-lg border border-white/10 focus:outline-none focus:border-[#D4AF37]/50 custom-scrollbar resize-none"
-                                            rows="2"
-                                            placeholder="Add remarks..."
-                                        ></textarea>
-                                    </div>
-                                </div>
-
-                                <div className="mt-8 pt-6 border-t border-white/5">
-                                    <button
-                                        onClick={handleCompletePaymentForm}
-                                        disabled={!paymentForm.amount}
-                                        className="supplier-payment-authorize"
-                                    >
-                                        Authorize & Complete Payment
-                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -1211,24 +1112,27 @@ useEffect(() => {
                                         ))}
                                     </div>
 {/* Supplier Summary Stats */}
-<div className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-8">
-  <div className="p-5 rounded-2xl bg-gray-50 border border-gray-200 flex flex-col items-center">
-    <span className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Items Received</span>
-    <span className="text-xl font-black text-gray-900">{paymentStats.totalItems}</span>
-  </div>
-  <div className="p-5 rounded-2xl bg-gray-50 border border-gray-200 flex flex-col items-center">
-    <span className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Total Invoiced</span>
-    <span className="text-xl font-black text-gray-900">Rs. {paymentStats.totalInvoiced.toLocaleString()}</span>
-  </div>
-  <div className="p-5 rounded-2xl bg-gray-50 border border-gray-200 flex flex-col items-center">
-    <span className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Total Paid</span>
-    <span className="text-xl font-black text-gray-900">Rs. {paymentStats.totalPaid.toLocaleString()}</span>
-  </div>
-  <div className="p-5 rounded-2xl bg-gray-50 border border-gray-200 flex flex-col items-center">
-    <span className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Outstanding</span>
-    <span className="text-xl font-black text-gray-900">Rs. {paymentStats.outstanding.toLocaleString()}</span>
-  </div>
+<div className="px-8 pb-6 bg-white">
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+        <div className="p-5 rounded-2xl bg-gray-50 border border-gray-200 flex flex-col items-center">
+            <span className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Items Received</span>
+            <span className="text-xl font-black text-gray-900">{paymentStats.totalItems}</span>
+        </div>
+        <div className="p-5 rounded-2xl bg-gray-50 border border-gray-200 flex flex-col items-center">
+            <span className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Total Invoiced</span>
+            <span className="text-xl font-black text-gray-900">Rs. {paymentStats.totalInvoiced.toLocaleString()}</span>
+        </div>
+        <div className="p-5 rounded-2xl bg-gray-50 border border-gray-200 flex flex-col items-center">
+            <span className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Total Paid</span>
+            <span className="text-xl font-black text-gray-900">Rs. {paymentStats.totalPaid.toLocaleString()}</span>
+        </div>
+        <div className="p-5 rounded-2xl bg-gray-50 border border-gray-200 flex flex-col items-center">
+            <span className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Outstanding</span>
+            <span className="text-xl font-black text-gray-900">Rs. {paymentStats.outstanding.toLocaleString()}</span>
+        </div>
+    </div>
 </div>
+
 
                                     {/* Minimalist Tabs */}
                                     <div className="supplier-profile-tabs px-8 flex gap-8 border-b border-gray-200">
@@ -1703,35 +1607,7 @@ useEffect(() => {
                                                                 <span className="text-gray-500">Warehouse Destination</span>
                                                                 <span className="text-gray-900 font-medium">Main Store / A1</span>
                                                             </div>
-                                                            <div className="flex justify-between items-center text-xs">
-                                                                <span className="text-gray-500">Payment Clearing</span>
-                                                                <div className="flex items-center gap-3">
-                                                                    <span className={`${selectedTransaction.payment_status === 'PAID' ? 'text-green-700' : 'text-yellow-500'} font-bold tracking-widest text-[10px]`}>
-                                                                        {selectedTransaction.payment_status === 'PAID' ? 'SETTLED' : 'PENDING'}
-                                                                    </span>
-                                                                    {selectedTransaction.payment_status !== 'PAID' && (
-                                                                        <button
-                                                                            onClick={async () => {
-                                                                                const targetBatch = profileBatches.find(
-                                                                                    (batch) =>
-                                                                                        batch.id === selectedTransaction.db_id ||
-                                                                                        batch.batch_number === selectedTransaction.id
-                                                                                );
 
-                                                                                setGlobalPaymentsOpen(true);
-                                                                                setSelectedTransaction(null);
-
-                                                                                if (targetBatch) {
-                                                                                    await handleSelectPayment(targetBatch);
-                                                                                }
-                                                                            }}
-                                                                            className="supplier-profile-inline-btn supplier-profile-inline-pay px-3 py-1 bg-green-100 text-green-700 text-[9px] font-bold rounded hover:bg-[#4caf50]/20 transition-all uppercase tracking-widest border border-green-200"
-                                                                        >
-                                                                            Pay Now
-                                                                        </button>
-                                                                    )}
-                                                                </div>
-                                                            </div>
                                                             <div className="flex justify-between items-center text-xs border-t border-gray-200 pt-4">
                                                                 <span className="text-gray-500">Payment Mode</span>
                                                                 <span className="text-gray-900 font-medium">Direct Bank Transfer</span>

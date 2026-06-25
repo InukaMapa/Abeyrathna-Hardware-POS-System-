@@ -31,7 +31,11 @@ const ReturnManagementPage = ({ onNavigate, returnId }) => {
     const [showReplacementModal, setShowReplacementModal] = useState(false);
 
     useEffect(() => {
-        if (returnId) fetchReturnDetails();
+        if (returnId) {
+            fetchReturnDetails();
+        } else {
+            setLoading(false);
+        }
     }, [returnId]);
 
     const fetchReturnDetails = async () => {
@@ -78,7 +82,24 @@ const ReturnManagementPage = ({ onNavigate, returnId }) => {
     };
 
     if (loading) return <div className="h-screen bg-[#F5FAF7] flex items-center justify-center text-sm font-semibold text-gray-700">Loading return details...</div>;
-    if (!returnData) return <div className="h-screen bg-[#F5FAF7] flex items-center justify-center text-sm font-semibold text-gray-700">Return not found</div>;
+    if (!returnData) {
+        return (
+            <div className="h-screen bg-[#F5FAF7] flex flex-col items-center justify-center p-6 text-center">
+                <AlertCircle className="w-12 h-12 text-red-500 mb-4 animate-pulse" />
+                <h2 className="text-xl font-bold text-gray-900 mb-2">Return Request Not Found</h2>
+                <p className="text-sm text-gray-600 mb-6 max-w-md">
+                    The return details could not be loaded. This might happen if the ID is invalid or the return request doesn't exist.
+                </p>
+                <button
+                    onClick={() => onNavigate('supplier-returns')}
+                    className="px-5 py-2.5 bg-green-700 hover:bg-green-800 text-white font-bold text-sm rounded-xl transition-all shadow-md flex items-center gap-2"
+                >
+                    <ArrowLeft className="w-4 h-4" />
+                    Back to Return Registry
+                </button>
+            </div>
+        );
+    }
 
     const isPendingReturn = returnData.status === 'PENDING';
     const statusLabel = isPendingReturn ? 'Pending Approval' : `Already Returned (${returnData.status || 'Processed'})`;

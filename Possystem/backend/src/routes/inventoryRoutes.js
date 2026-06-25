@@ -43,9 +43,9 @@ router.get('/payout-requests', protect, authorize('ADMIN', 'CASHIER'), fetchPayo
 router.post('/payout-requests/:id/complete', protect, authorize('CASHIER'), completePayoutRequest);
 // Return Routes
 router.get('/returns', protect, authorize('ADMIN', 'CASHIER'), fetchReturns);
-router.post('/returns', protect, authorize('ADMIN'), createReturn);
+router.post('/returns', protect, authorize('ADMIN', 'CASHIER'), createReturn);
 router.put('/returns/:id/status', protect, authorize('ADMIN'), updateStatus);
-router.post('/returns/:id/resolve', protect, authorize('ADMIN'), resolveReturn);
+router.post('/returns/:id/resolve', protect, authorize('CASHIER'), resolveReturn);
 
 // ADMIN-only routes for inventory management
 router.post('/', protect, authorize('ADMIN'), addInventoryItem); // Add new or add stock

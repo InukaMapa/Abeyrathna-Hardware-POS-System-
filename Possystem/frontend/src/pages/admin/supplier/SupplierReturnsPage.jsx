@@ -7,6 +7,7 @@ import {
     Clock, Archive, ShieldCheck, Download, MoreVertical, Trash2
 } from 'lucide-react';
 import { API_BASE_URL } from '../../../config/api';
+import { useAuth } from '../../../context/AuthContext';
 
 const parseReturnNotes = (notesStr) => {
     try {
@@ -18,6 +19,7 @@ const parseReturnNotes = (notesStr) => {
 };
 
 const SupplierReturnsPage = ({ onNavigate }) => {
+    const { userRole } = useAuth();
     const [returns, setReturns] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);
@@ -279,9 +281,15 @@ const SupplierReturnsPage = ({ onNavigate }) => {
                                         <td className="px-4 py-3 text-right">
                                             <div className="flex justify-end text-white">
                                                 <button
-                                                    onClick={() => onNavigate('return-management', { id: ret.id })}
+                                                    onClick={() => {
+                                                        if (userRole === 'CASHIER') {
+                                                            onNavigate('return-management', { id: ret.id });
+                                                        } else {
+                                                            setSelectedReturnView(ret);
+                                                        }
+                                                    }}
                                                     className="supplier-returns-row-action"
-                                                    title="Open return action"
+                                                    title={userRole === 'CASHIER' ? "Manage return resolution" : "View return details"}
                                                 >
                                                     <MoreVertical className="w-4 h-4" />
                                                 </button>
@@ -593,7 +601,7 @@ const SupplierReturnsPage = ({ onNavigate }) => {
                                     >
                                         Close Details
                                     </button>
-                                    {selectedReturnView.status === 'PENDING' && (
+                                    {selectedReturnView.status === 'PENDING' && userRole === 'CASHIER' && (
                                         <button
                                             onClick={() => onNavigate('return-management', { id: selectedReturnView.id })}
                                             className="flex-[2] py-4 bg-[#D4AF37] hover:bg-[#E5C158] text-white font-black uppercase text-[10px] tracking-widest rounded-2xl transition-all shadow-lg"
