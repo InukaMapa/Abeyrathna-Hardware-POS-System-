@@ -55,12 +55,7 @@ const ReportsPage = ({ onNavigate }) => {
     const [purchaseReportLoading, setPurchaseReportLoading] = useState(false);
     const [purchaseBatches, setPurchaseBatches] = useState([]);
     const [selectedPurchase, setSelectedPurchase] = useState(null);
-    const [productReportLoading, setProductReportLoading] = useState(false);
-    const [productReport, setProductReport] = useState({
-        products: [],
-        bestSellingItems: [],
-        summary: { soldQty: 0, revenue: 0, profit: 0, returnsQty: 0, productCount: 0 }
-    });
+
     const [inventoryReportLoading, setInventoryReportLoading] = useState(false);
     const [inventoryReport, setInventoryReport] = useState({
         summary: { totalItems: 0, totalStockQty: 0, lowStockCount: 0, outOfStockCount: 0, stockValue: 0 },
@@ -203,39 +198,7 @@ const ReportsPage = ({ onNavigate }) => {
         return totalAmount > 0 ? [{ method: 'Cash', amount: totalAmount }] : [];
     };
 
-    const fetchProductReport = useCallback(async () => {
-        setProductReportLoading(true);
-        try {
-            const params = new URLSearchParams({
-                dateRange,
-                branch: appliedFilters.branch,
-                cashier: appliedFilters.cashier
-            });
-            const response = await axios.get(`${API_BASE_URL}/admin/reports/products?${params.toString()}`, {
-                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-            });
-            setProductReport({
-                products: response.data.products || [],
-                bestSellingItems: response.data.bestSellingItems || [],
-                summary: response.data.summary || { soldQty: 0, revenue: 0, profit: 0, returnsQty: 0, productCount: 0 }
-            });
-        } catch (err) {
-            console.error('Failed to fetch product report', err);
-            setProductReport({
-                products: [],
-                bestSellingItems: [],
-                summary: { soldQty: 0, revenue: 0, profit: 0, returnsQty: 0, productCount: 0 }
-            });
-        } finally {
-            setProductReportLoading(false);
-        }
-    }, [dateRange, appliedFilters]);
 
-    useEffect(() => {
-        if (activeTab === 'product') {
-            fetchProductReport();
-        }
-    }, [activeTab, fetchProductReport]);
 
     const fetchInventoryReport = useCallback(async () => {
         setInventoryReportLoading(true);
@@ -389,7 +352,6 @@ supplier.email
 
     const reportCategories = [
         { id: 'sales', name: 'Sales Reports', icon: DollarSign },
-        { id: 'product', name: 'Product Reports', icon: Package },
         { id: 'inventory', name: 'Inventory Reports', icon: BarChart2 },
         { id: 'purchase', name: 'Purchase Reports', icon: Briefcase },
         { id: 'supplier', name: 'Supplier Reports', icon: Truck },
@@ -561,13 +523,7 @@ supplier.email
             (item.storage_location || '').toLowerCase().includes(query);
     });
 
-    const filteredProductReports = (productReport.products || []).filter(product => {
-        const query = searchTerm.trim().toLowerCase();
-        if (!query) return true;
-        return (product.product || '').toLowerCase().includes(query) ||
-            (product.item_code || '').toLowerCase().includes(query) ||
-            (product.category || '').toLowerCase().includes(query);
-    });
+
 
     return (
         <DashboardLayout activePage="reports" onNavigate={onNavigate}>
@@ -680,7 +636,6 @@ supplier.email
                                         onClick={() => {
                                             fetchSalesTrend();
                                             fetchSalesReport();
-                                            if (activeTab === 'product') fetchProductReport();
                                             if (activeTab === 'inventory') fetchInventoryReport();
                                             if (activeTab === 'supplier') fetchSupplierReport();
                                             if (activeTab === 'purchase') fetchPurchaseReport();
@@ -999,140 +954,6 @@ supplier.email
                                                                     </span>
                                                                 </td>
                                                                 <td className="px-6 py-4 text-sm text-gray-600">{item.storage_location || 'Not Specified'}</td>
-                                                            </tr>
-                                                        ))}
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {activeTab === 'product' && (
-                                    <div className="animate-fade-in">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4 mb-8">
-                                            {[
-                                                { label: 'Products Sold', value: productReport.summary.productCount, sub: `${productReport.summary.soldQty} total units` },
-                                                { label: 'Product Revenue', value: formatCurrency(productReport.summary.revenue), sub: 'Closed order revenue' },
-                                                { label: 'Estimated Profit', value: formatCurrency(productReport.summary.profit), sub: 'Revenue minus buying cost' },
-                                                { label: 'Returns Qty', value: productReport.summary.returnsQty, sub: 'Supplier return records' },
-                                                { label: 'Best Selling Item', value: productReport.bestSellingItems[0]?.product || 'N/A', sub: `${productReport.bestSellingItems[0]?.soldQty || 0} units sold` }
-                                            ].map((item) => (
-                                                <div key={item.label} className="bg-gray-50 border border-gray-100 rounded-xl p-4">
-                                                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">{item.label}</p>
-                                                    <p className="text-xl font-black text-gray-900 mt-2 truncate">{item.value}</p>
-                                                    <p className="text-xs text-gray-500 mt-1">{item.sub}</p>
-                                                </div>
-                                            ))}
-                                        </div>
-
-                                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 mb-8">
-                                            <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100">
-                                                <div className="flex justify-between items-center mb-6">
-                                                    <h4 className="text-sm font-bold text-gray-700">Best Selling Items</h4>
-                                                    <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600">Sold Qty</span>
-                                                </div>
-                                                <div className="h-72">
-                                                    {productReportLoading ? (
-                                                        <div className="h-full flex items-center justify-center text-sm font-semibold text-gray-400">Loading products...</div>
-                                                    ) : productReport.bestSellingItems.length === 0 ? (
-                                                        <div className="h-full flex items-center justify-center text-sm font-semibold text-gray-400">No product sales for this filter</div>
-                                                    ) : (
-                                                        <ResponsiveContainer width="100%" height="100%">
-                                                            <BarChart data={productReport.bestSellingItems} layout="vertical" margin={{ left: 24 }}>
-                                                                <XAxis type="number" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
-                                                                <YAxis dataKey="product" type="category" stroke="#64748b" fontSize={11} width={120} tickLine={false} axisLine={false} />
-                                                                <Tooltip formatter={(value) => [`${value} units`, 'Sold Qty']} cursor={{ fill: 'transparent' }} />
-                                                                <Bar dataKey="soldQty" fill="#16A34A" radius={[0, 6, 6, 0]} barSize={20} />
-                                                            </BarChart>
-                                                        </ResponsiveContainer>
-                                                    )}
-                                                </div>
-                                            </div>
-
-                                            <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100">
-                                                <div className="flex justify-between items-center mb-6">
-                                                    <h4 className="text-sm font-bold text-gray-700">Profit by Product</h4>
-                                                    <span className="text-[10px] font-black uppercase tracking-widest text-amber-600">Top 5</span>
-                                                </div>
-                                                <div className="h-72">
-                                                    {productReportLoading ? (
-                                                        <div className="h-full flex items-center justify-center text-sm font-semibold text-gray-400">Loading profit...</div>
-                                                    ) : productReport.products.length === 0 ? (
-                                                        <div className="h-full flex items-center justify-center text-sm font-semibold text-gray-400">No profit data for this filter</div>
-                                                    ) : (
-                                                        <ResponsiveContainer width="100%" height="100%">
-                                                            <BarChart data={[...productReport.products].sort((a, b) => b.profit - a.profit).slice(0, 5)}>
-                                                                <XAxis dataKey="product" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
-                                                                <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `Rs.${v / 1000}k`} />
-                                                                <Tooltip formatter={(value) => [formatCurrency(value), 'Profit']} cursor={{ fill: 'transparent' }} />
-                                                                <Bar dataKey="profit" radius={[6, 6, 0, 0]}>
-                                                                    {[...productReport.products].sort((a, b) => b.profit - a.profit).slice(0, 5).map((item, index) => (
-                                                                        <Cell key={`profit-${item.item_id || item.product}`} fill={['#D4A017', '#16A34A', '#3B82F6', '#8B5CF6', '#EF4444'][index % 5]} />
-                                                                    ))}
-                                                                </Bar>
-                                                            </BarChart>
-                                                        </ResponsiveContainer>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="rounded-xl border border-gray-100 overflow-hidden bg-white">
-                                            <div className="px-6 py-4 bg-gray-50 border-b border-gray-100 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                                                <div>
-                                                    <h4 className="text-sm font-black text-gray-800">Product Performance</h4>
-                                                    <p className="text-xs text-gray-500 mt-1">Quantity, revenue, profit, and returns for the selected report filters.</p>
-                                                </div>
-                                                <div className="w-full md:w-72 relative">
-                                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                                                    <input
-                                                        type="text"
-                                                        placeholder="Search products..."
-                                                        className="w-full pl-10 pr-4 py-2 bg-white border border-[#D7E7DC] rounded-xl text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-400 transition-all"
-                                                        value={searchTerm}
-                                                        onChange={(e) => setSearchTerm(e.target.value)}
-                                                    />
-                                                </div>
-                                            </div>
-                                            <div className="overflow-x-auto table-container">
-                                                <table className="w-full text-left">
-                                                    <thead className="bg-white border-b border-gray-100">
-                                                        <tr>
-                                                            <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Product</th>
-                                                            <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Category</th>
-                                                            <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Sold Qty</th>
-                                                            <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Revenue</th>
-                                                            <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Profit</th>
-                                                            <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Returns</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody className="divide-y divide-gray-50">
-                                                        {productReportLoading && (
-                                                            <tr>
-                                                                <td colSpan="6" className="px-6 py-8 text-center text-sm font-semibold text-gray-400">Loading product report...</td>
-                                                            </tr>
-                                                        )}
-                                                        {!productReportLoading && filteredProductReports.length === 0 && (
-                                                            <tr>
-                                                                <td colSpan="6" className="px-6 py-8 text-center text-sm font-semibold text-gray-400">No product performance data found matching search.</td>
-                                                            </tr>
-                                                        )}
-                                                        {!productReportLoading && filteredProductReports.map((product) => (
-                                                            <tr key={product.item_id || product.product} className="hover:bg-emerald-50/30 transition-all">
-                                                                <td className="px-6 py-4">
-                                                                    <p className="text-sm font-bold text-gray-900">{product.product}</p>
-                                                                    <p className="text-xs text-gray-400 mt-0.5">{product.item_code || 'No item code'}</p>
-                                                                </td>
-                                                                <td className="px-6 py-4 text-sm text-gray-600">{product.category}</td>
-                                                                <td className="px-6 py-4 text-sm font-bold text-gray-800">{product.soldQty} {product.unit || ''}</td>
-                                                                <td className="px-6 py-4 text-sm font-medium text-slate-800">{formatCurrency(product.revenue)}</td>
-                                                                <td className="px-6 py-4 text-sm font-medium text-slate-800">{formatCurrency(product.profit)}</td>
-                                                                <td className="px-6 py-4">
-                                                                    <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase ${product.returnsQty > 0 ? 'bg-red-50 text-red-600' : 'bg-gray-50 text-gray-400'}`}>
-                                                                        {product.returnsQty} returned
-                                                                    </span>
-                                                                </td>
                                                             </tr>
                                                         ))}
                                                     </tbody>

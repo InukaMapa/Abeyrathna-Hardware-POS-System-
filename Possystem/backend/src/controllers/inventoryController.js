@@ -230,31 +230,55 @@ const handleSupplierPaymentOnPurchase = async (supplierId, qty, price, itemName)
     
     try {
         const cost = parseFloat(qty) * parseFloat(price);
+        const newItemNote = `Purchased ${qty}x ${itemName} (Rs. ${price} each)`;
         
-        // Check if there is an existing PENDING payout request for this supplier
-        const { data: existingPayout, error: fetchError } = await supabase
+        // Find existing pending payout request for this supplier
+        const { data: existingPayout, error: selectError } = await supabase
             .from('supplier_payout_requests')
             .select('*')
             .eq('supplier_id', supplierId)
             .eq('status', 'PENDING')
+            .order('authorized_at', { ascending: false })
+            .limit(1)
             .maybeSingle();
             
-        if (fetchError) {
-            console.error('Error fetching existing payout request:', fetchError);
-            return;
+        if (selectError) {
+            console.error('Error fetching existing payout request:', selectError);
         }
         
         if (existingPayout) {
-            // Update existing payout request
-            const newAmount = parseFloat(existingPayout.amount || 0) + cost;
-            const newNotes = `${existingPayout.notes || ''}, Added ${qty}x ${itemName} (Rs. ${price} each)`.slice(0, 1000);
+            // Update existing payout request amount and notes
+            const currentAmount = parseFloat(existingPayout.amount || 0);
+            const newAmount = currentAmount + cost;
+            
+            let updatedNotes = '';
+            if (existingPayout.notes) {
+                if (existingPayout.notes.trim().startsWith('{')) {
+                    try {
+                        const parsed = JSON.parse(existingPayout.notes);
+                        let legacy = parsed.legacy_notes || '';
+                        if (legacy) {
+                            legacy += '\n' + newItemNote;
+                        } else {
+                            legacy = newItemNote;
+                        }
+                        parsed.legacy_notes = legacy;
+                        updatedNotes = JSON.stringify(parsed);
+                    } catch (e) {
+                        updatedNotes = existingPayout.notes + '\n' + newItemNote;
+                    }
+                } else {
+                    updatedNotes = existingPayout.notes + '\n' + newItemNote;
+                }
+            } else {
+                updatedNotes = newItemNote;
+            }
             
             const { error: updateError } = await supabase
                 .from('supplier_payout_requests')
                 .update({
                     amount: newAmount,
-                    notes: newNotes,
-                    authorized_at: new Date().toISOString()
+                    notes: updatedNotes
                 })
                 .eq('id', existingPayout.id);
                 
@@ -264,7 +288,6 @@ const handleSupplierPaymentOnPurchase = async (supplierId, qty, price, itemName)
         } else {
             // Create a new payout request
             const payoutNumber = 'PAY-' + Date.now().toString().slice(-6) + Math.floor(1000 + Math.random() * 9000);
-            const notes = `Purchased ${qty}x ${itemName} (Rs. ${price} each)`;
             
             const { error: insertError } = await supabase
                 .from('supplier_payout_requests')
@@ -273,7 +296,7 @@ const handleSupplierPaymentOnPurchase = async (supplierId, qty, price, itemName)
                     supplier_id: supplierId,
                     amount: cost,
                     status: 'PENDING',
-                    notes: notes,
+                    notes: newItemNote,
                     authorized_at: new Date().toISOString()
                 }]);
                 
@@ -285,6 +308,7 @@ const handleSupplierPaymentOnPurchase = async (supplierId, qty, price, itemName)
         console.error('Unexpected error in handleSupplierPaymentOnPurchase:', err);
     }
 };
+
 
 /**
  * Add new inventory item or add stock to existing.

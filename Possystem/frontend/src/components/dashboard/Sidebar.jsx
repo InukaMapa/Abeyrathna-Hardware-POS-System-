@@ -30,6 +30,7 @@ const Sidebar = ({ onNavigate, activePage }) => {
         { id: 'orders', name: 'Orders', icon: ClipboardList, roles: ['CASHIER'] },
         { id: 'cash-counter', name: 'Cash Counter', icon: Banknote, roles: ['CASHIER'] },
         { id: 'supplier-payments', name: 'Payments', icon: CreditCard, roles: ['CASHIER'] },
+        { id: 'supplier-returns', name: 'Returns', icon: RotateCcw, roles: ['CASHIER'] },
         { id: 'printer-settings', name: 'Printer Settings', icon: Printer, roles: ['CASHIER'] },
     ];
 
