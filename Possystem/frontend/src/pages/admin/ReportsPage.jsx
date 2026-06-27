@@ -35,6 +35,12 @@ const ReportsPage = ({ onNavigate }) => {
     const [dateRange, setDateRange] = useState('Today');
     const [showFilters, setShowFilters] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const [sortOrder, setSortOrder] = useState('newest');
+
+    useEffect(() => {
+        setSearchTerm('');
+    }, [activeTab]);
+
     const [stats, setStats] = useState(null);
     const [, setLoading] = useState(true);
     const [salesTrendData, setSalesTrendData] = useState([]);
@@ -43,13 +49,13 @@ const ReportsPage = ({ onNavigate }) => {
     const [salesReportLoading, setSalesReportLoading] = useState(false);
     const [salesCategoryData, setSalesCategoryData] = useState([]);
     const [salesOrders, setSalesOrders] = useState([]);
+    const [salesReportTotal, setSalesReportTotal] = useState(0);
+    const [salesReportTotalProfit, setSalesReportTotalProfit] = useState(0);
     const [selectedSale, setSelectedSale] = useState(null);
-    const [productReportLoading, setProductReportLoading] = useState(false);
-    const [productReport, setProductReport] = useState({
-        products: [],
-        bestSellingItems: [],
-        summary: { soldQty: 0, revenue: 0, profit: 0, returnsQty: 0, productCount: 0 }
-    });
+    const [purchaseReportLoading, setPurchaseReportLoading] = useState(false);
+    const [purchaseBatches, setPurchaseBatches] = useState([]);
+    const [selectedPurchase, setSelectedPurchase] = useState(null);
+
     const [inventoryReportLoading, setInventoryReportLoading] = useState(false);
     const [inventoryReport, setInventoryReport] = useState({
         summary: { totalItems: 0, totalStockQty: 0, lowStockCount: 0, outOfStockCount: 0, stockValue: 0 },
@@ -149,10 +155,14 @@ const ReportsPage = ({ onNavigate }) => {
             });
             setSalesCategoryData(response.data.categorySales || []);
             setSalesOrders(response.data.orders || []);
+            setSalesReportTotal(Number(response.data.total || 0));
+            setSalesReportTotalProfit(Number(response.data.totalProfit || 0));
         } catch (err) {
             console.error('Failed to fetch sales report', err);
             setSalesCategoryData([]);
             setSalesOrders([]);
+            setSalesReportTotal(0);
+            setSalesReportTotalProfit(0);
         } finally {
             setSalesReportLoading(false);
         }
@@ -188,39 +198,7 @@ const ReportsPage = ({ onNavigate }) => {
         return totalAmount > 0 ? [{ method: 'Cash', amount: totalAmount }] : [];
     };
 
-    const fetchProductReport = useCallback(async () => {
-        setProductReportLoading(true);
-        try {
-            const params = new URLSearchParams({
-                dateRange,
-                branch: appliedFilters.branch,
-                cashier: appliedFilters.cashier
-            });
-            const response = await axios.get(`${API_BASE_URL}/admin/reports/products?${params.toString()}`, {
-                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-            });
-            setProductReport({
-                products: response.data.products || [],
-                bestSellingItems: response.data.bestSellingItems || [],
-                summary: response.data.summary || { soldQty: 0, revenue: 0, profit: 0, returnsQty: 0, productCount: 0 }
-            });
-        } catch (err) {
-            console.error('Failed to fetch product report', err);
-            setProductReport({
-                products: [],
-                bestSellingItems: [],
-                summary: { soldQty: 0, revenue: 0, profit: 0, returnsQty: 0, productCount: 0 }
-            });
-        } finally {
-            setProductReportLoading(false);
-        }
-    }, [dateRange, appliedFilters]);
 
-    useEffect(() => {
-        if (activeTab === 'product') {
-            fetchProductReport();
-        }
-    }, [activeTab, fetchProductReport]);
 
     const fetchInventoryReport = useCallback(async () => {
         setInventoryReportLoading(true);
@@ -283,6 +261,74 @@ const ReportsPage = ({ onNavigate }) => {
         }
     }, []);
 
+    const fetchPurchaseReport = useCallback(async () => {
+        setPurchaseReportLoading(true);
+        try {
+            const token = localStorage.getItem('token');
+            const response = await axios.get(`${API_BASE_URL}/inventory/batches`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const data = Array.isArray(response.data) ? response.data : [];
+            
+            const mapped = data.map((batch) => {
+                const netValue = Number(batch.net_value || batch.actual_transaction_value || 0);
+                const paidAmount = Number(batch.paid_amount || 0);
+                const dueAmount = Math.max(netValue - paidAmount, 0);
+                
+                const grouped = (batch.inventory_batch_items || []).reduce((acc, item) => {
+                    const key = item.inventory_id || item.inventory?.ingredient_name || item.id;
+                    const price = Number(item.buying_price_at_time || 0);
+
+                    if (!acc[key]) {
+                        acc[key] = {
+                            id: item.id || key,
+                            name: item.inventory?.ingredient_name || item.inventory_id || 'Unknown item',
+                            unit: item.inventory?.unit || 'units',
+                            item_code: item.inventory?.item_code || '',
+                            category: item.inventory?.category || 'Uncategorized',
+                            qty: 0,
+                            price
+                        };
+                    }
+
+                    acc[key].qty += Number(item.quantity_added || 0);
+                    return acc;
+                }, {});
+
+                const items = Object.values(grouped).map((item) => ({
+                    ...item,
+                    total: item.qty * item.price
+                }));
+
+                const supplierName = batch.suppliers?.supplier_name || batch.supplier_name || 'Unknown Supplier';
+                const status = paidAmount >= netValue && netValue > 0 ? 'PAID' : (batch.payment_status || 'PENDING');
+
+                return {
+                    ...batch,
+                    supplierName,
+                    netValue,
+                    paidAmount,
+                    dueAmount,
+                    items,
+                    paymentStatus: status,
+                    batchStatus: batch.calc_status || batch.status || 'PENDING'
+                };
+            });
+            setPurchaseBatches(mapped);
+        } catch (err) {
+            console.error('Failed to fetch purchase report:', err);
+            setPurchaseBatches([]);
+        } finally {
+            setPurchaseReportLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (activeTab === 'purchase') {
+            fetchPurchaseReport();
+        }
+    }, [activeTab, fetchPurchaseReport]);
+
     useEffect(() => {
         if (activeTab === 'supplier') {
             fetchSupplierReport();
@@ -297,20 +343,15 @@ const ReportsPage = ({ onNavigate }) => {
             supplier.company_name,
             supplier.supplier_id,
             supplier.phone_number,
-            supplier.email
+supplier.email
         ].some(value => String(value || '').toLowerCase().includes(query));
     });
 
     // Summary Stats - Dynamic + Mocked
-    const summaryStats = [
-        { title: 'Total Sales Today', value: stats ? `Rs. ${Number(stats.salesToday || 0).toLocaleString()}` : 'Rs. 0', trend: 'Orders', isUp: true, icon: DollarSign, color: '#16A34A', data: salesData },
-        { title: 'Low Stock Items', value: stats ? String(stats.lowInventory?.length || 0) : '0', trend: 'Live Stock', isUp: false, icon: AlertTriangle, color: '#F59E0B', data: salesData },
-        { title: 'Out of Stock', value: stats ? String(stats.outOfStockCount || stats.outOfStock?.length || 0) : '0', trend: 'Live Stock', isUp: false, icon: Package, color: '#EF4444', data: salesData },
-    ];
+    const summaryStats = [];
 
     const reportCategories = [
         { id: 'sales', name: 'Sales Reports', icon: DollarSign },
-        { id: 'product', name: 'Product Reports', icon: Package },
         { id: 'inventory', name: 'Inventory Reports', icon: BarChart2 },
         { id: 'purchase', name: 'Purchase Reports', icon: Briefcase },
         { id: 'supplier', name: 'Supplier Reports', icon: Truck },
@@ -375,6 +416,115 @@ const ReportsPage = ({ onNavigate }) => {
         }
     };
 
+    const getFilteredOrders = () => {
+        const query = searchTerm.trim().toLowerCase();
+        
+        let filtered = salesOrders;
+        if (query) {
+            filtered = salesOrders.filter(order => {
+                const invoiceStr = `#inv-${order.order_id}`.toLowerCase();
+                const invoiceIdStr = String(order.order_id).toLowerCase();
+                const customerName = (order.customer_name || '').toLowerCase();
+                const customerPhone = (order.customer_phone || '').toLowerCase();
+                const cashierName = (order.cashier?.cashier_name || order.cashier?.username || '').toLowerCase();
+                
+                const matchesOrder = invoiceStr.includes(query) ||
+                    invoiceIdStr.includes(query) ||
+                    customerName.includes(query) ||
+                    customerPhone.includes(query) ||
+                    cashierName.includes(query);
+                    
+                if (matchesOrder) return true;
+                
+                // Also search in items
+                return (order.order_items || []).some(item => {
+                    const itemName = (item.item_name || '').toLowerCase();
+                    const itemCode = (item.item_code || '').toLowerCase();
+                    return itemName.includes(query) || itemCode.includes(query);
+                });
+            });
+        }
+        
+        return [...filtered].sort((a, b) => {
+            const dateA = new Date(a.closed_at || a.created_at).getTime();
+            const dateB = new Date(b.closed_at || b.created_at).getTime();
+            return sortOrder === 'newest' ? dateB - dateA : dateA - dateB;
+        });
+    };
+
+    const getFilteredPurchases = () => {
+        const query = searchTerm.trim().toLowerCase();
+        
+        let filtered = purchaseBatches;
+        if (query) {
+            filtered = purchaseBatches.filter(batch => {
+                const batchNumStr = (batch.batch_number || '').toLowerCase();
+                const supplierName = (batch.supplierName || '').toLowerCase();
+                const paymentStatus = (batch.paymentStatus || '').toLowerCase();
+                const itemsText = batch.items.map(i => i.name).join(' ').toLowerCase();
+                
+                return batchNumStr.includes(query) ||
+                    supplierName.includes(query) ||
+                    paymentStatus.includes(query) ||
+                    itemsText.includes(query);
+            });
+        }
+        
+        const today = new Date();
+        const getDayStart = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+        const todayStart = getDayStart(today);
+        
+        filtered = filtered.filter(batch => {
+            const rawDate = batch.batch_date || batch.created_at;
+            if (!rawDate) return false;
+            const batchDate = getDayStart(new Date(rawDate));
+            
+            if (dateRange === 'Today') {
+                return batchDate.getTime() === todayStart.getTime();
+            }
+            if (dateRange === 'Yesterday') {
+                const yesterdayStart = new Date(todayStart.getTime() - 24 * 60 * 60 * 1000);
+                return batchDate.getTime() === yesterdayStart.getTime();
+            }
+            if (dateRange === 'Last 7 Days') {
+                const sevenDaysAgo = new Date(todayStart.getTime() - 6 * 24 * 60 * 60 * 1000);
+                return batchDate >= sevenDaysAgo && batchDate <= todayStart;
+            }
+            if (dateRange === 'This Month') {
+                return batchDate.getFullYear() === today.getFullYear() && batchDate.getMonth() === today.getMonth();
+            }
+            if (dateRange === 'Last Month') {
+                let targetYear = today.getFullYear();
+                let targetMonth = today.getMonth() - 1;
+                if (targetMonth < 0) {
+                    targetMonth = 11;
+                    targetYear -= 1;
+                }
+                return batchDate.getFullYear() === targetYear && batchDate.getMonth() === targetMonth;
+            }
+            return true;
+        });
+
+        return [...filtered].sort((a, b) => {
+            const dateA = new Date(a.batch_date || a.created_at).getTime();
+            const dateB = new Date(b.batch_date || b.created_at).getTime();
+            return sortOrder === 'newest' ? dateB - dateA : dateA - dateB;
+        });
+    };
+    
+    const filteredOrders = getFilteredOrders();
+
+    const filteredInventoryItems = (inventoryReport.items || []).filter(item => {
+        const query = searchTerm.trim().toLowerCase();
+        if (!query) return true;
+        return (item.ingredient_name || '').toLowerCase().includes(query) ||
+            (item.item_code || '').toLowerCase().includes(query) ||
+            (item.category || '').toLowerCase().includes(query) ||
+            (item.storage_location || '').toLowerCase().includes(query);
+    });
+
+
+
     return (
         <DashboardLayout activePage="reports" onNavigate={onNavigate}>
             <div className="dashboard-page custom-scrollbar reports-page">
@@ -384,14 +534,6 @@ const ReportsPage = ({ onNavigate }) => {
                     <div>
                         <h1 className="section-title mb-0">Business Intelligence & Reports</h1>
                         <p className="text-secondary text-sm">Comprehensive insights and performance analytics for your hardware POS.</p>
-                    </div>
-                    <div className="flex gap-3">
-                        <button className="inventory-outline-btn report-page-btn flex items-center gap-2">
-                            <Mail className="w-4 h-4" /> Email Report
-                        </button>
-                        <button className="inventory-outline-btn report-page-btn flex items-center gap-2">
-                            <Printer className="w-4 h-4" /> Print View
-                        </button>
                     </div>
                 </div>
 
@@ -425,91 +567,25 @@ const ReportsPage = ({ onNavigate }) => {
                     ))}
                 </div>
 
-                {/* Global Filters & Search */}
+                {/* Global Filters */}
                 <div className="bg-white rounded-2xl p-6 shadow-sm border border-emerald-50 mb-8">
-                    <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-                        <div className="flex flex-wrap items-center gap-3">
-                            <div className="relative group">
-                                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-600" />
-                                <select
-                                    className="report-filter-select pl-10 pr-8 py-2.5 appearance-none transition-all"
-                                    value={dateRange}
-                                    onChange={(e) => setDateRange(e.target.value)}
-                                >
-                                    <option>Today</option>
-                                    <option>Yesterday</option>
-                                    <option>Last 7 Days</option>
-                                    <option>This Month</option>
-                                    <option>Last Month</option>
-                                </select>
-                                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-600 pointer-events-none" />
-                            </div>
-
-                            <button
-                                onClick={() => setShowFilters(!showFilters)}
-                                className={`inventory-outline-btn report-page-btn flex items-center gap-2 ${showFilters ? 'report-page-btn-active' : ''}`}
+                    <div className="flex flex-wrap items-center gap-3">
+                        <div className="relative group">
+                            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-600" />
+                            <select
+                                className="report-filter-select pl-10 pr-8 py-2.5 appearance-none transition-all"
+                                value={dateRange}
+                                onChange={(e) => setDateRange(e.target.value)}
                             >
-                                <Filter className="w-4 h-4" /> {showFilters ? 'Hide Filters' : 'Show Advanced Filters'}
-                            </button>
-                        </div>
-
-                        <div className="w-full lg:w-96 relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                            <input
-                                type="text"
-                                placeholder="Search by Invoice, Product, Barcode, Customer..."
-                                className="w-full pl-10 pr-4 py-2.5 bg-white border border-[#D7E7DC] rounded-xl text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-400 transition-all"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                            />
+                                <option>Today</option>
+                                <option>Yesterday</option>
+                                <option>Last 7 Days</option>
+                                <option>This Month</option>
+                                <option>Last Month</option>
+                            </select>
+                            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-600 pointer-events-none" />
                         </div>
                     </div>
-
-                    {showFilters && (
-                        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mt-6 pt-6 border-t border-gray-50 animate-fade-in-down">
-                            <div className="space-y-1.5">
-                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-1">Branch</label>
-                                <select
-                                    className="report-filter-select w-full px-3 py-2 text-sm focus:outline-none"
-                                    value={selectedBranch}
-                                    onChange={(e) => setSelectedBranch(e.target.value)}
-                                >
-                                    <option>Main Branch</option>
-                                    <option>Branch 02</option>
-                                </select>
-                            </div>
-                            <div className="space-y-1.5">
-                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-1">Cashier</label>
-                                <select
-                                    className="report-filter-select w-full px-3 py-2 text-sm focus:outline-none"
-                                    value={selectedCashier}
-                                    onChange={(e) => setSelectedCashier(e.target.value)}
-                                >
-                                    {cashierOptions.map((cashier) => (
-                                        <option key={cashier}>{cashier}</option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div className="flex items-end gap-2">
-                                <button
-                                    onClick={() => setAppliedFilters({ branch: selectedBranch, cashier: selectedCashier })}
-                                    className="inventory-outline-btn report-page-btn report-apply-btn flex-1"
-                                >
-                                    Apply
-                                </button>
-                                <button
-                                    onClick={() => {
-                                        setSelectedBranch('Main Branch');
-                                        setSelectedCashier('All Cashiers');
-                                        setAppliedFilters({ branch: 'Main Branch', cashier: 'All Cashiers' });
-                                    }}
-                                    className="inventory-outline-btn report-page-icon-btn p-2"
-                                >
-                                    <X className="w-4 h-4" />
-                                </button>
-                            </div>
-                        </div>
-                    )}
                 </div>
 
                 {/* Report Content Section */}
@@ -535,19 +611,6 @@ const ReportsPage = ({ onNavigate }) => {
                                 ))}
                             </div>
                         </div>
-
-                        {/* Export Menu */}
-                        <div className="bg-white rounded-2xl p-5 shadow-sm border border-emerald-50 text-slate-700">
-                            <h3 className="text-[11px] font-semibold text-slate-600 uppercase tracking-[0.2em] mb-4">Export Options</h3>
-                            <div className="grid grid-cols-1 gap-3">
-                                <button onClick={() => handleExport('excel')} className="inventory-outline-btn report-export-btn flex flex-col items-center justify-center p-4 rounded-2xl transition-all group">
-                                    <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-                                        <BarChart2 className="w-5 h-5 text-green-500" />
-                                    </div>
-                                    <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-600">Excel</span>
-                                </button>
-                            </div>
-                        </div>
                     </div>
 
                     {/* Report Data Display */}
@@ -558,16 +621,24 @@ const ReportsPage = ({ onNavigate }) => {
                             <div className="px-8 py-6 border-b border-gray-50 flex justify-between items-center">
                                 <div>
                                     <h2 className="text-xl font-bold text-gray-800">{reportCategories.find(c => c.id === activeTab)?.name}</h2>
-                                    <p className="text-sm text-gray-500">Showing data for <span className="font-bold text-emerald-600">{dateRange}</span></p>
+                                    <p className="text-sm text-gray-500">
+                                        Showing data for <span className="font-bold text-emerald-600">{dateRange}</span>
+                                        {activeTab === 'sales' && (
+                                            <>
+                                                <span className="mx-2 text-gray-300">|</span>
+                                                Total Profit: <span className="font-bold text-emerald-600">{formatCurrency(salesReportTotalProfit)}</span>
+                                            </>
+                                        )}
+                                    </p>
                                 </div>
                                 <div className="flex gap-2">
                                     <button
                                         onClick={() => {
                                             fetchSalesTrend();
                                             fetchSalesReport();
-                                            if (activeTab === 'product') fetchProductReport();
                                             if (activeTab === 'inventory') fetchInventoryReport();
                                             if (activeTab === 'supplier') fetchSupplierReport();
+                                            if (activeTab === 'purchase') fetchPurchaseReport();
                                         }}
                                         className="inventory-outline-btn report-page-icon-btn p-2"
                                         title="Refresh Data"
@@ -639,58 +710,93 @@ const ReportsPage = ({ onNavigate }) => {
                                             </div>
                                         </div>
 
-                                        <div className="overflow-x-auto rounded-xl border border-gray-100 table-container">
-                                            <table className="w-full text-left">
-                                                <thead className="bg-gray-50 border-b border-gray-100">
-                                                    <tr>
-                                                        <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Date</th>
-                                                        <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Invoice</th>
-                                                        <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Customer</th>
-                                                        <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Cashier</th>
-                                                        <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Amount</th>
-                                                        <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Items</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="divide-y divide-gray-50">
-                                                    {salesReportLoading && (
+                                        <div className="rounded-xl border border-gray-100 overflow-hidden bg-white">
+                                            <div className="px-6 py-4 bg-gray-50 border-b border-gray-100 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                                                <div>
+                                                    <h4 className="text-sm font-black text-gray-800">Sales Transactions Register</h4>
+                                                    <p className="text-xs text-gray-500 mt-1">Review list of orders, payment totals, items count, and cashier staff details.</p>
+                                                </div>
+                                                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                                                    <div className="flex items-center gap-2">
+                                                        <button
+                                                            onClick={() => setSortOrder('newest')}
+                                                            className={`inventory-outline-btn report-page-btn ${sortOrder === 'newest' ? 'report-page-btn-active font-bold' : ''}`}
+                                                        >
+                                                            Newest First
+                                                        </button>
+                                                        <button
+                                                            onClick={() => setSortOrder('oldest')}
+                                                            className={`inventory-outline-btn report-page-btn ${sortOrder === 'oldest' ? 'report-page-btn-active font-bold' : ''}`}
+                                                        >
+                                                            Oldest First
+                                                        </button>
+                                                    </div>
+                                                    <div className="w-full sm:w-72 relative">
+                                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                                        <input
+                                                            type="text"
+                                                            placeholder="Search transactions..."
+                                                            className="w-full pl-10 pr-4 py-2 bg-white border border-[#D7E7DC] rounded-xl text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-400 transition-all"
+                                                            value={searchTerm}
+                                                            onChange={(e) => setSearchTerm(e.target.value)}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="overflow-x-auto table-container">
+                                                <table className="w-full text-left">
+                                                    <thead className="bg-white border-b border-gray-100">
                                                         <tr>
-                                                            <td colSpan="6" className="px-6 py-8 text-center text-sm font-semibold text-gray-400">Loading sales...</td>
+                                                            <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Date</th>
+                                                            <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Invoice</th>
+                                                            <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Customer</th>
+                                                            <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Cashier</th>
+                                                            <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Amount</th>
+                                                            <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Profit</th>
+                                                            <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Items</th>
                                                         </tr>
-                                                    )}
-                                                    {!salesReportLoading && salesOrders.length === 0 && (
-                                                        <tr>
-                                                            <td colSpan="6" className="px-6 py-8 text-center text-sm font-semibold text-gray-400">No sales found for this filter</td>
-                                                        </tr>
-                                                    )}
-                                                    {!salesReportLoading && salesOrders.map((row) => (
-                                                        <tr key={row.order_id} onClick={() => setSelectedSale(row)} className="hover:bg-emerald-50/40 transition-all cursor-pointer">
-                                                            <td className="px-6 py-4 text-sm text-gray-600">{formatDateTime(row.closed_at || row.created_at)}</td>
-                                                            <td className="px-6 py-4 text-sm font-bold text-gray-800">#INV-{row.order_id}</td>
-                                                            <td className="px-6 py-4 text-sm text-gray-600">{row.customer_phone || 'Walk-in Customer'}</td>
-                                                            <td className="px-6 py-4 text-sm text-gray-600">{row.cashier?.cashier_name || 'N/A'}</td>
-                                                            <td className="px-6 py-4 text-sm font-medium text-slate-800">{formatCurrency(row.total_amount)}</td>
-                                                            <td className="px-6 py-4">
-                                                                <span className="px-2 py-1 bg-slate-50 text-slate-600 text-[10px] font-medium rounded-md uppercase">
-                                                                    {row.order_items?.length || 0} Items
-                                                                </span>
-                                                            </td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-gray-50">
+                                                        {salesReportLoading && (
+                                                            <tr>
+                                                                <td colSpan="7" className="px-6 py-8 text-center text-sm font-semibold text-gray-400">Loading sales...</td>
+                                                            </tr>
+                                                        )}
+                                                        {!salesReportLoading && filteredOrders.length === 0 && (
+                                                            <tr>
+                                                                <td colSpan="7" className="px-6 py-8 text-center text-sm font-semibold text-gray-400">No sales found matching search or filter</td>
+                                                            </tr>
+                                                        )}
+                                                        {!salesReportLoading && filteredOrders.map((row) => (
+                                                            <tr key={row.order_id} onClick={() => setSelectedSale(row)} className="hover:bg-emerald-50/40 transition-all cursor-pointer">
+                                                                <td className="px-6 py-4 text-sm text-gray-600">{formatDateTime(row.closed_at || row.created_at)}</td>
+                                                                <td className="px-6 py-4 text-sm font-bold text-gray-800">#INV-{row.order_id}</td>
+                                                                <td className="px-6 py-4 text-sm text-gray-600">{row.customer_phone || 'Walk-in Customer'}</td>
+                                                                <td className="px-6 py-4 text-sm text-gray-600">{row.cashier?.cashier_name || 'N/A'}</td>
+                                                                <td className="px-6 py-4 text-sm font-medium text-slate-800">{formatCurrency(row.total_amount)}</td>
+                                                                <td className="px-6 py-4 text-sm font-medium text-emerald-700">{formatCurrency(row.profit)}</td>
+                                                                <td className="px-6 py-4">
+                                                                    <span className="px-2 py-1 bg-slate-50 text-slate-600 text-[10px] font-medium rounded-md uppercase">
+                                                                        {row.order_items?.length || 0} Items
+                                                                    </span>
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
                                         </div>
                                     </div>
                                 )}
 
                                 {activeTab === 'inventory' && (
                                     <div className="animate-fade-in">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-4 mb-8">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
                                             {[
                                                 { label: 'Inventory Items', value: inventoryReport.summary.totalItems, sub: 'Active stock records' },
                                                 { label: 'Available Stock', value: inventoryReport.summary.totalStockQty, sub: 'Total quantity on hand' },
                                                 { label: 'Low Stock', value: inventoryReport.summary.lowStockCount, sub: 'Needs reorder attention' },
-                                                { label: 'Out of Stock', value: inventoryReport.summary.outOfStockCount, sub: 'Unavailable items' },
-                                                { label: 'Stock Value', value: formatCurrency(inventoryReport.summary.stockValue), sub: 'Buying value estimate' }
+                                                { label: 'Out of Stock', value: inventoryReport.summary.outOfStockCount, sub: 'Unavailable items' }
                                             ].map((item) => (
                                                 <div key={item.label} className="bg-gray-50 border border-gray-100 rounded-xl p-4">
                                                     <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">{item.label}</p>
@@ -794,12 +900,21 @@ const ReportsPage = ({ onNavigate }) => {
                                         </div>
 
                                         <div className="rounded-xl border border-gray-100 overflow-hidden bg-white">
-                                            <div className="px-6 py-4 bg-gray-50 border-b border-gray-100 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                                            <div className="px-6 py-4 bg-gray-50 border-b border-gray-100 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                                                 <div>
                                                     <h4 className="text-sm font-black text-gray-800">Inventory Stock Register</h4>
                                                     <p className="text-xs text-gray-500 mt-1">Current stock quantity, stock status, and warehouse/store location.</p>
                                                 </div>
-                                                <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">{dateRange}</span>
+                                                <div className="w-full md:w-72 relative">
+                                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Search stock register..."
+                                                        className="w-full pl-10 pr-4 py-2 bg-white border border-[#D7E7DC] rounded-xl text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-400 transition-all"
+                                                        value={searchTerm}
+                                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                                    />
+                                                </div>
                                             </div>
                                             <div className="overflow-x-auto table-container">
                                                 <table className="w-full text-left">
@@ -819,12 +934,12 @@ const ReportsPage = ({ onNavigate }) => {
                                                                 <td colSpan="6" className="px-6 py-8 text-center text-sm font-semibold text-gray-400">Loading inventory report...</td>
                                                             </tr>
                                                         )}
-                                                        {!inventoryReportLoading && inventoryReport.items.length === 0 && (
+                                                        {!inventoryReportLoading && filteredInventoryItems.length === 0 && (
                                                             <tr>
-                                                                <td colSpan="6" className="px-6 py-8 text-center text-sm font-semibold text-gray-400">No inventory data found.</td>
+                                                                <td colSpan="6" className="px-6 py-8 text-center text-sm font-semibold text-gray-400">No inventory data found matching search.</td>
                                                             </tr>
                                                         )}
-                                                        {!inventoryReportLoading && inventoryReport.items.map((item) => (
+                                                        {!inventoryReportLoading && filteredInventoryItems.map((item) => (
                                                             <tr key={item.id} className="hover:bg-emerald-50/30 transition-all">
                                                                 <td className="px-6 py-4">
                                                                     <p className="text-sm font-bold text-gray-900">{item.ingredient_name}</p>
@@ -839,131 +954,6 @@ const ReportsPage = ({ onNavigate }) => {
                                                                     </span>
                                                                 </td>
                                                                 <td className="px-6 py-4 text-sm text-gray-600">{item.storage_location || 'Not Specified'}</td>
-                                                            </tr>
-                                                        ))}
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {activeTab === 'product' && (
-                                    <div className="animate-fade-in">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4 mb-8">
-                                            {[
-                                                { label: 'Products Sold', value: productReport.summary.productCount, sub: `${productReport.summary.soldQty} total units` },
-                                                { label: 'Product Revenue', value: formatCurrency(productReport.summary.revenue), sub: 'Closed order revenue' },
-                                                { label: 'Estimated Profit', value: formatCurrency(productReport.summary.profit), sub: 'Revenue minus buying cost' },
-                                                { label: 'Returns Qty', value: productReport.summary.returnsQty, sub: 'Supplier return records' },
-                                                { label: 'Best Seller', value: productReport.bestSellingItems[0]?.product || 'N/A', sub: `${productReport.bestSellingItems[0]?.soldQty || 0} units sold` }
-                                            ].map((item) => (
-                                                <div key={item.label} className="bg-gray-50 border border-gray-100 rounded-xl p-4">
-                                                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">{item.label}</p>
-                                                    <p className="text-xl font-black text-gray-900 mt-2 truncate">{item.value}</p>
-                                                    <p className="text-xs text-gray-500 mt-1">{item.sub}</p>
-                                                </div>
-                                            ))}
-                                        </div>
-
-                                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 mb-8">
-                                            <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100">
-                                                <div className="flex justify-between items-center mb-6">
-                                                    <h4 className="text-sm font-bold text-gray-700">Best Selling Items</h4>
-                                                    <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600">Sold Qty</span>
-                                                </div>
-                                                <div className="h-72">
-                                                    {productReportLoading ? (
-                                                        <div className="h-full flex items-center justify-center text-sm font-semibold text-gray-400">Loading products...</div>
-                                                    ) : productReport.bestSellingItems.length === 0 ? (
-                                                        <div className="h-full flex items-center justify-center text-sm font-semibold text-gray-400">No product sales for this filter</div>
-                                                    ) : (
-                                                        <ResponsiveContainer width="100%" height="100%">
-                                                            <BarChart data={productReport.bestSellingItems} layout="vertical" margin={{ left: 24 }}>
-                                                                <XAxis type="number" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
-                                                                <YAxis dataKey="product" type="category" stroke="#64748b" fontSize={11} width={120} tickLine={false} axisLine={false} />
-                                                                <Tooltip formatter={(value) => [`${value} units`, 'Sold Qty']} cursor={{ fill: 'transparent' }} />
-                                                                <Bar dataKey="soldQty" fill="#16A34A" radius={[0, 6, 6, 0]} barSize={20} />
-                                                            </BarChart>
-                                                        </ResponsiveContainer>
-                                                    )}
-                                                </div>
-                                            </div>
-
-                                            <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100">
-                                                <div className="flex justify-between items-center mb-6">
-                                                    <h4 className="text-sm font-bold text-gray-700">Profit by Product</h4>
-                                                    <span className="text-[10px] font-black uppercase tracking-widest text-amber-600">Top 5</span>
-                                                </div>
-                                                <div className="h-72">
-                                                    {productReportLoading ? (
-                                                        <div className="h-full flex items-center justify-center text-sm font-semibold text-gray-400">Loading profit...</div>
-                                                    ) : productReport.products.length === 0 ? (
-                                                        <div className="h-full flex items-center justify-center text-sm font-semibold text-gray-400">No profit data for this filter</div>
-                                                    ) : (
-                                                        <ResponsiveContainer width="100%" height="100%">
-                                                            <BarChart data={[...productReport.products].sort((a, b) => b.profit - a.profit).slice(0, 5)}>
-                                                                <XAxis dataKey="product" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
-                                                                <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `Rs.${v / 1000}k`} />
-                                                                <Tooltip formatter={(value) => [formatCurrency(value), 'Profit']} cursor={{ fill: 'transparent' }} />
-                                                                <Bar dataKey="profit" radius={[6, 6, 0, 0]}>
-                                                                    {[...productReport.products].sort((a, b) => b.profit - a.profit).slice(0, 5).map((item, index) => (
-                                                                        <Cell key={`profit-${item.item_id || item.product}`} fill={['#D4A017', '#16A34A', '#3B82F6', '#8B5CF6', '#EF4444'][index % 5]} />
-                                                                    ))}
-                                                                </Bar>
-                                                            </BarChart>
-                                                        </ResponsiveContainer>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="rounded-xl border border-gray-100 overflow-hidden bg-white">
-                                            <div className="px-6 py-4 bg-gray-50 border-b border-gray-100 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-                                                <div>
-                                                    <h4 className="text-sm font-black text-gray-800">Product Performance</h4>
-                                                    <p className="text-xs text-gray-500 mt-1">Quantity, revenue, profit, and returns for the selected report filters.</p>
-                                                </div>
-                                                <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">{dateRange}</span>
-                                            </div>
-                                            <div className="overflow-x-auto table-container">
-                                                <table className="w-full text-left">
-                                                    <thead className="bg-white border-b border-gray-100">
-                                                        <tr>
-                                                            <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Product</th>
-                                                            <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Category</th>
-                                                            <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Sold Qty</th>
-                                                            <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Revenue</th>
-                                                            <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Profit</th>
-                                                            <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Returns</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody className="divide-y divide-gray-50">
-                                                        {productReportLoading && (
-                                                            <tr>
-                                                                <td colSpan="6" className="px-6 py-8 text-center text-sm font-semibold text-gray-400">Loading product report...</td>
-                                                            </tr>
-                                                        )}
-                                                        {!productReportLoading && productReport.products.length === 0 && (
-                                                            <tr>
-                                                                <td colSpan="6" className="px-6 py-8 text-center text-sm font-semibold text-gray-400">No product performance data found for this filter</td>
-                                                            </tr>
-                                                        )}
-                                                        {!productReportLoading && productReport.products.map((product) => (
-                                                            <tr key={product.item_id || product.product} className="hover:bg-emerald-50/30 transition-all">
-                                                                <td className="px-6 py-4">
-                                                                    <p className="text-sm font-bold text-gray-900">{product.product}</p>
-                                                                    <p className="text-xs text-gray-400 mt-0.5">{product.item_code || 'No item code'}</p>
-                                                                </td>
-                                                                <td className="px-6 py-4 text-sm text-gray-600">{product.category}</td>
-                                                                <td className="px-6 py-4 text-sm font-bold text-gray-800">{product.soldQty} {product.unit || ''}</td>
-                                                                <td className="px-6 py-4 text-sm font-medium text-slate-800">{formatCurrency(product.revenue)}</td>
-                                                                <td className="px-6 py-4 text-sm font-medium text-slate-800">{formatCurrency(product.profit)}</td>
-                                                                <td className="px-6 py-4">
-                                                                    <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase ${product.returnsQty > 0 ? 'bg-red-50 text-red-600' : 'bg-gray-50 text-gray-400'}`}>
-                                                                        {product.returnsQty} returned
-                                                                    </span>
-                                                                </td>
                                                             </tr>
                                                         ))}
                                                     </tbody>
@@ -992,12 +982,21 @@ const ReportsPage = ({ onNavigate }) => {
                                         </div>
 
                                         <div className="rounded-xl border border-gray-100 overflow-hidden bg-white">
-                                            <div className="px-6 py-4 bg-gray-50 border-b border-gray-100 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                                            <div className="px-6 py-4 bg-gray-50 border-b border-gray-100 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                                                 <div>
                                                     <h4 className="text-sm font-black text-gray-800">Supplier Directory & Performance</h4>
                                                     <p className="text-xs text-gray-500 mt-1">Search suppliers and open a complete supplier report with products, purchases, due payments, payment history, and returns.</p>
                                                 </div>
-                                                <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">{filteredSupplierReports.length} Showing</span>
+                                                <div className="w-full md:w-72 relative">
+                                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Search suppliers..."
+                                                        className="w-full pl-10 pr-4 py-2 bg-white border border-[#D7E7DC] rounded-xl text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-400 transition-all"
+                                                        value={searchTerm}
+                                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                                    />
+                                                </div>
                                             </div>
                                             <div className="overflow-x-auto table-container">
                                                 <table className="w-full text-left">
@@ -1024,7 +1023,7 @@ const ReportsPage = ({ onNavigate }) => {
                                                             </tr>
                                                         )}
                                                         {!supplierReportLoading && filteredSupplierReports.map((supplier) => (
-                                                            <tr key={supplier.id} onClick={() => setSelectedSupplierReport(supplier)} className="hover:bg-emerald-50/40 transition-all cursor-pointer">
+                                                            <tr key={supplier.id} className="hover:bg-emerald-50/40 transition-all">
                                                                 <td className="px-6 py-4">
                                                                     <p className="text-sm font-bold text-gray-900">{supplier.supplier_name}</p>
                                                                     <p className="text-xs text-gray-400 mt-0.5">{supplier.supplier_id} · {supplier.company_name || 'Individual'}</p>
@@ -1052,18 +1051,116 @@ const ReportsPage = ({ onNavigate }) => {
                                 )}
 
                                 {activeTab === 'purchase' && (
-                                    <div className="flex flex-col items-center justify-center py-20 text-center">
-                                        <div className="w-20 h-20 bg-amber-50 text-amber-600 rounded-full flex items-center justify-center mb-4">
-                                            <Briefcase className="w-10 h-10" />
-                                        </div>
-                                        <h3 className="text-lg font-bold text-gray-800">Purchase Reports</h3>
-                                        <p className="text-gray-500 max-w-sm">To view purchase reports, open the supplier module and review the Recent Purchases section.</p>
-                                        <button
-                                            onClick={() => onNavigate('supplier', { focusSection: 'recent-purchases' })}
-                                            className="inventory-outline-btn report-page-btn mt-6 px-6 py-2"
-                                        >
-                                            View Purchase Reports
-                                        </button>
+                                    <div className="animate-fade-in">
+                                        {(() => {
+                                            const filteredPurchases = getFilteredPurchases();
+                                            const purchaseStats = {
+                                                totalPurchases: filteredPurchases.length,
+                                                totalValue: filteredPurchases.reduce((sum, b) => sum + b.netValue, 0),
+                                                totalDue: filteredPurchases.reduce((sum, b) => sum + b.dueAmount, 0),
+                                                maxPurchase: filteredPurchases.length > 0 ? Math.max(...filteredPurchases.map(b => b.netValue)) : 0
+                                            };
+                                            
+                                            return (
+                                                <>
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
+                                                        {[
+                                                            { label: 'Total Purchases', value: purchaseStats.totalPurchases, sub: 'Procured supplier sessions' },
+                                                            { label: 'Purchase Value', value: formatCurrency(purchaseStats.totalValue), sub: 'Accumulated cost of purchases' },
+                                                            { label: 'Outstanding Due', value: formatCurrency(purchaseStats.totalDue), sub: 'Unsettled supplier balances' },
+                                                            { label: 'Peak Purchase Value', value: formatCurrency(purchaseStats.maxPurchase), sub: 'Highest single invoice value' }
+                                                        ].map((item) => (
+                                                            <div key={item.label} className="bg-gray-50 border border-gray-100 rounded-xl p-4">
+                                                                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">{item.label}</p>
+                                                                <p className="text-xl font-black text-gray-900 mt-2 truncate">{item.value}</p>
+                                                                <p className="text-xs text-gray-500 mt-1">{item.sub}</p>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+
+                                                    <div className="rounded-xl border border-gray-100 overflow-hidden bg-white">
+                                                        <div className="px-6 py-4 bg-gray-50 border-b border-gray-100 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                                                            <div>
+                                                                <h4 className="text-sm font-black text-gray-800">Procurement Register</h4>
+                                                                <p className="text-xs text-gray-500 mt-1">Review list of supplier invoice batches, total net values, paid status, and outstanding due amounts.</p>
+                                                            </div>
+                                                            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                                                                <div className="flex items-center gap-2">
+                                                                    <button
+                                                                        onClick={() => setSortOrder('newest')}
+                                                                        className={`inventory-outline-btn report-page-btn ${sortOrder === 'newest' ? 'report-page-btn-active font-bold' : ''}`}
+                                                                    >
+                                                                        Newest First
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => setSortOrder('oldest')}
+                                                                        className={`inventory-outline-btn report-page-btn ${sortOrder === 'oldest' ? 'report-page-btn-active font-bold' : ''}`}
+                                                                    >
+                                                                        Oldest First
+                                                                    </button>
+                                                                </div>
+                                                                <div className="w-full sm:w-72 relative">
+                                                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                                                    <input
+                                                                        type="text"
+                                                                        placeholder="Search purchases..."
+                                                                        className="w-full pl-10 pr-4 py-2 bg-white border border-[#D7E7DC] rounded-xl text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-400 transition-all"
+                                                                        value={searchTerm}
+                                                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div className="overflow-x-auto table-container">
+                                                            <table className="w-full text-left">
+                                                                <thead className="bg-white border-b border-gray-100">
+                                                                    <tr>
+                                                                        <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Date</th>
+                                                                        <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Invoice / Batch</th>
+                                                                        <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Supplier</th>
+                                                                        <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Items</th>
+                                                                        <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Value</th>
+                                                                        <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Paid</th>
+                                                                        <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Due</th>
+                                                                        <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Status</th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody className="divide-y divide-gray-50">
+                                                                    {purchaseReportLoading && (
+                                                                        <tr>
+                                                                            <td colSpan="8" className="px-6 py-8 text-center text-sm font-semibold text-gray-400">Loading purchases...</td>
+                                                                        </tr>
+                                                                    )}
+                                                                    {!purchaseReportLoading && filteredPurchases.length === 0 && (
+                                                                        <tr>
+                                                                            <td colSpan="8" className="px-6 py-8 text-center text-sm font-semibold text-gray-400">No purchase records found matching search or filter</td>
+                                                                        </tr>
+                                                                    )}
+                                                                    {!purchaseReportLoading && filteredPurchases.map((row) => (
+                                                                        <tr key={row.id || row.batch_number} onClick={() => setSelectedPurchase(row)} className="hover:bg-emerald-50/40 transition-all cursor-pointer">
+                                                                            <td className="px-6 py-4 text-sm text-gray-600">{formatDateTime(row.batch_date || row.created_at)}</td>
+                                                                            <td className="px-6 py-4 text-sm font-bold text-gray-800">{row.batch_number}</td>
+                                                                            <td className="px-6 py-4 text-sm text-gray-600">{row.supplierName}</td>
+                                                                            <td className="px-6 py-4 text-xs text-gray-600 max-w-[200px] truncate">
+                                                                                {row.items?.map(i => `${i.qty} ${i.unit} ${i.name}`).join(', ') || 'No item rows recorded'}
+                                                                            </td>
+                                                                            <td className="px-6 py-4 text-sm font-medium text-slate-800">{formatCurrency(row.netValue)}</td>
+                                                                            <td className="px-6 py-4 text-sm text-gray-600">{formatCurrency(row.paidAmount)}</td>
+                                                                            <td className={`px-6 py-4 text-sm ${row.dueAmount > 0 ? 'text-rose-600 font-semibold' : 'text-gray-600'}`}>{formatCurrency(row.dueAmount)}</td>
+                                                                            <td className="px-6 py-4">
+                                                                                <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase ${row.paymentStatus === 'PAID' ? 'bg-emerald-50 text-emerald-700' : row.paymentStatus === 'PARTIAL' ? 'bg-amber-50 text-amber-700' : 'bg-red-50 text-red-700'}`}>
+                                                                                    {row.paymentStatus}
+                                                                                </span>
+                                                                            </td>
+                                                                        </tr>
+                                                                    ))}
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    </div>
+                                                </>
+                                            );
+                                        })()}
                                     </div>
                                 )}
 
@@ -1148,6 +1245,7 @@ const ReportsPage = ({ onNavigate }) => {
                                                 <div className="flex justify-between text-sm text-slate-600"><span>Items Subtotal</span><strong className="text-slate-900">{formatCurrency(itemSubtotal)}</strong></div>
                                                 <div className="flex justify-between text-sm text-slate-600"><span>Discount</span><strong className="text-rose-600">- {formatCurrency(discount)}</strong></div>
                                                 <div className="flex justify-between text-sm text-slate-600"><span>Other Charges</span><strong className="text-slate-900">+ {formatCurrency(otherCharges)}</strong></div>
+                                                <div className="flex justify-between text-sm text-slate-600"><span>Order Profit</span><strong className="text-emerald-700">{formatCurrency(selectedSale.profit)}</strong></div>
                                                 {otherCharges > 0 && (
                                                     <div className="rounded-lg border border-emerald-100 bg-white p-3">
                                                         <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Other Charge Reason</p>
@@ -1220,6 +1318,106 @@ const ReportsPage = ({ onNavigate }) => {
 
                                 <div className="px-7 py-4 border-t border-gray-100 bg-white flex justify-end">
                                     <button onClick={() => setSelectedSale(null)} className="inventory-outline-btn report-page-btn px-5 py-2">Close</button>
+                                </div>
+                            </div>
+                        );
+                    })()}
+                </div>
+            )}
+
+            {selectedPurchase && (
+                <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm px-4 py-6">
+                    {(() => {
+                        const netValue = selectedPurchase.netValue;
+                        const paidAmount = selectedPurchase.paidAmount;
+                        const dueAmount = selectedPurchase.dueAmount;
+                        const paymentStatus = selectedPurchase.paymentStatus;
+                        const items = selectedPurchase.items || [];
+                        
+                        return (
+                            <div className="w-full max-w-6xl max-h-[92vh] overflow-hidden bg-white rounded-2xl shadow-2xl border border-[#D7E7DC] flex flex-col">
+                                <div className="px-7 py-5 border-b border-[#D7E7DC] flex items-start justify-between bg-[#F8FCFA]">
+                                    <div>
+                                        <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-emerald-700">Procurement Invoice Details</p>
+                                        <div className="flex flex-wrap items-center gap-3 mt-2">
+                                            <h2 className="text-[2rem] font-semibold text-slate-950">{selectedPurchase.batch_number}</h2>
+                                            <span className={`px-3 py-1 rounded-full border text-[11px] font-bold uppercase ${paymentStatus === 'PAID' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : paymentStatus === 'PARTIAL' ? 'border-amber-200 bg-amber-50 text-amber-700' : 'border-red-200 bg-red-50 text-red-700'}`}>
+                                                {paymentStatus}
+                                            </span>
+                                        </div>
+                                        <p className="text-sm text-slate-500 mt-1">Date: {formatDateTime(selectedPurchase.batch_date || selectedPurchase.created_at)}</p>
+                                    </div>
+                                    <button onClick={() => setSelectedPurchase(null)} className="inventory-outline-btn report-page-icon-btn p-2" title="Close">
+                                        <X className="w-5 h-5" />
+                                    </button>
+                                </div>
+
+                                <div className="overflow-y-auto p-7 custom-scrollbar bg-white">
+                                    <div className="grid grid-cols-1 xl:grid-cols-3 gap-5 mb-5">
+                                        <div className="xl:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-5">
+                                            <div className="border border-gray-100 rounded-xl p-5 bg-white">
+                                                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Supplier Name</p>
+                                                <p className="text-[1rem] font-semibold text-slate-900 mt-3">{selectedPurchase.supplierName}</p>
+                                                <p className="text-sm text-slate-500 mt-1">Supplier ID: {selectedPurchase.supplier_id || 'N/A'}</p>
+                                            </div>
+                                            <div className="border border-gray-100 rounded-xl p-5 bg-white">
+                                                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Batch details</p>
+                                                <p className="text-[1rem] font-semibold text-slate-900 mt-3">Procurement Batch</p>
+                                                <p className="text-sm text-slate-500 mt-1">Batch Status: {selectedPurchase.batchStatus || 'N/A'}</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="rounded-xl border border-[#D7E7DC] bg-[#F8FCFA] p-5">
+                                            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-700">Procurement Summary</p>
+                                            <div className="mt-4 space-y-3">
+                                                <div className="flex justify-between text-sm text-slate-600"><span>Paid Amount</span><strong className="text-emerald-700">{formatCurrency(paidAmount)}</strong></div>
+                                                <div className="flex justify-between text-sm text-slate-600"><span>Balance Due</span><strong className={dueAmount > 0 ? 'text-rose-600' : 'text-slate-900'}>{formatCurrency(dueAmount)}</strong></div>
+                                                <div className="border-t border-[#D7E7DC] pt-4 flex justify-between items-end">
+                                                    <span className="text-sm font-bold uppercase tracking-[0.12em] text-slate-700">Net Invoice Value</span>
+                                                    <strong className="text-2xl text-slate-950">{formatCurrency(netValue)}</strong>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="rounded-xl border border-gray-100 overflow-hidden mb-5">
+                                        <div className="px-5 py-4 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
+                                            <h3 className="text-[1.05rem] font-semibold text-slate-800">Purchased Items</h3>
+                                            <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">{items.length} Items</span>
+                                        </div>
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-left">
+                                                <thead className="bg-white border-b border-gray-100">
+                                                    <tr>
+                                                        <th className="px-5 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-[0.16em]">Item</th>
+                                                        <th className="px-5 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-[0.16em]">Category</th>
+                                                        <th className="px-5 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-[0.16em]">Code</th>
+                                                        <th className="px-5 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-[0.16em]">Qty</th>
+                                                        <th className="px-5 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-[0.16em]">Unit Buying Cost</th>
+                                                        <th className="px-5 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-[0.16em] text-right">Line Total</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-gray-50">
+                                                    {items.map((item, idx) => (
+                                                        <tr key={item.id || idx}>
+                                                            <td className="px-5 py-4 text-sm font-semibold text-slate-800">{item.name}</td>
+                                                            <td className="px-5 py-4 text-sm text-gray-600">{item.category}</td>
+                                                            <td className="px-5 py-4 text-sm text-gray-500">{item.item_code || 'N/A'}</td>
+                                                            <td className="px-5 py-4 text-sm text-gray-600">{item.qty} {item.unit || ''}</td>
+                                                            <td className="px-5 py-4 text-sm text-gray-600">{formatCurrency(item.price)}</td>
+                                                            <td className="px-5 py-4 text-sm font-semibold text-emerald-700 text-right">{formatCurrency(item.total)}</td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+
+
+                                </div>
+
+                                <div className="px-7 py-4 border-t border-gray-100 bg-white flex justify-end">
+                                    <button onClick={() => setSelectedPurchase(null)} className="inventory-outline-btn report-page-btn px-5 py-2">Close</button>
                                 </div>
                             </div>
                         );

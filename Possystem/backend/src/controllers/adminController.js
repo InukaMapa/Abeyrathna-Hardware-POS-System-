@@ -319,7 +319,8 @@ export const getSalesReport = async (req, res) => {
                     item_name,
                     quantity,
                     item_price,
-                    subtotal
+                    subtotal,
+                    selected_variants
                 )
             `)
             .eq('status', 'CLOSED')
@@ -363,7 +364,7 @@ export const getSalesReport = async (req, res) => {
         const { data: inventoryItems, error: inventoryError } = itemIds.length > 0
             ? await supabase
                 .from('inventory')
-                .select('id, ingredient_name, item_code, category, unit, selling_price')
+                .select('id, ingredient_name, item_code, category, unit, buying_price, selling_price')
                 .in('id', itemIds)
             : { data: [], error: null };
 
@@ -373,25 +374,40 @@ export const getSalesReport = async (req, res) => {
         const inventoryById = new Map(inventoryItems.map(item => [item.id, item]));
         const categoryTotals = new Map();
 
+        let totalBuyingCost = 0;
         const enrichedOrders = orders.map(order => {
+            let orderBuyingCost = 0;
             const enrichedItems = (order.order_items || []).map(item => {
                 const inventoryItem = inventoryById.get(item.item_id);
                 const category = inventoryItem?.category || 'Uncategorized';
                 const subtotal = Number(item.subtotal || 0);
                 categoryTotals.set(category, (categoryTotals.get(category) || 0) + subtotal);
 
+                const batchAllocation = Array.isArray(item.selected_variants)
+                    ? item.selected_variants.find(entry => entry?.type === 'STOCK_BATCH')
+                    : null;
+                const batchBuyingPrice = Number(batchAllocation?.buying_price || 0);
+                const buyingPrice = batchBuyingPrice > 0 ? batchBuyingPrice : Number(inventoryItem?.buying_price || 0);
+                const qty = Number(item.quantity || 0);
+                orderBuyingCost += buyingPrice * qty;
+
                 return {
                     ...item,
                     category,
                     item_code: inventoryItem?.item_code || null,
-                    unit: inventoryItem?.unit || null
+                    unit: inventoryItem?.unit || null,
+                    buying_price: buyingPrice
                 };
             });
+
+            totalBuyingCost += orderBuyingCost;
 
             return {
                 ...order,
                 cashier: shiftsById.get(order.shift_id) || null,
-                order_items: enrichedItems
+                order_items: enrichedItems,
+                buying_cost: Number(orderBuyingCost.toFixed(2)),
+                profit: Number((Number(order.total_amount || 0) - orderBuyingCost).toFixed(2))
             };
         });
 
@@ -399,10 +415,14 @@ export const getSalesReport = async (req, res) => {
             .map(([name, value]) => ({ name, value: Number(value.toFixed(2)) }))
             .sort((a, b) => b.value - a.value);
 
+        const totalSales = enrichedOrders.reduce((sum, order) => sum + Number(order.total_amount || 0), 0);
+        const totalProfit = totalSales - totalBuyingCost;
+
         res.status(200).json({
             categorySales,
             orders: enrichedOrders,
-            total: Number(enrichedOrders.reduce((sum, order) => sum + Number(order.total_amount || 0), 0).toFixed(2))
+            total: Number(totalSales.toFixed(2)),
+            totalProfit: Number(totalProfit.toFixed(2))
         });
     } catch (error) {
         console.error('[ADMIN] Sales Report Error:', error);
@@ -433,7 +453,8 @@ export const getProductReport = async (req, res) => {
                     item_name,
                     quantity,
                     item_price,
-                    subtotal
+                    subtotal,
+                    selected_variants
                 )
             `)
             .eq('status', 'CLOSED')
@@ -511,7 +532,13 @@ export const getProductReport = async (req, res) => {
                 const product = ensureProduct(item.item_id, item.item_name);
                 const quantity = Number(item.quantity || 0);
                 const revenue = Number(item.subtotal || 0);
-                const cost = product.buying_price * quantity;
+
+                const batchAllocation = Array.isArray(item.selected_variants)
+                    ? item.selected_variants.find(entry => entry?.type === 'STOCK_BATCH')
+                    : null;
+                const batchBuyingPrice = Number(batchAllocation?.buying_price || 0);
+                const buyingPrice = batchBuyingPrice > 0 ? batchBuyingPrice : product.buying_price;
+                const cost = buyingPrice * quantity;
 
                 product.soldQty += quantity;
                 product.revenue += revenue;
@@ -666,29 +693,83 @@ export const getSupplierReport = async (req, res) => {
 
         if (suppliersError) throw suppliersError;
 
-        const { data: batches, error: batchesError } = await supabase
-            .from('inventory_batches')
-            .select(`
-                *,
-                inventory_batch_items(
-                    id,
-                    inventory_id,
-                    quantity_added,
-                    buying_price_at_time,
-                    inventory(ingredient_name, item_code, category, unit)
-                ),
-                supplier_payout_requests(
-                    payout_number,
-                    amount,
-                    payment_method,
-                    status,
-                    authorized_at,
-                    notes
-                )
-            `)
-            .order('created_at', { ascending: false });
+        const { data: allInventory, error: inventoryError } = await supabase
+            .from('inventory')
+            .select('id, ingredient_name, item_code, category, unit, supplier_id');
 
-        if (batchesError) throw batchesError;
+        if (inventoryError) throw inventoryError;
+
+        const { data: payouts, error: payoutsError } = await supabase
+            .from('supplier_payout_requests')
+            .select('*')
+            .order('authorized_at', { ascending: false });
+
+        if (payoutsError) throw payoutsError;
+
+        const batches = (payouts || []).map(p => {
+            const amount = parseFloat(p.amount || 0);
+
+            // Parse partial payments from notes
+            let paid_amount = 0;
+            let notesTextForParsing = p.notes || '';
+            if (p.notes && p.notes.startsWith('{')) {
+                try {
+                    const parsed = JSON.parse(p.notes);
+                    paid_amount = parseFloat(parsed.paid_amount || 0);
+                    notesTextForParsing = parsed.legacy_notes || '';
+                } catch (e) {
+                    console.error('Failed to parse notes in getSupplierReport:', e);
+                }
+            }
+
+            const isCompleted = p.status === 'COMPLETED';
+            if (isCompleted && paid_amount === 0) {
+                paid_amount = amount;
+            }
+
+            const remaining_balance = Math.max(0, amount - paid_amount);
+            const isPartial = paid_amount > 0 && remaining_balance > 0;
+            const paymentStatus = remaining_balance <= 0 ? 'PAID' : (isPartial ? 'PARTIAL' : 'UNPAID');
+
+            const parseNotesToItems = (notes) => {
+                if (!notes) return [];
+                const regex = /(?:Purchased|Added)\s+(\d+(?:\.\d+)?)\s*x\s+(.*?)\s*\(Rs\.\s*(\d+(?:\.\d+)?)\s*each\)/gi;
+                const items = [];
+                let match;
+                while ((match = regex.exec(notes)) !== null) {
+                    const qty = parseFloat(match[1]);
+                    const name = match[2].trim();
+                    const price = parseFloat(match[3]);
+                    items.push({
+                        inventory_id: name,
+                        buying_price_at_time: price,
+                        quantity_added: qty,
+                        inventory: {
+                            ingredient_name: name,
+                            item_code: '',
+                            category: 'Uncategorized',
+                            unit: 'units'
+                        }
+                    });
+                }
+                return items;
+            };
+
+            return {
+                id: p.id,
+                batch_number: p.payout_number,
+                supplier_id: p.supplier_id,
+                net_value: amount,
+                paid_amount: paid_amount,
+                remaining_balance: remaining_balance,
+                batch_date: p.authorized_at || p.created_at,
+                created_at: p.created_at || p.authorized_at,
+                payment_status: paymentStatus,
+                status: remaining_balance <= 0 ? 'COMPLETED' : 'PENDING',
+                inventory_batch_items: parseNotesToItems(notesTextForParsing),
+                supplier_payout_requests: [p]
+            };
+        });
 
         const { data: returns, error: returnsError } = await supabase
             .from('supplier_returns')
@@ -697,36 +778,20 @@ export const getSupplierReport = async (req, res) => {
 
         if (returnsError) throw returnsError;
 
-        const ninetyDaysAgo = Date.now() - 90 * DAY_MS;
-
         const supplierReports = (suppliers || []).map(supplier => {
             const supplierBatches = (batches || []).filter(batch => batch.supplier_id === supplier.id);
             const supplierReturns = (returns || []).filter(item => item.supplier_id === supplier.id);
             const productsMap = new Map();
 
-            supplierBatches.forEach(batch => {
-                (batch.inventory_batch_items || []).forEach(item => {
-                    const inv = item.inventory;
-                    if (inv?.ingredient_name) {
-                        productsMap.set(inv.item_code || inv.ingredient_name, {
-                            name: inv.ingredient_name,
-                            code: inv.item_code || null,
-                            category: inv.category || 'Uncategorized',
-                            unit: inv.unit || null
-                        });
-                    }
+            // Populate products from inventory table mapped to this supplier (matches SupplierPage list exactly)
+            const supplierInventory = (allInventory || []).filter(item => item.supplier_id === supplier.id);
+            supplierInventory.forEach(inv => {
+                productsMap.set(inv.item_code || inv.ingredient_name, {
+                    name: inv.ingredient_name,
+                    code: inv.item_code || null,
+                    category: inv.category || 'Uncategorized',
+                    unit: inv.unit || null
                 });
-            });
-
-            supplierReturns.forEach(item => {
-                if (item.inventory?.ingredient_name) {
-                    productsMap.set(item.inventory.item_code || item.inventory.ingredient_name, {
-                        name: item.inventory.ingredient_name,
-                        code: item.inventory.item_code || null,
-                        category: item.inventory.category || 'Uncategorized',
-                        unit: null
-                    });
-                }
             });
 
             const purchaseHistory = supplierBatches.map(batch => {
@@ -796,10 +861,12 @@ export const getSupplierReport = async (req, res) => {
             const totalPaid = purchaseHistory.reduce((sum, batch) => sum + batch.paid_amount, 0);
             const duePayments = purchaseHistory.reduce((sum, batch) => sum + batch.due_amount, 0);
             const lastPurchase = purchaseHistory[0]?.batch_date || null;
-            const active = lastPurchase ? new Date(lastPurchase).getTime() >= ninetyDaysAgo : false;
             const returnQty = returnHistory.reduce((sum, item) => sum + item.quantity, 0);
             const returnValue = returnHistory.reduce((sum, item) => sum + item.value, 0);
             const paymentCompletion = totalPurchases > 0 ? (totalPaid / totalPurchases) * 100 : 0;
+
+            // Status is active for active sellers in the supplier database status, defaulting to 'Active'
+            const isActive = supplier.status ? (supplier.status === 'ACTIVE') : true;
 
             return {
                 ...supplier,
@@ -817,7 +884,7 @@ export const getSupplierReport = async (req, res) => {
                     batch_count: purchaseHistory.length,
                     payment_completion: Number(paymentCompletion.toFixed(1)),
                     last_purchase_date: lastPurchase,
-                    status: active ? 'Active' : 'Inactive'
+                    status: isActive ? 'Active' : 'Inactive'
                 }
             };
         });

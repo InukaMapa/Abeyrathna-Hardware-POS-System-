@@ -209,7 +209,7 @@ const CreateOrderPage = ({ onNavigate, tableData }) => {
             const response = await createOrder(orderData);
 
             // Show success message and navigate back
-            alert(`Order #${response.id || response.orderId} created successfully!`);
+            alert(`Order #${response.id || response.orderId || response.order_id} created successfully!`);
             onNavigate('dashboard');
         } catch (err) {
             console.error('Failed to create order:', err);

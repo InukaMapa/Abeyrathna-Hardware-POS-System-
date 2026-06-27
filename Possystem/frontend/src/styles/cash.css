@@ -1237,36 +1237,60 @@
 
 /* Shift Movements Buttons */
 .movement-btn {
-    padding: 11px 22px;
-    border-radius: 20px; /* 20px Rounded */
+    padding: 8px 16px;
+    border-radius: 8px; /* 8px Rounded */
     cursor: pointer;
-    font-weight: 600;
-    font-family: 'Poppins', sans-serif;
-    transition: all 0.25s ease;
+    font-weight: 500;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.82rem;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.movement-cancel-btn {
+    padding: 8px 16px;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 8px;
+    background-color: #ffffff !important;
+    color: var(--text-secondary) !important;
+    font-weight: 500;
+    cursor: pointer;
+    font-size: 0.82rem;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.movement-cancel-btn:hover {
+    background-color: #f8fafc !important;
+    color: var(--text-primary) !important;
 }
 
 .btn-in {
-    background-color: rgba(22, 163, 74, 0.08) !important;
+    background-color: #ffffff !important;
     color: var(--primary-green) !important;
-    border: 1.5px solid var(--primary-green) !important;
+    border: 1px solid var(--primary-green) !important;
 }
 
 .btn-in:hover {
     background-color: var(--primary-green) !important;
     color: white !important;
-    box-shadow: 0 4px 12px rgba(22, 163, 74, 0.2);
+    box-shadow: 0 4px 12px rgba(22, 163, 74, 0.15);
 }
 
 .btn-out {
-    background-color: rgba(212, 160, 23, 0.08) !important;
+    background-color: #ffffff !important;
     color: var(--accent-color) !important;
-    border: 1.5px solid var(--accent-color) !important;
+    border: 1px solid var(--accent-color) !important;
 }
 
 .btn-out:hover {
     background-color: var(--accent-color) !important;
     color: white !important;
-    box-shadow: 0 4px 12px rgba(212, 160, 23, 0.2);
+    box-shadow: 0 4px 12px rgba(212, 160, 23, 0.15);
 }
 
 /* Modals */

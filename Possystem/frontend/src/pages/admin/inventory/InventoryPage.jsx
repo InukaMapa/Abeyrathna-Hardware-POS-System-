@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Search, Plus, Package, PackagePlus, Edit, FileText, AlertTriangle, AlertCircle, Loader, Settings, X } from 'lucide-react';
+import { Search, Plus, PackagePlus, Edit, FileText, AlertTriangle, AlertCircle, Loader, Settings, Package, Trash2, CheckCircle, X } from 'lucide-react';
 import axios from 'axios';
 import AddInventoryModal from './AddInventoryModal';
 import ReceiveInventoryModal from './ReceiveInventoryModal';
@@ -13,9 +13,6 @@ import '../../../styles/menu.css';
 
 const InventoryPage = ({ onNavigate }) => {
     const [inventory, setInventory] = useState([]);
-
-    // Removed misplaced useEffect; will be added after showBatchModal declaration
-
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -24,43 +21,18 @@ const InventoryPage = ({ onNavigate }) => {
 
     // Modals
     const [showAddModal, setShowAddModal] = useState(false);
-    const [showReceiveModal, setShowReceiveModal] = useState(false);
+    const [receivingItem, setReceivingItem] = useState(null);
     const [showScanModal, setShowScanModal] = useState(false);
     const [showCategoryModal, setShowCategoryModal] = useState(false);
-    const [showBatchModal, setShowBatchModal] = useState(false);
-
-    // Correctly placed effect to manage body scroll when batch modal is open
-    useEffect(() => {
-        if (showBatchModal) {
-            document.body.style.overflow = 'hidden';
-        } else {
-            document.body.style.overflow = 'unset';
-        }
-        return () => {
-            document.body.style.overflow = 'unset';
-        };
-    }, [showBatchModal]);
     const [editingItem, setEditingItem] = useState(null);
-    const [batches, setBatches] = useState([]);
-
-    const fetchBatches = async () => {
-        try {
-            const response = await axios.get(`${API_BASE_URL}/inventory/batches`, {
-                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-            });
-            setBatches(response.data);
-        } catch (error) { console.error('Error fetching batches:', error); }
-    };
-
-    useEffect(() => {
-        fetchInventory();
-        fetchCategories();
-        fetchBatches();
-    }, []);
-
-    useEffect(() => {
-        fetchInventory();
-    }, [searchTerm, filterStatus, filterCategory]);
+    const [deleteModal, setDeleteModal] = useState({
+        show: false,
+        item: null,
+        title: '',
+        message: '',
+        type: 'confirm'
+    });
+    const [deleteLoading, setDeleteLoading] = useState(false);
 
     const fetchCategories = async () => {
         try {
@@ -73,6 +45,12 @@ const InventoryPage = ({ onNavigate }) => {
             console.error('Error fetching categories:', error);
         }
     };
+
+    // Initial data fetch
+    useEffect(() => {
+        fetchInventory();
+        fetchCategories();
+    }, []);
 
     const fetchInventory = async () => {
         setLoading(true);
@@ -95,17 +73,102 @@ const InventoryPage = ({ onNavigate }) => {
         }
     };
 
-    const handleDelete = async (id) => {
-        if (!window.confirm('Are you sure you want to delete this item?')) return;
+    const handleDeleteClick = async (item) => {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await axios.get(`${API_BASE_URL}/inventory/${item.id}/validate-delete`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            
+            const { canDelete, reason } = response.data;
+            
+            if (canDelete) {
+                setDeleteModal({
+                    show: true,
+                    item,
+                    title: 'Delete Product',
+                    message: 'Are you sure you want to permanently delete this product? This action cannot be undone.',
+                    type: 'confirm'
+                });
+            } else {
+                let message = '';
+                let title = '';
+                if (reason === 'all_failed') {
+                    title = 'Cannot Delete Product';
+                    message = 'This product cannot be deleted because inventory is still available, there are outstanding supplier payments, and it has associated supplier returns.';
+                } else if (reason === 'both_failed') {
+                    title = 'Cannot Delete Product';
+                    message = 'This product cannot be deleted because inventory is still available and there are outstanding supplier payments. Set inventory to 0 and clear all payments before deleting.';
+                } else if (reason === 'stock_and_returns') {
+                    title = 'Cannot Delete Product';
+                    message = 'This product cannot be deleted because there is still inventory in stock and it has associated supplier returns.';
+                } else if (reason === 'payments_and_returns') {
+                    title = 'Cannot Delete Product';
+                    message = 'This product cannot be deleted because there are outstanding supplier payments and it has associated supplier returns.';
+                } else if (reason === 'stock_exists') {
+                    title = 'Stock Exists';
+                    message = 'This product cannot be deleted because there is still inventory in stock. Reduce the inventory quantity to 0 before deleting.';
+                } else if (reason === 'pending_payments') {
+                    title = 'Pending Supplier Payments';
+                    message = 'This product cannot be deleted because there are outstanding supplier payments associated with it. Clear all supplier payments before deleting.';
+                } else if (reason === 'has_returns') {
+                    title = 'Return History Exists';
+                    message = 'This product cannot be deleted because it has associated supplier returns. Products with return history cannot be permanently deleted.';
+                } else {
+                    title = 'Validation Error';
+                    message = 'This product cannot be deleted because it does not meet the deletion requirements.';
+                }
+                
+                setDeleteModal({
+                    show: true,
+                    item: null,
+                    title,
+                    message,
+                    type: 'warning'
+                });
+            }
+        } catch (error) {
+            console.error('Error validating delete:', error);
+            setDeleteModal({
+                show: true,
+                item: null,
+                title: 'Error',
+                message: 'Unable to delete the product. Please try again later.',
+                type: 'warning'
+            });
+        }
+    };
+
+    const handleConfirmDelete = async (id) => {
+        setDeleteLoading(true);
         try {
             const token = localStorage.getItem('token');
             await axios.delete(`${API_BASE_URL}/inventory/${id}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            fetchInventory();
+            
+            // Remove the product from the list immediately without manual refresh
+            setInventory(prev => prev.filter(item => item.id !== id));
+            
+            setDeleteModal({
+                show: true,
+                item: null,
+                title: 'Success',
+                message: 'Product deleted successfully.',
+                type: 'success'
+            });
         } catch (error) {
             console.error('Error deleting item:', error);
-            alert('Failed to delete item');
+            const errorMsg = error.response?.data?.message || 'Unable to delete the product. Please try again later.';
+            setDeleteModal({
+                show: true,
+                item: null,
+                title: 'Error',
+                message: errorMsg,
+                type: 'warning'
+            });
+        } finally {
+            setDeleteLoading(false);
         }
     };
 
@@ -159,34 +222,11 @@ const InventoryPage = ({ onNavigate }) => {
                         </div>
                         <div className="inventory-toolbar">
                             <button
-                                title="Create Products Batch"
-                                onClick={() => setShowBatchModal(true)}
-                                className="inventory-outline-btn"
-                            >
-                                <Package size={15} /> Create Products Batch
-                            </button>
-                            <button
                                 title="Manage Categories"
                                 onClick={() => setShowCategoryModal(true)}
                                 className="inventory-outline-btn"
                             >
                                 <Settings size={15} /> Manage Categories
-                            </button>
-                            <button
-                                title="Add Products"
-                                onClick={() => setShowAddModal(true)}
-                                className="inventory-outline-btn"
-                            >
-                                <Plus size={15} />
-                                Add Products
-                            </button>
-                            <button
-                                title="Update Products"
-                                onClick={() => setShowReceiveModal(true)}
-                                className="inventory-outline-btn"
-                            >
-                                <PackagePlus size={15} />
-                                Update Products
                             </button>
                         </div>
                     </div>
@@ -238,10 +278,10 @@ const InventoryPage = ({ onNavigate }) => {
                         <table className="inventory-table w-full text-left border-collapse">
                             <thead>
                                 <tr>
+                                    <th className="p-4 font-semibold">Supplier</th>
                                     <th className="p-4 font-semibold">Item Name</th>
                                     <th className="p-4 font-semibold">Code</th>
                                     <th className="p-4 font-semibold">Category</th>
-                                    <th className="p-4 font-semibold">Supplier</th>
                                     <th className="p-4 font-semibold">Quantity</th>
                                     <th className="p-4 font-semibold">Status</th>
                                     <th className="p-4 font-semibold text-right">Price</th>
@@ -257,6 +297,13 @@ const InventoryPage = ({ onNavigate }) => {
                                     inventory.map((item) => (
                                         <tr key={item.id}>
                                             <td className="p-4">
+                                                <div className="inventory-cell-text">
+                                                    {item.suppliers?.supplier_name || (
+                                                        <span className="text-[#666] italic">No Supplier</span>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td className="p-4">
                                                 <div className="inventory-item-name">{item.ingredient_name}</div>
                                                 <div className="inventory-item-unit">{item.unit}</div>
                                             </td>
@@ -267,15 +314,6 @@ const InventoryPage = ({ onNavigate }) => {
                                                 </span>
                                             </td>
                                             <td className="p-4">
-                                                <div className="inventory-cell-text">
-                                                    {item.batch_id ? (
-                                                        batches.find(b => b.id === item.batch_id)?.supplier_name || <span className="text-[#666] italic">Unknown (Batch {item.batch_id})</span>
-                                                    ) : item.suppliers?.supplier_name || (
-                                                        <span className="text-[#666] italic">No Supplier</span>
-                                                    )}
-                                                </div>
-                                            </td>
-                                            <td className="p-4">
                                                 <div className="inventory-quantity">
                                                     {item.quantity} <span>{item.unit}</span>
                                                 </div>
@@ -284,7 +322,8 @@ const InventoryPage = ({ onNavigate }) => {
                                                 <span className={`px-2 py-1 rounded-full text-xs font-bold border flex items-center w-fit gap-1
                                                     ${item.status === 'Out of Stock' ? 'bg-[#ff5252]/10 text-[#ff5252] border-[#ff5252]/30' :
                                                         item.status === 'Low Stock' ? 'bg-[#ffb74d]/10 text-[#ffb74d] border-[#ffb74d]/30' :
-                                                            'bg-[#4ade80]/10 text-[#4ade80] border-[#4ade80]/30'}`}>
+                                                            'bg-[#4ade80]/10 text-[#4ade80] border-[#4ade80]/30'}`}
+                                                >
                                                     {item.status === 'Low Stock' && <AlertTriangle className="w-3 h-3" />}
                                                     {item.status === 'Out of Stock' && <AlertCircle className="w-3 h-3" />}
                                                     {item.status}
@@ -296,6 +335,24 @@ const InventoryPage = ({ onNavigate }) => {
                                             <td className="p-4 text-right">
                                                 <div className="flex items-center justify-end gap-2">
                                                     <button
+                                                        onClick={() => {
+                                                            if (item.supplier_id) {
+                                                                onNavigate('supplier', {
+                                                                    supplierParams: {
+                                                                        supplierId: item.supplier_id,
+                                                                        activeTab: 'Products'
+                                                                    }
+                                                                });
+                                                            } else {
+                                                                alert('This product does not have an assigned supplier. Please edit the product to assign a supplier first.');
+                                                            }
+                                                        }}
+                                                        className="inventory-action-btn"
+                                                        title="Receive Stock"
+                                                    >
+                                                        <PackagePlus />
+                                                    </button>
+                                                    <button
                                                         onClick={() => handleViewDetails(item.id)}
                                                         className="inventory-action-btn"
                                                         title="View Details"
@@ -305,9 +362,16 @@ const InventoryPage = ({ onNavigate }) => {
                                                     <button
                                                         onClick={() => handleEdit(item)}
                                                         className="inventory-action-btn"
-                                                        title="Edit"
+                                                        title="Update Product"
                                                     >
                                                         <Edit />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeleteClick(item)}
+                                                        className="inventory-action-btn inventory-action-danger"
+                                                        title="Delete Product"
+                                                    >
+                                                        <Trash2 />
                                                     </button>
                                                 </div>
                                             </td>
@@ -320,6 +384,16 @@ const InventoryPage = ({ onNavigate }) => {
                 </div>
 
                 {/* Modals */}
+                {showAddModal && (
+                    <AddInventoryModal
+                        onClose={() => setShowAddModal(false)}
+                        categories={categories}
+                        onSuccess={() => {
+                            setShowAddModal(false);
+                            fetchInventory();
+                        }}
+                    />
+                )}
                 {showScanModal && (
                     <ScanBillModal
                         onClose={() => setShowScanModal(false)}
@@ -329,60 +403,16 @@ const InventoryPage = ({ onNavigate }) => {
                         }}
                     />
                 )}
-
-                {showAddModal && (
-                    <AddInventoryModal
-                        onClose={() => setShowAddModal(false)}
-                        categories={categories}
-                        batches={batches.filter(b => b.calc_status !== 'COMPLETED' && b.status !== 'COMPLETED')}
-                        onScanBillClick={() => {
-                            setShowAddModal(false);
-                            setShowScanModal(true);
-                        }}
-                        onSuccess={() => {
-                            setShowAddModal(false);
-                            fetchInventory();
-                        }}
-                    />
-                )}
-
-                {showReceiveModal && (
+                {receivingItem && (
                     <ReceiveInventoryModal
-                        onClose={() => setShowReceiveModal(false)}
-                        batches={batches}
+                        initialItem={receivingItem}
+                        onClose={() => setReceivingItem(null)}
                         onSuccess={() => {
-                            setShowReceiveModal(false);
+                            setReceivingItem(null);
                             fetchInventory();
-                            fetchBatches();
                         }}
                     />
                 )}
-
-                {showBatchModal && createPortal((
-                    <div className="inventory-batch-overlay">
-                        <div className="inventory-batch-modal animate-slide-up">
-                            
-                            <div className="inventory-batch-header">
-                                <div>
-                                    <Package size={17} />
-                                    <h2>Create Products Batch</h2>
-                                </div>
-                                <button title="Close" onClick={() => setShowBatchModal(false)} className="inventory-batch-close">
-                                    <X size={16} />
-                                </button>
-                            </div>
-                            <BatchCreationForm
-                                onCancel={() => setShowBatchModal(false)}
-                                onSuccess={(newBatch) => {
-                                    setBatches(prev => [newBatch, ...prev]);
-                                    setShowBatchModal(false);
-                                    alert(`Batch Created Successfully: ${newBatch.batch_number}`);
-                                }}
-                            />
-                        </div>
-                    </div>
-                ), document.body)}
-
                 {showCategoryModal && (
                     <CategoryManagerModal
                         isOpen={showCategoryModal}
@@ -391,119 +421,71 @@ const InventoryPage = ({ onNavigate }) => {
                         onCategoryChange={fetchCategories}
                     />
                 )}
-
                 {editingItem && (
                     <EditInventoryModal
                         initialData={editingItem}
                         onClose={() => setEditingItem(null)}
                         categories={categories}
-                        batches={batches}
                         onSuccess={() => {
                             setEditingItem(null);
                             fetchInventory();
                         }}
                     />
                 )}
+
+                {deleteModal.show && createPortal(
+                    <div className="delete-product-overlay">
+                        <div className="delete-product-modal">
+                            <div className={`delete-product-header ${deleteModal.type}-header`}>
+                                <h3 className={deleteModal.type === 'warning' ? 'warning-title' : deleteModal.type === 'success' ? 'success-title' : ''}>
+                                    {deleteModal.type === 'warning' && <AlertTriangle className="w-5 h-5" />}
+                                    {deleteModal.type === 'success' && <CheckCircle className="w-5 h-5" />}
+                                    {deleteModal.type === 'confirm' && <Trash2 className="w-5 h-5" />}
+                                    {deleteModal.title}
+                                </h3>
+                                <button 
+                                    onClick={() => setDeleteModal({ show: false, item: null })}
+                                    className="delete-product-close"
+                                    title="Close"
+                                >
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+                            <div className="delete-product-body">
+                                <p>{deleteModal.message}</p>
+                            </div>
+                            <div className="delete-product-actions">
+                                {deleteModal.type === 'confirm' ? (
+                                    <>
+                                        <button 
+                                            onClick={() => setDeleteModal({ show: false, item: null })}
+                                            className="delete-product-btn cancel"
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button 
+                                            onClick={() => handleConfirmDelete(deleteModal.item.id)}
+                                            className="delete-product-btn confirm-delete"
+                                            disabled={deleteLoading}
+                                        >
+                                            {deleteLoading ? <Loader className="w-4 h-4 animate-spin" /> : 'Delete'}
+                                        </button>
+                                    </>
+                                ) : (
+                                    <button 
+                                        onClick={() => setDeleteModal({ show: false, item: null })}
+                                        className={`delete-product-btn ${deleteModal.type === 'success' ? 'ok-success-btn' : 'ok-btn'}`}
+                                    >
+                                        OK
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </div>,
+                    document.body
+                )}
             </div>
         </DashboardLayout>
-    );
-};
-
-const BatchCreationForm = ({ onCancel, onSuccess }) => {
-    const [suppliers, setSuppliers] = useState([]);
-    const [loading, setLoading] = useState(false);
-    const [batchData, setBatchData] = useState({
-        supplier_id: '',
-        date: new Date().toISOString().split('T')[0],
-        net_value: '',
-        items: ''
-    });
-
-    useEffect(() => {
-        const fetchSuppliers = async () => {
-            try {
-                const response = await axios.get(`${API_BASE_URL}/suppliers`, {
-                    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-                });
-                setSuppliers(response.data);
-            } catch (error) { console.error(error); }
-        };
-        fetchSuppliers();
-    }, []);
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setLoading(true);
-        try {
-            const payload = {
-                batch_number: 'BAT-' + Math.floor(10000 + Math.random() * 90000),
-                supplier_id: batchData.supplier_id,
-                batch_date: batchData.date,
-                net_value: batchData.net_value,
-                total_items: batchData.items
-            };
-
-            const response = await axios.post(`${API_BASE_URL}/inventory/batches`, payload, {
-                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-            });
-
-            onSuccess(response.data);
-        } catch (error) {
-            console.error('Error creating batch:', error);
-            alert('Failed to create batch in database.');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    return (
-        <form onSubmit={handleSubmit} className="inventory-batch-form">
-            <div className="inventory-batch-body">
-                <div>
-                    <label>Select Supplier *</label>
-                    <select
-                        required
-                        value={batchData.supplier_id}
-                        onChange={(e) => setBatchData({ ...batchData, supplier_id: e.target.value })}
-                    >
-                        <option value="">-- Choose Supplier --</option>
-                        {suppliers.map(s => <option key={s.id} value={s.id}>{s.supplier_name}</option>)}
-                    </select>
-                </div>
-                <div className="inventory-batch-grid">
-                    <div>
-                        <label>Procurement Date *</label>
-                        <input
-                            type="date" required
-                            value={batchData.date}
-                            onChange={(e) => setBatchData({ ...batchData, date: e.target.value })}
-                        />
-                    </div>
-                    <div>
-                        <label>Total Items *</label>
-                        <input
-                            type="number" required placeholder="e.g. 15"
-                            value={batchData.items}
-                            onChange={(e) => setBatchData({ ...batchData, items: e.target.value })}
-                        />
-                    </div>
-                </div>
-                <div>
-                    <label>Net Transaction Value (Rs.) *</label>
-                    <input
-                        type="number" step="0.01" required placeholder="0.00"
-                        value={batchData.net_value}
-                        onChange={(e) => setBatchData({ ...batchData, net_value: e.target.value })}
-                    />
-                </div>
-            </div>
-            <div className="inventory-batch-actions">
-                <button title="Cancel" type="button" onClick={onCancel} className="inventory-batch-btn">Cancel</button>
-                <button title="Create Batch" type="submit" disabled={loading} className="inventory-batch-btn">
-                    {loading ? 'Processing...' : 'Create Batch'}
-                </button>
-            </div>
-        </form>
     );
 };
 

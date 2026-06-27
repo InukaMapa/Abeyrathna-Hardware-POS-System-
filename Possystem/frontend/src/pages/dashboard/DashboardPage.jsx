@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import KPICard from '../../components/dashboard/KPICard';
-import QuickActions from '../../components/dashboard/QuickActions';
 import LowInventoryTable from '../../components/dashboard/LowInventoryTable';
 import { API_BASE_URL } from '../../config/api';
 import { useAuth } from '../../context/AuthContext';
-import { Activity, AlertCircle, PackageCheck, RefreshCw, UsersRound } from 'lucide-react';
+import { Activity, AlertCircle, RefreshCw, UsersRound } from 'lucide-react';
 import '../../styles/dashboard.css';
 
 const DashboardPage = ({ onNavigate }) => {
@@ -117,13 +116,6 @@ const DashboardPage = ({ onNavigate }) => {
                             tone="green"
                         />
                         <KPICard
-                            title="Most Ordered Item"
-                            value={stats.mostOrderedDish.name}
-                            subtext={`${stats.mostOrderedDish.quantity} sales this month`}
-                            icon={PackageCheck}
-                            tone="gold"
-                        />
-                        <KPICard
                             title="Online Cashiers"
                             value={stats.onlineCashiers.count}
                             subtext={stats.onlineCashiers.names.join(', ') || 'No active shifts'}
@@ -131,8 +123,6 @@ const DashboardPage = ({ onNavigate }) => {
                             tone="blue"
                         />
                     </div>
-
-                    <QuickActions onNavigate={onNavigate} />
 
                     <LowInventoryTable items={stats.lowInventory} outOfStockItems={stats.outOfStock} />
                 </>
@@ -168,7 +158,7 @@ const DashboardPage = ({ onNavigate }) => {
                                 onClick={() => onNavigate('cashier-new-order')}
                                 className="cashier-welcome-btn"
                             >
-                                POS Sales
+                                Create Order
                             </button>
                             <button
                                 type="button"
@@ -179,8 +169,6 @@ const DashboardPage = ({ onNavigate }) => {
                             </button>
                         </div>
                     </div>
-
-                    <QuickActions onNavigate={onNavigate} />
 
                     <LowInventoryTable items={stats.lowInventory} outOfStockItems={stats.outOfStock} />
                 </>

@@ -2,19 +2,21 @@ import React, { useRef, useState, useEffect } from 'react';
 import axios from 'axios';
 import DashboardLayout from '../../../components/layout/DashboardLayout';
 import AddSupplierModal from './AddSupplierModal';
-// import SupplierProfileModal from './SupplierProfileModal'; // To be created
+import AddInventoryModal from '../inventory/AddInventoryModal';
+import ReceiveInventoryModal from '../inventory/ReceiveInventoryModal';
 import {
-    Plus, Search, User, Mail, Phone, Building, Trash2, Edit,
+    Plus, Search, User, Mail, Phone, Building, Edit,
     FileText, CreditCard, RefreshCcw, LayoutDashboard,
     TrendingUp, AlertCircle, CheckCircle2, MoreHorizontal,
     Eye, Filter, ArrowUpRight, ArrowLeft, ArrowRight, DollarSign, Package, Printer, MapPin, X,
-    Receipt, Landmark, Activity, Download, Save
+    Receipt, Landmark, Activity, Download, Save, PackagePlus,
+    ToggleLeft, ToggleRight
 } from 'lucide-react';
 import { API_BASE_URL, ENDPOINTS } from '../../../config/api';
 import '../../../styles/dashboard.css';
 import { deleteSupplier, updateSupplier } from '../../../services/supplierService';
 
-const SupplierPage = ({ onNavigate, focusSection }) => {
+const SupplierPage = ({ onNavigate, focusSection, supplierParams }) => {
     const [suppliers, setSuppliers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
@@ -27,9 +29,17 @@ const SupplierPage = ({ onNavigate, focusSection }) => {
     const [sellerNote, setSellerNote] = useState("");
     const [noteDate, setNoteDate] = useState("15 May 24");
     const [activeProfileTab, setActiveProfileTab] = useState('Overview');
+const [paymentStats, setPaymentStats] = useState({ totalItems: 0, totalInvoiced: 0, totalPaid: 0, outstanding: 0 });
+    const [totalInventoryValue, setTotalInventoryValue] = useState(0);
     const [selectedTransaction, setSelectedTransaction] = useState(null);
     const [profileBatches, setProfileBatches] = useState([]);
     const [profileReturns, setProfileReturns] = useState([]);
+    const [profileProducts, setProfileProducts] = useState([]);
+    const [productSearchQuery, setProductSearchQuery] = useState('');
+    const [loadingProducts, setLoadingProducts] = useState(false);
+    const [categories, setCategories] = useState([]);
+    const [isAddProductModalOpen, setAddProductModalOpen] = useState(false);
+    const [receivingItem, setReceivingItem] = useState(null);
     const [batchItems, setBatchItems] = useState({});
     const [isGlobalPaymentsOpen, setGlobalPaymentsOpen] = useState(false);
     const [isEditingBankDetails, setIsEditingBankDetails] = useState(false);
@@ -53,6 +63,7 @@ const SupplierPage = ({ onNavigate, focusSection }) => {
         } else {
             document.body.classList.remove('modal-open');
         }
+        setProductSearchQuery('');
     }, [selectedSupplier]);
 
     const fetchBatches = async () => {
@@ -210,28 +221,47 @@ const SupplierPage = ({ onNavigate, focusSection }) => {
         supplierBatches.forEach(batch => {
             // Invoice entry (Purchase)
             entries.push({
-                id: batch.id,
-                date: batch.batch_date,
+                id: batch.id + '_inv',
+                date: batch.batch_date || batch.created_at,
                 ref: batch.batch_number,
                 type: 'INVOICE',
                 amount: batch.raw_net_value,
                 status: batch.payment_status === 'PAID' ? 'SETTLED' : 'DUE',
-                raw_date: new Date(batch.batch_date)
+                raw_date: new Date(batch.batch_date || batch.created_at)
             });
 
             // Payment entries (Settlements)
-            if (batch.supplier_payout_requests) {
-                batch.supplier_payout_requests.forEach(p => {
-                    entries.push({
-                        id: p.id,
-                        date: p.authorized_at,
-                        ref: p.payout_number,
-                        type: 'PAYMENT',
-                        amount: p.amount,
-                        status: p.status === 'COMPLETED' ? 'ACCEPTED' : 'PENDING',
-                        method: p.payment_method,
-                        raw_date: new Date(p.authorized_at)
-                    });
+            if (batch.notes && batch.notes.startsWith('{')) {
+                try {
+                    const parsed = JSON.parse(batch.notes);
+                    if (Array.isArray(parsed.payments)) {
+                        parsed.payments.forEach((p, idx) => {
+                            entries.push({
+                                id: `${batch.id}_pay_${idx}`,
+                                date: p.date,
+                                ref: p.reference || batch.batch_number,
+                                type: 'PAYMENT',
+                                amount: p.amount,
+                                status: 'ACCEPTED',
+                                method: p.method,
+                                raw_date: new Date(p.date)
+                            });
+                        });
+                    }
+                } catch (e) {
+                    console.error('Error parsing batch notes in getLedgerEntries:', e);
+                }
+            } else if (batch.raw_paid_amount > 0) {
+                // Fallback for old/legacy completed payments that don't have JSON payments list
+                entries.push({
+                    id: batch.id + '_pay_legacy',
+                    date: batch.payment_date || batch.updated_at || batch.batch_date,
+                    ref: batch.payment_reference || batch.batch_number,
+                    type: 'PAYMENT',
+                    amount: batch.raw_paid_amount,
+                    status: 'ACCEPTED',
+                    method: batch.payment_method || 'Cash',
+                    raw_date: new Date(batch.payment_date || batch.updated_at || batch.batch_date)
                 });
             }
         });
@@ -290,9 +320,22 @@ const SupplierPage = ({ onNavigate, focusSection }) => {
         } catch (error) { console.error('Error fetching global returns:', error); }
     };
 
+    const fetchCategories = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await axios.get(`${API_BASE_URL}/inventory/categories`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setCategories(response.data || []);
+        } catch (error) {
+            console.error('Error fetching categories:', error);
+        }
+    };
+
     useEffect(() => {
         fetchSuppliers();
         fetchGlobalReturns();
+        fetchCategories();
     }, []);
 
     useEffect(() => {
@@ -303,12 +346,32 @@ const SupplierPage = ({ onNavigate, focusSection }) => {
         }
     }, [focusSection]);
 
+    const hasProcessedParams = useRef(false);
+
+    useEffect(() => {
+        hasProcessedParams.current = false;
+    }, [supplierParams]);
+
+    useEffect(() => {
+        if (supplierParams && supplierParams.supplierId && suppliers.length > 0 && !hasProcessedParams.current) {
+            const targetSupplier = suppliers.find(s => s.id === supplierParams.supplierId || s.id === parseInt(supplierParams.supplierId));
+            if (targetSupplier) {
+                hasProcessedParams.current = true;
+                setSelectedSupplier(targetSupplier);
+            }
+        }
+    }, [suppliers, supplierParams]);
+
     useEffect(() => {
         if (selectedSupplier) {
             setSellerNote("Key strategic partner for hardware and power tools. High reliability score with consistent inventory fulfillment.");
             setIsEditingNote(false);
             setNoteDate("15 May 24");
-            setActiveProfileTab('Overview');
+            if (supplierParams?.supplierId && (selectedSupplier.id === supplierParams.supplierId || selectedSupplier.id === parseInt(supplierParams.supplierId)) && supplierParams.activeTab) {
+                setActiveProfileTab(supplierParams.activeTab);
+            } else {
+                setActiveProfileTab('Overview');
+            }
             setSelectedTransaction(null);
             setIsEditingBankDetails(false);
             setBankDetailsForm({
@@ -317,8 +380,39 @@ const SupplierPage = ({ onNavigate, focusSection }) => {
                 bank_branch: selectedSupplier.bank_branch || ''
             });
             fetchReturnsForSupplier(selectedSupplier.id);
+            fetchProductsForSupplier(selectedSupplier.id);
         }
-    }, [selectedSupplier]);
+    }, [selectedSupplier, supplierParams]);
+
+// Compute supplier summary stats
+useEffect(() => {
+  if (!selectedSupplier) {
+    setPaymentStats({ totalItems: 0, totalInvoiced: 0, totalPaid: 0, outstanding: 0 });
+    setTotalInventoryValue(0);
+    return;
+  }
+  const supplierBatches = profileBatches.filter(b => b.supplier_id === selectedSupplier.id);
+  const totalItems = supplierBatches.reduce((sum, b) => sum + (b.total_items || 0), 0);
+  const totalInvoiced = supplierBatches.reduce((sum, b) => sum + (b.raw_net_value || 0), 0);
+  const totalPaid = supplierBatches.reduce((sum, b) => sum + (b.raw_paid_amount || 0), 0);
+  const outstanding = supplierBatches.reduce((sum, b) => sum + (b.remaining_balance || 0), 0);
+  setPaymentStats({ totalItems, totalInvoiced, totalPaid, outstanding });
+  // Fetch total inventory value for supplier
+  const fetchInventoryValue = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API_BASE_URL}/suppliers/${selectedSupplier.id}/inventory-value`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.data && typeof res.data.totalValue === 'number') {
+        setTotalInventoryValue(res.data.totalValue);
+      }
+    } catch (err) {
+      console.error('Error fetching inventory value:', err);
+    }
+  };
+  fetchInventoryValue();
+}, [profileBatches, selectedSupplier]);
 
     const handleBankDetailsChange = (e) => {
         const { name, value } = e.target;
@@ -357,23 +451,65 @@ const SupplierPage = ({ onNavigate, focusSection }) => {
         } catch (err) { console.error(err); }
     };
 
+    const fetchProductsForSupplier = async (supplierId) => {
+        try {
+            setLoadingProducts(true);
+            const token = localStorage.getItem('token');
+            const res = await axios.get(`${API_BASE_URL}/inventory?supplier_id=${supplierId}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setProfileProducts(res.data);
+        } catch (err) {
+            console.error('Error fetching supplier products:', err);
+        } finally {
+            setLoadingProducts(false);
+        }
+    };
+
     const filteredSuppliers = suppliers.filter(supplier => {
         const matchesSearch = (supplier.supplier_name?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
             (supplier.company_name?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
             (supplier.supplier_id?.toLowerCase() || '').includes(searchQuery.toLowerCase());
 
-        return matchesSearch;
+        const matchesStatus = filterStatus === 'ALL' || (supplier.status || 'ACTIVE') === filterStatus;
+
+        return matchesSearch && matchesStatus;
     });
 
-    const handleDeleteSupplier = async (id) => {
-        if (window.confirm('Are you sure you want to delete this supplier? This will remove all linked data.')) {
-            try {
-                await deleteSupplier(id);
-                fetchSuppliers();
-            } catch (err) {
-                console.error('Error deleting supplier:', err);
-                alert('Failed to delete supplier. Please try again.');
+    const filteredProfileProducts = profileProducts.filter(item => {
+        const query = productSearchQuery.toLowerCase().trim();
+        if (!query) return true;
+        return (item.ingredient_name?.toLowerCase() || '').includes(query) ||
+            (item.item_code?.toLowerCase() || '').includes(query) ||
+            (item.category?.toLowerCase() || '').includes(query);
+    });
+
+    const handleToggleStatus = async (supplier) => {
+        const currentStatus = supplier.status || 'ACTIVE';
+        const newStatus = currentStatus === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+        
+        if (newStatus === 'INACTIVE') {
+            const hasPending = profileBatches.some(b => 
+                (b.supplier_id === supplier.id || b.supplier_id === parseInt(supplier.id)) && 
+                b.remaining_balance > 0
+            );
+            if (hasPending) {
+                alert('Cannot deactivate supplier. Pending payments must be settled first.');
+                return;
             }
+        }
+        
+        const confirmMsg = `Are you sure you want to set this supplier to ${newStatus}?`;
+        if (!window.confirm(confirmMsg)) return;
+
+        try {
+            await updateSupplier(supplier.id, { status: newStatus });
+            setSuppliers(prev => prev.map(s => s.id === supplier.id ? { ...s, status: newStatus } : s));
+            alert(`Supplier status updated to ${newStatus} successfully.`);
+        } catch (err) {
+            console.error('Error updating supplier status:', err);
+            const errMsg = err.message || (err.response && err.response.data && err.response.data.message) || 'Failed to update supplier status.';
+            alert(errMsg);
         }
     };
 
@@ -555,9 +691,9 @@ const SupplierPage = ({ onNavigate, focusSection }) => {
                             </div>
                         </div>
                     ) : (
-                        <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-8 h-full min-h-0">
+                        <div className="flex-1 flex justify-center h-full min-h-0">
                             {/* LEFT: Details View */}
-                            <div className="supplier-payment-detail-panel bg-[#121212] border border-white/5 rounded-[32px] p-8 flex flex-col max-h-[70vh] overflow-hidden">
+                            <div className="supplier-payment-detail-panel bg-[#121212] border border-white/5 rounded-[32px] p-8 flex flex-col max-h-[70vh] overflow-hidden w-full max-w-3xl">
                                 <h3 className="text-xs font-black text-white/40 uppercase tracking-[0.2em] mb-6 border-b border-white/5 pb-4">Transaction Profile</h3>
 
                                 <div className="space-y-6 overflow-y-auto custom-scrollbar pr-4">
@@ -629,8 +765,8 @@ const SupplierPage = ({ onNavigate, focusSection }) => {
                                                     {(!selectedPaymentProcessing.lineItems || selectedPaymentProcessing.lineItems.length === 0) && (
                                                         <tr><td colSpan="4" className="text-center py-8 text-white/40 text-xs">
                                                             <div className="flex flex-col items-center justify-center gap-2">
-                                                                <Package className="w-6 h-6 text-white/20 mb-1" />
-                                                                <p>Not add items to the system yet. Only create the batch.</p>
+                                                                 <Package className="w-6 h-6 text-white/20 mb-1" />
+                                                                 <p>Not add items to the system yet. Only create the batch.</p>
                                                             </div>
                                                         </td></tr>
                                                     )}
@@ -638,105 +774,6 @@ const SupplierPage = ({ onNavigate, focusSection }) => {
                                             </table>
                                         </div>
                                     </div>
-                                </div>
-                            </div>
-
-                            {/* RIGHT: Payment Actions Form */}
-                            <div className="supplier-payment-form-panel bg-[#121212] border border-white/5 rounded-[32px] p-8 flex flex-col h-full shadow-[0_0_40px_rgba(76,175,80,0.03)] border-t-[3px] border-t-[#4caf50]">
-                                <h3 className="text-xs font-black text-[#4caf50] uppercase tracking-[0.2em] mb-6 border-b border-white/5 pb-4 flex items-center gap-2">
-                                    <CreditCard className="w-4 h-4" /> Settlement Processor
-                                </h3>
-
-                                <div className="space-y-6 flex-1">
-                                    <div className="grid grid-cols-3 gap-3">
-                                        {['Full', 'Partial', 'Credit'].map(type => (
-                                            <button
-                                                key={type}
-                                                onClick={() => {
-                                                    setPaymentForm({
-                                                        ...paymentForm,
-                                                        type: type,
-                                                        amount: type === 'Full' ? selectedPaymentProcessing.remaining_balance : ''
-                                                    });
-                                                }}
-                                                className={`supplier-payment-type-btn ${paymentForm.type === type ? 'is-active' : ''}`}
-                                            >
-                                                {type} Payment
-                                            </button>
-                                        ))}
-                                    </div>
-
-                                    <div className="bg-white/5 p-5 rounded-2xl border border-white/5 space-y-4 shadow-inner">
-                                        <div>
-                                            <label className="text-[10px] text-white/40 font-bold uppercase tracking-widest mb-2 block">Settlement Amount (Rs.) {paymentForm.type === 'Partial' && '*'}</label>
-                                            <input
-                                                type="number"
-                                                readOnly={paymentForm.type === 'Full'}
-                                                value={paymentForm.amount}
-                                                onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })}
-                                                className={`w-full bg-[#1E1E1E] text-xl font-black text-white px-4 py-3 rounded-xl border focus:outline-none transition-all ${paymentForm.type === 'Full' ? 'border-white/5 opacity-50 cursor-not-allowed' : 'border-white/20 focus:border-[#4caf50]/50'}`}
-                                                placeholder="Enter amount..."
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="text-[9px] text-white/40 font-bold uppercase tracking-widest mb-1.5 block">Payment Date</label>
-                                            <input
-                                                type="date"
-                                                value={paymentForm.date}
-                                                onChange={(e) => setPaymentForm({ ...paymentForm, date: e.target.value })}
-                                                className="w-full bg-white/5 text-xs text-white px-3 py-2.5 rounded-lg border border-white/10 focus:outline-none focus:border-[#D4AF37]/50"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="text-[9px] text-white/40 font-bold uppercase tracking-widest mb-1.5 block">Payment Method</label>
-                                            <select
-                                                value={paymentForm.method}
-                                                onChange={(e) => setPaymentForm({ ...paymentForm, method: e.target.value })}
-                                                className="w-full bg-white/5 text-xs text-white px-3 py-2.5 rounded-lg border border-white/10 focus:outline-none focus:border-[#D4AF37]/50"
-                                            >
-                                                <option value="Cash" className="bg-[#121212] text-white">Cash Transfer</option>
-                                                <option value="Bank" className="bg-[#121212] text-white">Bank Deposit</option>
-                                                <option value="Cheque" className="bg-[#121212] text-white">Bank Cheque</option>
-                                            </select>
-                                        </div>
-                                    </div>
-
-                                    {(paymentForm.method === 'Bank' || paymentForm.method === 'Cheque') && (
-                                        <div>
-                                            <label className="text-[9px] text-white/40 font-bold uppercase tracking-widest mb-1.5 block">Bank Reference / Cheque No.</label>
-                                            <input
-                                                type="text"
-                                                value={paymentForm.reference}
-                                                onChange={(e) => setPaymentForm({ ...paymentForm, reference: e.target.value })}
-                                                className="w-full bg-white/5 text-xs font-bold text-white px-3 py-2.5 rounded-lg border border-white/10 focus:outline-none focus:border-[#D4AF37]/50"
-                                                placeholder="Enter reference number..."
-                                            />
-                                        </div>
-                                    )}
-
-                                    <div>
-                                        <label className="text-[9px] text-white/40 font-bold uppercase tracking-widest mb-1.5 block">Internal Notes (Optional)</label>
-                                        <textarea
-                                            value={paymentForm.notes}
-                                            onChange={(e) => setPaymentForm({ ...paymentForm, notes: e.target.value })}
-                                            className="w-full bg-white/5 text-xs text-white px-3 py-2.5 rounded-lg border border-white/10 focus:outline-none focus:border-[#D4AF37]/50 custom-scrollbar resize-none"
-                                            rows="2"
-                                            placeholder="Add remarks..."
-                                        ></textarea>
-                                    </div>
-                                </div>
-
-                                <div className="mt-8 pt-6 border-t border-white/5">
-                                    <button
-                                        onClick={handleCompletePaymentForm}
-                                        disabled={!paymentForm.amount}
-                                        className="supplier-payment-authorize"
-                                    >
-                                        Authorize & Complete Payment
-                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -757,9 +794,18 @@ const SupplierPage = ({ onNavigate, focusSection }) => {
                             <p className="text-[#666] text-xs font-bold uppercase tracking-widest ml-11">Abeyrathna Trade Center / Procurement Control</p>
                         </div>
 
-                        <div className="flex items-center gap-3 w-full md:w-auto">
-                            <button className="supplier-header-action">
-                                <Printer className="w-4 h-4" /> Print Ledger
+                        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                            <button
+                                onClick={() => setGlobalPaymentsOpen(true)}
+                                className="supplier-header-action"
+                            >
+                                <DollarSign className="w-4 h-4" /> Payments
+                            </button>
+                            <button
+                                onClick={() => onNavigate('supplier-returns')}
+                                className="supplier-header-action"
+                            >
+                                <RefreshCcw className="w-4 h-4" /> Return Items
                             </button>
                             <button
                                 onClick={() => setAddModalOpen(true)}
@@ -771,12 +817,11 @@ const SupplierPage = ({ onNavigate, focusSection }) => {
                     </div>
 
                     {/* KPI Metrics */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
                         {[
                             { label: 'Total Suppliers', value: stats.totalSuppliers, icon: User, color: '#D4AF37' },
-                            { label: 'Active POs', value: stats.activePOs, icon: Package, color: '#4caf50' },
                             { label: 'Pending Payments', value: `Rs. ${stats.pendingPayments.toLocaleString()}`, icon: CreditCard, color: '#ff5252' },
-                            { label: 'Returns This Month', value: stats.returnsThisMonth, icon: RefreshCcw, color: '#2196f3' }
+                            { label: 'Total Inventory Value', value: `Rs. ${totalInventoryValue.toLocaleString()}`, icon: Package, color: '#4caf50' }
                         ].map((kpi, i) => (
                             <div key={i} className="bg-[#1E1E1E] p-5 rounded-2xl border border-[#333] shadow-lg relative overflow-hidden group hover:border-[#444] transition-all">
                                 <div className="flex justify-between items-start relative z-10">
@@ -804,8 +849,8 @@ const SupplierPage = ({ onNavigate, focusSection }) => {
 
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
 
-                        {/* Left/Main Section (Col 8) */}
-                        <div className="lg:col-span-8 space-y-8">
+                        {/* Left/Main Section (Col 12) */}
+                        <div className="lg:col-span-12 space-y-8">
 
                             {/* Search & Filter Bar */}
                             <div className="bg-[#1E1E1E] p-3 rounded-2xl border border-[#333] flex flex-col md:flex-row items-center gap-3 shadow-xl">
@@ -894,12 +939,38 @@ const SupplierPage = ({ onNavigate, focusSection }) => {
                                                                     <Eye className="w-4 h-4" />
                                                                 </button>
                                                                 <button
-                                                                    onClick={() => setEditingSupplier(supplier)}
-                                                                    className="p-3 bg-[#121212] text-[#A0A0A0] hover:text-white border border-[#333] rounded-xl transition-all group-hover:bg-[#1E1E1E]"
-                                                                    title="Edit Profile"
+                                                                    onClick={() => {
+                                                                        setSelectedSupplier(supplier);
+                                                                        setActiveProfileTab('Products');
+                                                                        setAddProductModalOpen(true);
+                                                                    }}
+                                                                    className="p-3 bg-[#121212] text-[#A0A0A0] hover:text-green-500 hover:border-green-500/50 border border-[#333] rounded-xl transition-all group-hover:bg-[#1E1E1E]"
+                                                                    title="Add Product"
                                                                 >
-                                                                    <Edit className="w-4 h-4" />
+                                                                    <PackagePlus className="w-4 h-4" />
                                                                 </button>
+                                                                <button
+                                                                     onClick={() => setEditingSupplier(supplier)}
+                                                                     className="p-3 bg-[#121212] text-[#A0A0A0] hover:text-white border border-[#333] rounded-xl transition-all group-hover:bg-[#1E1E1E]"
+                                                                     title="Edit Profile"
+                                                                 >
+                                                                     <Edit className="w-4 h-4" />
+                                                                 </button>
+                                                                 <button
+                                                                     onClick={() => handleToggleStatus(supplier)}
+                                                                     className={`p-3 bg-[#121212] border border-[#333] rounded-xl transition-all group-hover:bg-[#1E1E1E] ${
+                                                                         (supplier.status || 'ACTIVE') === 'ACTIVE'
+                                                                             ? 'text-[#4caf50] hover:text-[#ff5252] hover:border-[#ff5252]/50'
+                                                                             : 'text-[#A0A0A0] hover:text-[#4caf50] hover:border-[#4caf50]/50'
+                                                                     }`}
+                                                                     title={(supplier.status || 'ACTIVE') === 'ACTIVE' ? "Deactivate Supplier" : "Activate Supplier"}
+                                                                 >
+                                                                     {(supplier.status || 'ACTIVE') === 'ACTIVE' ? (
+                                                                         <ToggleRight className="w-4 h-4" />
+                                                                     ) : (
+                                                                         <ToggleLeft className="w-4 h-4" />
+                                                                     )}
+                                                                 </button>
                                                             </div>
                                                         </td>
                                                     </tr>
@@ -920,103 +991,7 @@ const SupplierPage = ({ onNavigate, focusSection }) => {
                             </div>
                         </div>
 
-                        {/* Right/Side Section (Col 4) */}
-                        <div className="lg:col-span-4 space-y-8">
 
-                            {/* Operations Control Center */}
-                            <div ref={recentPurchasesRef} id="recent-purchases" className="bg-[#1E1E1E] rounded-3xl border border-[#333] overflow-hidden shadow-2xl scroll-mt-8">
-                                <div className="p-6 bg-[#D4AF37]/5 border-b border-[#333]">
-                                    <h3 className="text-xs font-black text-[#D4AF37] uppercase tracking-[0.2em] flex items-center gap-2">
-                                        <TrendingUp className="w-4 h-4" /> Quick Actions
-                                    </h3>
-                                </div>
-                                <div className="p-6 grid grid-cols-1 gap-4">
-                                    {[
-                                        {
-                                            label: 'Payments', sub: 'Process settlements', icon: DollarSign, color: '#4caf50', onClick: () => {
-                                                setGlobalPaymentsOpen(true);
-                                            }
-                                        },
-                                        { label: 'Return Items', sub: 'Inventory damage', icon: RefreshCcw, color: '#ff5252', onClick: () => onNavigate('supplier-returns') }
-                                    ].map((act, i) => (
-                                        <button key={i} onClick={act.onClick} className="supplier-quick-action">
-                                            <div style={{ backgroundColor: `rgba(255, 255, 255, 0.1)`, color: 'white' }} className="p-3 rounded-xl transition-all">
-                                                <act.icon className="w-5 h-5" />
-                                            </div>
-                                            <div>
-                                                <div className="text-xs font-black text-white uppercase tracking-wider">{act.label}</div>
-                                                <div className="text-[10px] text-white/70 font-bold uppercase tracking-tight">{act.sub}</div>
-                                            </div>
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Recent Activity: Purchase Orders */}
-                            <div className="bg-white rounded-3xl border border-gray-100 overflow-hidden shadow-sm">
-                                <div className="p-6 bg-green-100 flex justify-between items-center">
-                                    <h3 className="text-[10px] font-black text-green-900 uppercase tracking-[0.2em] flex items-center gap-2">
-                                        <Package className="w-4 h-4 text-green-700" /> Recent purchases
-                                    </h3>
-                                    <button
-                                        className="supplier-small-action"
-                                        onClick={() => onNavigate('supplier-recent-purchases')}
-                                    >
-                                        Live
-                                    </button>
-                                </div>
-                                <div className="divide-y divide-gray-100">
-                                    {recentPOs.map(po => (
-                                        <div key={po.id} className="p-5 hover:bg-gray-50 transition-all cursor-pointer group">
-                                            <div className="flex justify-between items-start mb-3">
-                                                <div>
-                                                    <span className="text-[10px] font-black text-[#D4AF37] tracking-widest uppercase">{po.id}</span>
-                                                    <div className="text-[11px] font-black text-gray-900 mt-1 group-hover:translate-x-1 transition-transform">{po.supplier}</div>
-                                                </div>
-                                                <span className={`text-[9px] font-black px-2 py-0.5 rounded-md border ${po.status === 'COMPLETED' ? 'bg-[#4caf50]/5 text-[#4caf50] border-[#4caf50]/20' :
-                                                    po.status === 'PENDING' ? 'bg-[#ff9800]/5 text-[#ff9800] border-[#ff9800]/20' :
-                                                        'bg-[#2196f3]/5 text-[#2196f3] border-[#2196f3]/20'
-                                                    }`}>{po.status}</span>
-                                            </div>
-                                            <div className="flex justify-between items-center text-[10px] font-bold">
-                                                <div className="text-gray-500 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {po.date}</div>
-                                                <div className="text-gray-900">Rs. {po.amount.toLocaleString()}</div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Financial Registry: Unpaid */}
-                            <div className="bg-white rounded-3xl border border-gray-100 overflow-hidden shadow-sm">
-                                <div className="p-6 bg-green-100 flex justify-between items-center">
-                                    <h3 className="text-[10px] font-black text-green-900 uppercase tracking-[0.2em] flex items-center gap-2">
-                                        Pending Settlements
-                                    </h3>
-                                </div>
-                                <div className="p-6 space-y-4">
-                                    {pendingPayments.map(payment => (
-                                        <div key={payment.id} className="supplier-payment-card p-4 rounded-2xl bg-[#121212] border border-[#333] hover:border-[#ff5252]/30 transition-all relative group">
-                                            <div className="flex justify-between items-center mb-2">
-                                                <span className="text-[9px] font-black text-[#444] uppercase">{payment.id}</span>
-                                                <span className="text-[9px] font-black text-[#ff5252] animate-pulse uppercase">DUE</span>
-                                            </div>
-                                            <div className="text-xs font-black text-white mb-2 uppercase tracking-tight">{payment.supplier}</div>
-                                            <div className="flex justify-between items-end border-t border-[#222] pt-2 mt-2">
-                                                <div className="text-[9px] text-[#666] font-bold uppercase">{payment.dueDate}</div>
-                                                <div className="text-sm font-black text-white">Rs. {payment.amount.toLocaleString()}</div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                    <button
-                                        className="supplier-settlement-action"
-                                        onClick={() => setGlobalPaymentsOpen(true)}
-                                    >
-                                        All Payments
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
 
                         {/* --- Modals Component System --- */}
 
@@ -1026,6 +1001,29 @@ const SupplierPage = ({ onNavigate, focusSection }) => {
                                 onSuccess={() => {
                                     fetchSuppliers();
                                     setAddModalOpen(false);
+                                }}
+                            />
+                        )}
+
+                        {isAddProductModalOpen && (
+                            <AddInventoryModal
+                                categories={categories}
+                                initialSupplierId={selectedSupplier?.id}
+                                onClose={() => setAddProductModalOpen(false)}
+                                onSuccess={() => {
+                                    setAddProductModalOpen(false);
+                                    fetchProductsForSupplier(selectedSupplier?.id);
+                                }}
+                            />
+                        )}
+
+                        {receivingItem && (
+                            <ReceiveInventoryModal
+                                initialItem={receivingItem}
+                                onClose={() => setReceivingItem(null)}
+                                onSuccess={() => {
+                                    setReceivingItem(null);
+                                    fetchProductsForSupplier(selectedSupplier?.id);
                                 }}
                             />
                         )}
@@ -1065,25 +1063,6 @@ const SupplierPage = ({ onNavigate, focusSection }) => {
                                                         <div className="flex items-center gap-1.5">
                                                             <Phone className="w-3 h-3 text-gray-400" />
                                                             <span className="text-[11px] font-medium text-gray-500">{selectedSupplier.phone_number}</span>
-                                                        </div>
-                                                        <div className="flex items-center gap-1.5 ml-2 border-l border-gray-300 pl-4">
-                                                            <span className="text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em]">Active Inventory Batches:</span>
-                                                            <div className="flex gap-2">
-                                                                {profileBatches
-                                                                    .filter(b => b.supplier_id === selectedSupplier.id && b.calc_status !== 'COMPLETED')
-                                                                    .slice(0, 3)
-                                                                    .map((batch, idx) => {
-                                                                        const isMismatch = Math.abs(parseFloat(batch.net_value) - parseFloat(batch.actual_transaction_value)) > 1;
-                                                                        return (
-                                                                            <span key={idx} className={`text-[9px] font-bold px-2.5 py-1 rounded border uppercase tracking-tighter flex items-center gap-1.5 ${isMismatch ? 'bg-red-500/10 text-red-500 border-red-500/20' : 'bg-green-100 text-green-700 border-green-200 animate-pulse'}`}>
-                                                                                {batch.batch_number} {isMismatch && <AlertCircle className="w-2.5 h-2.5" />}
-                                                                            </span>
-                                                                        );
-                                                                    })}
-                                                                {profileBatches.filter(b => b.supplier_id === selectedSupplier.id && b.calc_status !== 'COMPLETED').length === 0 && (
-                                                                    <span className="bg-gray-100 text-gray-400 text-[8px] font-bold px-2 py-1 rounded border border-gray-200 uppercase tracking-tighter">No Active Batches</span>
-                                                                )}
-                                                            </div>
                                                         </div>
                                                         <div className="flex items-center gap-1.5 ml-2 border-l border-gray-300 pl-4">
                                                             <span className="text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em]">Available Cash Notes:</span>
@@ -1132,10 +1111,32 @@ const SupplierPage = ({ onNavigate, focusSection }) => {
                                             </div>
                                         ))}
                                     </div>
+{/* Supplier Summary Stats */}
+<div className="px-8 pb-6 bg-white">
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+        <div className="p-5 rounded-2xl bg-gray-50 border border-gray-200 flex flex-col items-center">
+            <span className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Items Received</span>
+            <span className="text-xl font-black text-gray-900">{paymentStats.totalItems}</span>
+        </div>
+        <div className="p-5 rounded-2xl bg-gray-50 border border-gray-200 flex flex-col items-center">
+            <span className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Total Invoiced</span>
+            <span className="text-xl font-black text-gray-900">Rs. {paymentStats.totalInvoiced.toLocaleString()}</span>
+        </div>
+        <div className="p-5 rounded-2xl bg-gray-50 border border-gray-200 flex flex-col items-center">
+            <span className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Total Paid</span>
+            <span className="text-xl font-black text-gray-900">Rs. {paymentStats.totalPaid.toLocaleString()}</span>
+        </div>
+        <div className="p-5 rounded-2xl bg-gray-50 border border-gray-200 flex flex-col items-center">
+            <span className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Outstanding</span>
+            <span className="text-xl font-black text-gray-900">Rs. {paymentStats.outstanding.toLocaleString()}</span>
+        </div>
+    </div>
+</div>
+
 
                                     {/* Minimalist Tabs */}
                                     <div className="supplier-profile-tabs px-8 flex gap-8 border-b border-gray-200">
-                                        {['Overview', 'History', 'Ledger', 'Returns'].map((tab) => (
+                                        {['Overview', 'Products', 'History', 'Ledger', 'Returns'].map((tab) => (
                                             <button
                                                 key={tab}
                                                 onClick={() => {
@@ -1151,6 +1152,145 @@ const SupplierPage = ({ onNavigate, focusSection }) => {
                                     </div>
 
                                     <div className="supplier-profile-content flex-1 overflow-y-auto p-8 pt-6 custom-scrollbar bg-white">
+                                        {activeProfileTab === 'Products' && (
+                                            <div className="space-y-4 animate-fade-in">
+                                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+                                                    <div>
+                                                        <h4 className="text-[11px] font-bold text-gray-900 uppercase tracking-[0.3em]">Supplier Products</h4>
+                                                        <p className="text-[9px] text-gray-400 mt-1 uppercase">Products supplied by this partner</p>
+                                                    </div>
+                                                    <div className="flex items-center gap-3 w-full md:w-auto">
+                                                        <div className="relative flex-1 md:flex-initial">
+                                                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                                                            <input
+                                                                type="text"
+                                                                placeholder="Search products by name, code..."
+                                                                className="pl-9 pr-8 py-1.5 w-full md:w-64 bg-gray-50 text-gray-800 rounded-full border border-gray-200 focus:outline-none focus:border-green-600 focus:bg-white transition-all text-xs placeholder:text-gray-400"
+                                                                value={productSearchQuery}
+                                                                onChange={(e) => setProductSearchQuery(e.target.value)}
+                                                            />
+                                                            {productSearchQuery && (
+                                                                <span
+                                                                    role="button"
+                                                                    onClick={() => setProductSearchQuery('')}
+                                                                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer flex items-center justify-center p-1 rounded-full hover:bg-gray-200 transition-colors"
+                                                                    title="Clear search"
+                                                                >
+                                                                    <X className="w-3.5 h-3.5" />
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <button
+                                                            onClick={() => setAddProductModalOpen(true)}
+                                                            className="supplier-profile-inline-btn shrink-0"
+                                                            style={{
+                                                                background: 'linear-gradient(135deg, var(--primary-green), var(--dark-green))',
+                                                                color: 'white',
+                                                                borderRadius: '20px',
+                                                                border: 'none',
+                                                                padding: '6px 14px',
+                                                                display: 'inline-flex',
+                                                                alignItems: 'center',
+                                                                gap: '6px',
+                                                                cursor: 'pointer'
+                                                            }}
+                                                        >
+                                                            <Plus className="w-3.5 h-3.5" style={{ color: 'white', stroke: 'white' }} /> Add Product
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                <div className="bg-gray-50 border border-gray-200 rounded-3xl overflow-hidden">
+                                                    <table className="w-full text-left">
+                                                        <thead>
+                                                            <tr className="border-b border-gray-200 bg-gray-50">
+                                                                <th className="px-6 py-4 text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em]">Item Name</th>
+                                                                <th className="px-6 py-4 text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em]">Code</th>
+                                                                <th className="px-6 py-4 text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em]">Category</th>
+                                                                <th className="px-6 py-4 text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em]">Quantity</th>
+                                                                <th className="px-6 py-4 text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em] text-center">Status</th>
+                                                                <th className="px-6 py-4 text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em] text-right">Buying Price</th>
+                                                                <th className="px-6 py-4 text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em] text-right">Selling Price</th>
+                                                                <th className="px-6 py-4 text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em] text-right">Actions</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody className="divide-y divide-white/[0.03]">
+                                                            {loadingProducts ? (
+                                                                <tr>
+                                                                    <td colSpan="8" className="p-12 text-center text-[#A0A0A0]">
+                                                                        <RefreshCcw className="w-6 h-6 animate-spin mx-auto mb-2 text-green-700" />
+                                                                        Loading products...
+                                                                    </td>
+                                                                </tr>
+                                                            ) : profileProducts.length === 0 ? (
+                                                                <tr>
+                                                                    <td colSpan="8" className="p-20 text-center">
+                                                                        <Package className="w-8 h-8 text-gray-300 mx-auto mb-4" />
+                                                                        <p className="text-xs text-gray-400 font-medium">No products registered for this supplier.</p>
+                                                                    </td>
+                                                                </tr>
+                                                            ) : filteredProfileProducts.length === 0 ? (
+                                                                <tr>
+                                                                    <td colSpan="8" className="p-20 text-center">
+                                                                        <Search className="w-8 h-8 text-gray-300 mx-auto mb-4" />
+                                                                        <p className="text-xs text-gray-400 font-medium">No products match your search query.</p>
+                                                                    </td>
+                                                                </tr>
+                                                            ) : (
+                                                                filteredProfileProducts.map((item, idx) => (
+                                                                    <tr key={idx} onClick={() => onNavigate('inventory-detail', { id: item.id })} className="hover:bg-gray-50 transition-colors group cursor-pointer">
+                                                                        <td className="px-6 py-5">
+                                                                            <span className="text-[10px] font-bold text-gray-700">{item.ingredient_name}</span>
+                                                                            <div className="text-[9px] text-gray-400 mt-0.5">{item.unit}</div>
+                                                                        </td>
+                                                                        <td className="px-6 py-5">
+                                                                            <span className="text-[10px] font-mono text-gray-500">{item.item_code || '-'}</span>
+                                                                        </td>
+                                                                        <td className="px-6 py-5">
+                                                                            <span className="inventory-category-pill bg-gray-100 text-gray-600 px-2 py-0.5 rounded text-[9px] font-bold">
+                                                                                {item.category || 'Uncategorized'}
+                                                                            </span>
+                                                                        </td>
+                                                                        <td className="px-6 py-5">
+                                                                            <span className="text-xs font-black text-gray-800">{item.quantity} {item.unit}</span>
+                                                                        </td>
+                                                                        <td className="px-6 py-5 text-center">
+                                                                            <span className={`px-2 py-1 rounded-full text-[9px] font-bold border flex items-center w-fit mx-auto gap-1
+                                                                                ${item.status === 'Out of Stock' ? 'bg-[#ff5252]/10 text-[#ff5252] border-[#ff5252]/30' :
+                                                                                    item.status === 'Low Stock' ? 'bg-[#ffb74d]/10 text-[#ffb74d] border-[#ffb74d]/30' :
+                                                                                        'bg-[#4ade80]/10 text-[#4ade80] border-[#4ade80]/30'}`}
+                                                                            >
+                                                                                {item.status}
+                                                                            </span>
+                                                                        </td>
+                                                                        <td className="px-6 py-5 text-right">
+                                                                            <span className="text-xs font-bold text-gray-900">Rs. {parseFloat(item.buying_price || 0).toFixed(2)}</span>
+                                                                        </td>
+                                                                        <td className="px-6 py-5 text-right">
+                                                                            <span className="text-xs font-bold text-gray-900">Rs. {parseFloat(item.selling_price || 0).toFixed(2)}</span>
+                                                                        </td>
+                                                                        <td className="px-6 py-5 text-right">
+                                                                            <div className="flex items-center justify-end gap-2">
+                                                                                <button
+                                                                                    onClick={(e) => {
+                                                                                        e.stopPropagation();
+                                                                                        setReceivingItem(item);
+                                                                                    }}
+                                                                                    className="inventory-action-btn"
+                                                                                    title="Receive Stock"
+                                                                                >
+                                                                                    <PackagePlus size={15} />
+                                                                                </button>
+                                                                            </div>
+                                                                        </td>
+                                                                    </tr>
+                                                                ))
+                                                            )}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        )}
                                         {activeProfileTab === 'Overview' && (
                                             <div className="grid grid-cols-3 gap-10 animate-fade-in">
                                                 <div className="col-span-2 space-y-10">
@@ -1449,46 +1589,14 @@ const SupplierPage = ({ onNavigate, focusSection }) => {
                                                                 <span className="text-gray-900 font-medium">{selectedTransaction.date}</span>
                                                             </div>
                                                             <div className="flex justify-between items-center text-xs">
-                                                                <span className="text-gray-500">Total Items Added</span>
-                                                                <span className={`font-bold ${selectedTransaction.items >= selectedTransaction.target_items ? 'text-green-700' : 'text-yellow-500'}`}>
-                                                                    {selectedTransaction.items} / {selectedTransaction.target_items}
-                                                                </span>
+                                                                <span className="text-gray-500">Total Items</span>
+                                                                <span className="text-gray-900 font-bold">{selectedTransaction.items}</span>
                                                             </div>
                                                             <div className="flex flex-col gap-2 border-t border-gray-200 pt-4">
                                                                 <div className="flex justify-between items-center text-xs">
-                                                                    <span className="text-gray-500">Expected Net Value</span>
-                                                                    <div className="flex items-center gap-2">
-                                                                        <span className="text-gray-900 font-bold">{selectedTransaction.amount}</span>
-                                                                        <button
-                                                                            onClick={async () => {
-                                                                                const newVal = prompt("Enter Correct Net Transaction Value", selectedTransaction.amount.replace('Rs. ', '').replace(/,/g, ''));
-                                                                                if (newVal) {
-                                                                                    try {
-                                                                                        await axios.put(`${API_BASE_URL}/inventory/batches/${selectedTransaction.db_id}`, { net_value: newVal }, {
-                                                                                            headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-                                                                                        });
-                                                                                        fetchBatches();
-                                                                                        setSelectedTransaction(null);
-                                                                                        alert("Batch Value Updated!");
-                                                                                    } catch (e) { alert("Failed to update"); }
-                                                                                }
-                                                                            }}
-                                                                            className="supplier-profile-inline-btn p-1 hover:bg-gray-200 rounded group"
-                                                                        >
-                                                                            <Edit className="w-3 h-3 text-green-700 group-hover:scale-110 transition-transform" />
-                                                                        </button>
-                                                                    </div>
+                                                                    <span className="text-gray-500 font-semibold">Total Value</span>
+                                                                    <span className="text-green-700 font-black text-sm">{selectedTransaction.amount}</span>
                                                                 </div>
-                                                                <div className="flex justify-between items-center text-xs">
-                                                                    <span className="text-gray-500">Actual Item Total</span>
-                                                                    <span className="text-gray-900 font-bold">Rs. {selectedTransaction.actual_amount.toLocaleString()}</span>
-                                                                </div>
-                                                                {Math.abs(parseFloat(selectedTransaction.amount.replace('Rs. ', '').replace(/,/g, '')) - selectedTransaction.actual_amount) > 1 && (
-                                                                    <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-2 mt-2 animate-pulse">
-                                                                        <AlertCircle className="w-3 h-3 text-red-500" />
-                                                                        <span className="text-[9px] font-bold text-red-500 uppercase tracking-tighter">Financial Mismatch Detected!</span>
-                                                                    </div>
-                                                                )}
                                                             </div>
                                                         </div>
                                                     </div>
@@ -1499,35 +1607,7 @@ const SupplierPage = ({ onNavigate, focusSection }) => {
                                                                 <span className="text-gray-500">Warehouse Destination</span>
                                                                 <span className="text-gray-900 font-medium">Main Store / A1</span>
                                                             </div>
-                                                            <div className="flex justify-between items-center text-xs">
-                                                                <span className="text-gray-500">Payment Clearing</span>
-                                                                <div className="flex items-center gap-3">
-                                                                    <span className={`${selectedTransaction.payment_status === 'PAID' ? 'text-green-700' : 'text-yellow-500'} font-bold tracking-widest text-[10px]`}>
-                                                                        {selectedTransaction.payment_status === 'PAID' ? 'SETTLED' : 'PENDING'}
-                                                                    </span>
-                                                                    {selectedTransaction.payment_status !== 'PAID' && (
-                                                                        <button
-                                                                            onClick={async () => {
-                                                                                const targetBatch = profileBatches.find(
-                                                                                    (batch) =>
-                                                                                        batch.id === selectedTransaction.db_id ||
-                                                                                        batch.batch_number === selectedTransaction.id
-                                                                                );
 
-                                                                                setGlobalPaymentsOpen(true);
-                                                                                setSelectedTransaction(null);
-
-                                                                                if (targetBatch) {
-                                                                                    await handleSelectPayment(targetBatch);
-                                                                                }
-                                                                            }}
-                                                                            className="supplier-profile-inline-btn supplier-profile-inline-pay px-3 py-1 bg-green-100 text-green-700 text-[9px] font-bold rounded hover:bg-[#4caf50]/20 transition-all uppercase tracking-widest border border-green-200"
-                                                                        >
-                                                                            Pay Now
-                                                                        </button>
-                                                                    )}
-                                                                </div>
-                                                            </div>
                                                             <div className="flex justify-between items-center text-xs border-t border-gray-200 pt-4">
                                                                 <span className="text-gray-500">Payment Mode</span>
                                                                 <span className="text-gray-900 font-medium">Direct Bank Transfer</span>

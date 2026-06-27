@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Save, ScanLine, Type, RefreshCw } from 'lucide-react';
 import axios from 'axios';
@@ -6,7 +6,7 @@ import { API_BASE_URL } from '../../../config/api';
 import '../../../styles/menu.css';
 import { getSuppliers } from '../../../services/supplierService';
 
-const AddInventoryModal = ({ onClose, onSuccess, onScanBillClick, categories = [], batches = [] }) => {
+const AddInventoryModal = ({ onClose, onSuccess, onScanBillClick, categories = [], initialSupplierId }) => {
     const [formData, setFormData] = useState({
         ingredient_name: '',
         item_code: '',
@@ -18,9 +18,14 @@ const AddInventoryModal = ({ onClose, onSuccess, onScanBillClick, categories = [
         buying_price: '',
         selling_price: '',
         storage_location: '',
-        expiry_date: ''
+        expiry_date: '',
+        supplier_id: initialSupplierId || ''
     });
     const [suppliers, setSuppliers] = useState([]);
+    const [allProducts, setAllProducts] = useState([]);
+    const [isOpen, setIsOpen] = useState(false);
+    const dropdownRef = useRef(null);
+
     const [barcodeCheck, setBarcodeCheck] = useState({
         loading: false,
         existingItem: null,
@@ -49,6 +54,33 @@ const AddInventoryModal = ({ onClose, onSuccess, onScanBillClick, categories = [
             }
         };
         fetchSuppliers();
+    }, []);
+
+    useEffect(() => {
+        const fetchAllProducts = async () => {
+            try {
+                const token = localStorage.getItem('token');
+                const response = await axios.get(`${API_BASE_URL}/inventory`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                setAllProducts(response.data || []);
+            } catch (error) {
+                console.error('Error fetching inventory products:', error);
+            }
+        };
+        fetchAllProducts();
+    }, []);
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
     }, []);
 
     useEffect(() => {
@@ -103,6 +135,55 @@ const AddInventoryModal = ({ onClose, onSuccess, onScanBillClick, categories = [
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
+    const handleSupplierChange = (e) => {
+        const selectedId = e.target.value;
+        setFormData(prev => ({
+            ...prev,
+            supplier_id: selectedId,
+            batch_id: '' // Reset selected batch
+        }));
+        
+        setIsOpen(false);
+        
+        const matchingProducts = allProducts.filter(p => p.supplier_id === selectedId);
+        if (matchingProducts.length === 1) {
+            const p = matchingProducts[0];
+            setFormData(prev => ({
+                ...prev,
+                ingredient_name: p.ingredient_name || '',
+                item_code: p.item_code || '',
+                category: p.category || (categories.length > 0 ? categories[0].name : ''),
+                unit: p.unit || 'kg',
+                reorder_level: p.reorder_level || '10',
+                buying_price: p.buying_price || '',
+                selling_price: p.selling_price || '',
+                storage_location: p.storage_location || ''
+            }));
+        } else {
+            setFormData(prev => ({
+                ...prev,
+                ingredient_name: '',
+                item_code: '',
+                category: categories.length > 0 ? categories[0].name : '',
+                unit: 'kg',
+                reorder_level: '10',
+                buying_price: '',
+                selling_price: '',
+                storage_location: '',
+                expiry_date: ''
+            }));
+        }
+    };
+
+    const supplierProducts = formData.supplier_id
+        ? allProducts.filter(p => p.supplier_id === formData.supplier_id)
+        : [];
+        
+    const filteredProducts = supplierProducts.filter(p =>
+        p.ingredient_name.toLowerCase().includes((formData.ingredient_name || '').toLowerCase()) ||
+        (p.item_code && p.item_code.toLowerCase().includes((formData.ingredient_name || '').toLowerCase()))
+    );
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (barcodeCheck.existingItem) {
@@ -113,8 +194,9 @@ const AddInventoryModal = ({ onClose, onSuccess, onScanBillClick, categories = [
         setLoading(true);
         try {
             const token = localStorage.getItem('token');
+            const { batch_id, supplier_info, expiry_date, ...rest } = formData;
             const payload = {
-                ...formData,
+                ...rest,
                 method: 'MANUAL',
                 admin_name: 'Admin'
             };
@@ -126,7 +208,8 @@ const AddInventoryModal = ({ onClose, onSuccess, onScanBillClick, categories = [
             onSuccess();
         } catch (error) {
             console.error('Error adding inventory:', error);
-            alert('Failed to add product. Code or Name might already exist.');
+            const errMsg = error?.response?.data?.message || 'Failed to add product. Code or Name might already exist.';
+            alert(errMsg);
         } finally {
             setLoading(false);
         }
@@ -151,90 +234,120 @@ const AddInventoryModal = ({ onClose, onSuccess, onScanBillClick, categories = [
                         <button
                             title="Manual Entry"
                             onClick={() => setShowReplacementPicker(false)}
-                            className={`add-inventory-tab ${!showReplacementPicker ? 'active' : ''}`}
+                            className="add-inventory-tab active"
                         >
                             <Type size={15} /> Manual Entry
                         </button>
-                        <button
-                            title="Scan Bill"
-                            onClick={onScanBillClick}
-                            className="add-inventory-tab"
-                        >
-                            <ScanLine size={15} /> Scan Bill (AI)
-                        </button>
-                        <button
-                            title="Replacement Items"
-                            onClick={() => setShowReplacementPicker(true)}
-                            className={`add-inventory-tab ${showReplacementPicker ? 'active' : ''}`}
-                        >
-                            <RefreshCw size={15} /> Replacement Items
-                        </button>
+                        {onScanBillClick && (
+                            <button
+                                title="Scan Bill"
+                                onClick={onScanBillClick}
+                                className="add-inventory-tab"
+                            >
+                                <ScanLine size={15} /> Scan Bill (AI)
+                            </button>
+                        )}
+                        
                     </div>
 
-                    {showReplacementPicker ? (
-                        <div className="add-inventory-body animate-fade-in custom-scrollbar">
-                            <h3>Select Authorized Replacement Batch</h3>
-                            <div className="add-replacement-list">
-                                {batches.filter(b => b.batch_type === 'REPLACEMENT' && (b.status !== 'COMPLETED') && (b.calc_status !== 'COMPLETED')).length > 0 ? (
-                                    batches.filter(b => b.batch_type === 'REPLACEMENT' && (b.status !== 'COMPLETED') && (b.calc_status !== 'COMPLETED')).map(b => (
-                                        <button
-                                            title={`Select ${b.batch_number}`}
-                                            key={b.id}
-                                            onClick={() => {
-                                                const ret = b.supplier_returns;
-                                                const inv = ret?.inventory;
-                                                setFormData({
-                                                    ingredient_name: inv?.ingredient_name || '',
-                                                    item_code: inv?.item_code || '',
-                                                    category: inv?.category || categories[0]?.name || '',
-                                                    quantity: ret?.quantity || '',
-                                                    unit: inv?.unit || 'kg',
-                                                    reorder_level: inv?.reorder_level || '10',
-                                                    batch_id: b.id,
-                                                    buying_price: inv?.buying_price || '',
-                                                    selling_price: inv?.selling_price || '',
-                                                    storage_location: '',
-                                                    expiry_date: ''
-                                                });
-                                                setShowReplacementPicker(false);
-                                            }}
-                                            className="add-replacement-card"
-                                        >
-                                            <div>
-                                                <div>
-                                                    <RefreshCw size={17} />
-                                                </div>
-                                                <div>
-                                                    <p>{b.batch_number}</p>
-                                                    <p>{b.supplier_returns?.inventory?.ingredient_name || 'N/A'}</p>
-                                                    <p>{b.supplier_name} | {b.date}</p>
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <p>{b.supplier_returns?.quantity} Units</p>
-                                                <p>Pending Stocking</p>
-                                            </div>
-                                        </button>
-                                    ))
-                                ) : (
-                                    <div className="add-replacement-empty">
-                                        <RefreshCw size={24} />
-                                        <p>No pending replacement batches found.</p>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    ) : (
                         <div className="add-inventory-body custom-scrollbar">
                             <form id="inventoryForm" onSubmit={handleSubmit} className="add-inventory-form">
                                 <div className="add-inventory-grid">
                                     <div>
+                                        <label>Supplier Name *</label>
+                                        <select
+                                            name="supplier_id"
+                                            required
+                                            disabled={!!initialSupplierId}
+                                            value={formData.supplier_id}
+                                            onChange={handleSupplierChange}
+                                        >
+                                            <option value="">-- Select Supplier --</option>
+                                            {suppliers.map(s => (
+                                                <option key={s.id} value={s.id}>
+                                                    {s.supplier_name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div ref={dropdownRef} className="supplier-product-container" style={{ position: 'relative' }}>
                                         <label>Item Name *</label>
                                         <input
-                                            type="text" required name="ingredient_name"
-                                            value={formData.ingredient_name} onChange={handleChange}
-                                            placeholder="Item Name"
+                                            type="text"
+                                            required
+                                            name="ingredient_name"
+                                            value={formData.ingredient_name}
+                                            onChange={(e) => {
+                                                handleChange(e);
+                                                if (formData.supplier_id) {
+                                                    setIsOpen(true);
+                                                }
+                                            }}
+                                            onFocus={() => {
+                                                if (formData.supplier_id) {
+                                                    setIsOpen(true);
+                                                }
+                                            }}
+                                            placeholder={
+                                                !formData.supplier_id
+                                                    ? "Item Name"
+                                                    : supplierProducts.length === 0
+                                                        ? "No products available for this supplier"
+                                                        : "Item Name"
+                                            }
                                         />
+                                        {isOpen && formData.supplier_id && supplierProducts.length > 0 && (
+                                            <div className="custom-dropdown-list animate-fade-in" style={{
+                                                position: 'absolute',
+                                                top: '100%',
+                                                left: 0,
+                                                right: 0,
+                                                backgroundColor: '#ffffff',
+                                                border: '1px solid #D7E7DC',
+                                                borderRadius: '8px',
+                                                maxHeight: '200px',
+                                                overflowY: 'auto',
+                                                zIndex: 1000,
+                                                boxShadow: '0 8px 24px rgba(22, 101, 52, 0.08)'
+                                            }}>
+                                                {filteredProducts.map(p => (
+                                                    <div
+                                                        key={p.id}
+                                                        className="dropdown-item"
+                                                        style={{
+                                                            padding: '10px 12px',
+                                                            cursor: 'pointer',
+                                                            fontSize: '0.84rem',
+                                                            borderBottom: '1px solid #EBF5EE',
+                                                            color: '#1E293B'
+                                                        }}
+                                                        onMouseEnter={(e) => e.target.style.backgroundColor = '#F0FDF4'}
+                                                        onMouseLeave={(e) => e.target.style.backgroundColor = '#ffffff'}
+                                                        onClick={() => {
+                                                            setFormData(prev => ({
+                                                                ...prev,
+                                                                ingredient_name: p.ingredient_name || '',
+                                                                item_code: p.item_code || '',
+                                                                category: p.category || (categories.length > 0 ? categories[0].name : ''),
+                                                                unit: p.unit || 'kg',
+                                                                reorder_level: p.reorder_level || '10',
+                                                                buying_price: p.buying_price || '',
+                                                                selling_price: p.selling_price || '',
+                                                                storage_location: p.storage_location || ''
+                                                            }));
+                                                            setIsOpen(false);
+                                                        }}
+                                                    >
+                                                        {p.ingredient_name} {p.item_code ? `(${p.item_code})` : ''}
+                                                    </div>
+                                                ))}
+                                                {filteredProducts.length === 0 && (
+                                                    <div style={{ padding: '10px 12px', color: '#64748B', fontSize: '0.84rem', fontStyle: 'italic' }}>
+                                                        No matching products.
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                     <div>
                                         <div className="add-inventory-label-row">
@@ -352,27 +465,10 @@ const AddInventoryModal = ({ onClose, onSuccess, onScanBillClick, categories = [
                                         />
                                     </div>
                                     
-                                    <div className="add-inventory-full add-inventory-batch">
-                                        <label>Select Products Batch *</label>
-                                        <select
-                                            name="batch_id"
-                                            required
-                                            value={formData.batch_id}
-                                            onChange={handleChange}
-                                        >
-                                            <option value="">-- Select Active Batch --</option>
-                                            {batches.map(b => (
-                                                <option key={b.id} value={b.id}>
-                                                    {b.batch_number} {b.batch_type === 'REPLACEMENT' ? '[REPLACEMENT]' : ''} | {b.supplier_name} ({b.date})
-                                                </option>
-                                            ))}
-                                        </select>
-                                        <p>Items must be linked to a created procurement batch.</p>
-                                    </div>
+                                    
                                 </div>
                             </form>
                         </div>
-                    )}
                 </div>
 
                 <div className="add-inventory-actions">

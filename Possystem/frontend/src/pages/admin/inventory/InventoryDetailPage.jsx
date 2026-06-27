@@ -1,16 +1,35 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
-import { ArrowLeft, Package, Clock, Calendar, Truck, Layers, Loader, Info, X, Printer } from 'lucide-react';
+import { ArrowLeft, Package, Clock, Calendar, Truck, Layers, Loader, Info, X, Printer, PackagePlus } from 'lucide-react';
 import JsBarcode from 'jsbarcode';
 import html2canvas from 'html2canvas';
 import DashboardLayout from '../../../components/layout/DashboardLayout';
 import { API_BASE_URL } from '../../../config/api';
 import '../../../styles/menu.css'; // Reusing styles
+import ReceiveInventoryModal from './ReceiveInventoryModal';
+
+const parseLogNotes = (notesStr) => {
+    if (!notesStr) return { notes: '', buyingPrice: null, sellingPrice: null };
+    if (notesStr.startsWith('{') && notesStr.endsWith('}')) {
+        try {
+            const parsed = JSON.parse(notesStr);
+            return {
+                notes: parsed.notes || '',
+                buyingPrice: parsed.buying_price,
+                sellingPrice: parsed.selling_price
+            };
+        } catch (e) {
+            // ignore
+        }
+    }
+    return { notes: notesStr, buyingPrice: null, sellingPrice: null };
+};
 
 const InventoryDetailPage = ({ inventoryId, onNavigate }) => {
     const [item, setItem] = useState(null);
     const [loading, setLoading] = useState(true);
     const [showBarcodePopup, setShowBarcodePopup] = useState(false);
+    const [showReceiveModal, setShowReceiveModal] = useState(false);
     const barcodeRef = useRef(null);
     const printLabelRef = useRef(null);
     const printBarcodeRef = useRef(null);
@@ -23,11 +42,13 @@ const InventoryDetailPage = ({ inventoryId, onNavigate }) => {
                         format: 'CODE128',
                         lineColor: '#000000',
                         background: '#FFFFFF',
-                        width: 2,
-                        height: 60,
+                        width: 1.5,
+                        height: 38,
                         displayValue: true,
-                        fontSize: 14,
-                        margin: 10
+                        font: 'monospace',
+                        fontSize: 9,
+                        textMargin: 2,
+                        margin: 0
                     });
                 }
                 if (printBarcodeRef.current) {
@@ -35,10 +56,12 @@ const InventoryDetailPage = ({ inventoryId, onNavigate }) => {
                         format: 'CODE128',
                         lineColor: '#000000',
                         background: '#FFFFFF',
-                        width: 1,
-                        height: 42,
+                        width: 1.2,
+                        height: 32,
                         displayValue: true,
-                        fontSize: 9,
+                        font: 'monospace',
+                        fontSize: 8,
+                        textMargin: 2,
                         margin: 0
                     });
                 }
@@ -108,6 +131,8 @@ const InventoryDetailPage = ({ inventoryId, onNavigate }) => {
 
     if (!item) return null;
 
+    const purchaseLogs = item.history?.filter(log => log.action === 'ADDED') || [];
+
     const supplier = item.supplier_summary || item.suppliers || item.batches?.find(batch => batch.supplier)?.supplier || null;
     const supplierName = supplier?.supplier_name || item.supplier_name || item.supplier_info || '';
     const supplierDetails = [
@@ -120,13 +145,39 @@ const InventoryDetailPage = ({ inventoryId, onNavigate }) => {
     return (
         <DashboardLayout activePage="inventory" onNavigate={onNavigate}>
             <div className="menu-management-container inventory-detail-page animate-fade-in custom-scrollbar">
-                <button
-                    title="Back to Products"
-                    onClick={() => onNavigate('inventory')}
-                    className="detail-back-btn"
-                >
-                    <ArrowLeft className="w-4 h-4" /> Back to Products
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+                    <button
+                        title="Back to Products"
+                        onClick={() => onNavigate('inventory')}
+                        className="detail-back-btn"
+                        style={{ marginBottom: 0 }}
+                    >
+                        <ArrowLeft className="w-4 h-4" /> Back to Products
+                    </button>
+                    <button
+                        onClick={() => setShowReceiveModal(true)}
+                        className="inventory-action-btn"
+                        style={{
+                            minHeight: '36px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '8px',
+                            padding: '0 16px',
+                            color: 'white',
+                            background: 'linear-gradient(135deg, var(--primary-green), var(--dark-green))',
+                            border: 'none',
+                            borderRadius: '20px',
+                            fontFamily: 'inherit',
+                            fontSize: '0.82rem',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                        }}
+                    >
+                        <PackagePlus className="w-4 h-4" style={{ color: 'white', stroke: 'white' }} /> Receive Stock
+                    </button>
+                </div>
 
                 <div className="inventory-detail-grid">
                     {/* Main Info Card */}
@@ -221,49 +272,50 @@ const InventoryDetailPage = ({ inventoryId, onNavigate }) => {
                             </div>
                         </div>
 
-                        {/* Supplier Order Batches */}
+                        {/* Purchase History */}
                         <div className="detail-card detail-table-card">
                             <div className="detail-card-header">
                                 <h3>
-                                    <Calendar className="w-4 h-4 text-[#D32F2F]" /> Supplier Order Batches
+                                    <Calendar className="w-4 h-4 text-[#D32F2F]" /> Purchase History
                                 </h3>
                             </div>
                             <div className="overflow-x-auto">
                                 <table className="detail-table w-full text-left text-sm">
                                     <thead>
                                         <tr>
-                                            <th className="p-3 font-medium">Batch Code</th>
+                                            <th className="p-3 font-medium">Date Received</th>
                                             <th className="p-3 font-medium">Supplier</th>
-                                            <th className="p-3 font-medium">Added</th>
-                                            <th className="p-3 font-medium">Remaining</th>
-                                            <th className="p-3 font-medium">Buying</th>
-                                            <th className="p-3 font-medium">Selling</th>
-                                            <th className="p-3 font-medium">Location</th>
-                                            <th className="p-3 font-medium">Received</th>
-                                            <th className="p-3 font-medium">Expiry</th>
+                                            <th className="p-3 font-medium">Added Qty</th>
+                                            <th className="p-3 font-medium">Buying Price</th>
+                                            <th className="p-3 font-medium">Selling Price</th>
+                                            <th className="p-3 font-medium">Received By</th>
+                                            <th className="p-3 font-medium">Notes/Reference</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {item.batches?.length > 0 ? item.batches.map(batch => (
-                                            <tr key={batch.id}>
-                                                <td className="p-3 font-mono text-[#BBB]">{batch.batch_code}</td>
-                                                <td className="p-3 text-[#888]">{batch.supplier?.supplier_name || '-'}</td>
-                                                <td className="p-3 font-semibold text-[#E0E0E0]">{batch.quantity}</td>
-                                                <td className="p-3 font-semibold text-[#E0E0E0]">{batch.quantity_remaining}</td>
-                                                <td className="p-3 text-[#888]">Rs. {parseFloat(batch.buying_price || 0).toFixed(2)}</td>
-                                                <td className="p-3 text-[#888]">Rs. {parseFloat(batch.selling_price || 0).toFixed(2)}</td>
-                                                <td className="p-3 text-[#888]">{batch.storage_location || '-'}</td>
-                                                <td className="p-3 text-[#888]">{new Date(batch.received_date).toLocaleDateString()}</td>
-                                                <td className="p-3">
-                                                    {batch.expiry_date ? (
-                                                        <span className={`px-2 py-0.5 rounded text-xs ${new Date(batch.expiry_date) < new Date() ? 'bg-[#ff5252]/20 text-[#ff5252]' : 'bg-[#4ade80]/20 text-[#4ade80]'}`}>
-                                                            {new Date(batch.expiry_date).toLocaleDateString()}
-                                                        </span>
-                                                    ) : <span className="text-[#666]">-</span>}
-                                                </td>
-                                            </tr>
-                                        )) : (
-                                            <tr><td colSpan="9" className="p-4 text-center text-[#666] italic">No supplier order batch info</td></tr>
+                                        {purchaseLogs.length > 0 ? purchaseLogs.map(log => {
+                                            const { notes, buyingPrice, sellingPrice } = parseLogNotes(log.notes);
+                                            return (
+                                                <tr key={log.id}>
+                                                    <td className="p-3 text-[#E0E0E0]">{new Date(log.created_at).toLocaleString()}</td>
+                                                    <td className="p-3 text-[#888]">{log.method === 'SUPPLIER' ? supplierName : '-'}</td>
+                                                    <td className="p-3 font-semibold text-[#4ade80]">+{log.quantity} {item.unit}</td>
+                                                    <td className="p-3 text-[#888]">
+                                                        {buyingPrice !== null && buyingPrice !== undefined 
+                                                            ? `Rs. ${parseFloat(buyingPrice).toFixed(2)}` 
+                                                            : '-'}
+                                                    </td>
+                                                    <td className="p-3 text-[#888]">
+                                                        {sellingPrice !== null && sellingPrice !== undefined 
+                                                            ? `Rs. ${parseFloat(sellingPrice).toFixed(2)}` 
+                                                            : '-'}
+                                                    </td>
+                                                    <td className="p-3 text-[#888]">{log.admin_name}</td>
+                                                    <td className="p-3 text-[#888] italic">{notes || '-'}</td>
+                                                </tr>
+                                            );
+                                        }) : (
+                                            <tr><td colSpan="7" className="p-4 text-center text-[#666] italic">No purchase history recorded</td></tr>
                                         )}
                                     </tbody>
                                 </table>
@@ -279,21 +331,24 @@ const InventoryDetailPage = ({ inventoryId, onNavigate }) => {
                             </h3>
                         </div>
                         <div className="detail-history-list custom-scrollbar">
-                            {item.history?.length > 0 ? item.history.map(log => (
-                                <div key={log.id} className="relative pl-4 border-l-2 border-[#333] pb-4 last:pb-0 last:border-0">
-                                    <div className={`absolute -left-[5px] top-1 w-2.5 h-2.5 rounded-full border-2 border-[#1E1E1E]
-                                        ${log.action === 'ADDED' ? 'bg-[#4ade80]' : 'bg-[#ff5252]'}`}></div>
-                                    <div className="text-xs text-[#666] mb-1">{new Date(log.created_at).toLocaleString()}</div>
-                                    <div className="text-sm font-medium text-[#E0E0E0]">
-                                        {log.action === 'ADDED' ? 'Added' : 'Removed'} <span className={log.action === 'ADDED' ? 'text-[#4ade80]' : 'text-[#ff5252]'}>{log.quantity}</span>
+                            {item.history?.length > 0 ? item.history.map(log => {
+                                const { notes } = parseLogNotes(log.notes);
+                                return (
+                                    <div key={log.id} className="relative pl-4 border-l-2 border-[#333] pb-4 last:pb-0 last:border-0">
+                                        <div className={`absolute -left-[5px] top-1 w-2.5 h-2.5 rounded-full border-2 border-[#1E1E1E]
+                                            ${log.action === 'ADDED' ? 'bg-[#4ade80]' : 'bg-[#ff5252]'}`}></div>
+                                        <div className="text-xs text-[#666] mb-1">{new Date(log.created_at).toLocaleString()}</div>
+                                        <div className="text-sm font-medium text-[#E0E0E0]">
+                                            {log.action === 'ADDED' ? 'Added' : 'Removed'} <span className={log.action === 'ADDED' ? 'text-[#4ade80]' : 'text-[#ff5252]'}>{log.quantity}</span>
+                                        </div>
+                                        <div className="text-xs text-[#888] mt-1 flex items-center gap-1">
+                                            <span className="bg-[#333] px-1 rounded">{log.method}</span>
+                                            <span>by {log.admin_name}</span>
+                                        </div>
+                                        {notes && <div className="text-xs text-[#666] mt-1 italic">"{notes}"</div>}
                                     </div>
-                                    <div className="text-xs text-[#888] mt-1 flex items-center gap-1">
-                                        <span className="bg-[#333] px-1 rounded">{log.method}</span>
-                                        <span>by {log.admin_name}</span>
-                                    </div>
-                                    {log.notes && <div className="text-xs text-[#666] mt-1 italic">"{log.notes}"</div>}
-                                </div>
-                            )) : (
+                                );
+                            }) : (
                                 <div className="text-center text-[#666] py-8">No history logged yet.</div>
                             )}
                         </div>
@@ -324,9 +379,67 @@ const InventoryDetailPage = ({ inventoryId, onNavigate }) => {
                                 <p>Category: {item.category || 'Uncategorized'}</p>
                             </div>
                             
-                            {/* Barcode Rendered Here */}
-                            <div className="detail-barcode-preview">
-                                <svg ref={barcodeRef}></svg>
+                            {/* Barcode Rendered Here as a clean retail tag mockup */}
+                            <div className="detail-barcode-preview" style={{ background: '#f8fafc', padding: '24px', display: 'flex', justifyContent: 'center' }}>
+                                <div style={{
+                                    width: '180px',
+                                    height: '135px',
+                                    backgroundColor: '#ffffff',
+                                    border: '1px solid #e2e8f0',
+                                    borderRadius: '6px',
+                                    boxShadow: '0 4px 16px rgba(15, 23, 42, 0.08)',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    padding: '10px 8px',
+                                    boxSizing: 'border-box',
+                                    color: '#000000'
+                                }}>
+                                    {/* Company Name */}
+                                    <div style={{ 
+                                        fontSize: '9px', 
+                                        fontFamily: "'Segoe UI', Arial, sans-serif", 
+                                        fontWeight: '800', 
+                                        textTransform: 'uppercase', 
+                                        letterSpacing: '0.5px',
+                                        lineHeight: '1'
+                                    }}>
+                                        ATC & SONS
+                                    </div>
+                                    
+                                    {/* Product Name */}
+                                    <div style={{ 
+                                        fontSize: '8px', 
+                                        fontFamily: "'Segoe UI', Arial, sans-serif", 
+                                        fontWeight: '600', 
+                                        color: '#000000', 
+                                        whiteSpace: 'nowrap', 
+                                        overflow: 'hidden', 
+                                        textOverflow: 'ellipsis', 
+                                        maxWidth: '100%',
+                                        lineHeight: '1',
+                                        marginTop: '1px'
+                                    }}>
+                                        {item.ingredient_name}
+                                    </div>
+                                    
+                                    {/* Barcode */}
+                                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%', margin: '4px 0' }}>
+                                        <svg ref={barcodeRef} style={{ maxWidth: '100%', height: 'auto' }}></svg>
+                                    </div>
+                                    
+                                    {/* Price */}
+                                    <div style={{ 
+                                        fontSize: '12px', 
+                                        fontFamily: "'Segoe UI', Arial, sans-serif", 
+                                        fontWeight: '800',
+                                        lineHeight: '1',
+                                        marginTop: 'auto'
+                                    }}>
+                                        LKR {parseFloat(item.selling_price || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </div>
+                                </div>
                             </div>
                             
                             <div className="detail-barcode-code">
@@ -363,26 +476,77 @@ const InventoryDetailPage = ({ inventoryId, onNavigate }) => {
                                 top: '-9999px', 
                                 width: '40mm',
                                 height: '30mm',
-                                backgroundColor: '#fff', 
+                                backgroundColor: '#ffffff', 
                                 display: 'flex', 
                                 flexDirection: 'column', 
                                 alignItems: 'center', 
-                                justifyContent: 'center',
-                                padding: '2mm',
+                                justifyContent: 'space-between',
+                                padding: '2mm 1.5mm',
                                 boxSizing: 'border-box',
                                 overflow: 'hidden'
                             }}
                         >
-                            <div style={{ fontSize: '8px', lineHeight: '1', fontFamily: 'Arial, sans-serif', fontWeight: '700', color: '#000', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: '0.8mm', maxWidth: '100%' }}>
+                            <div style={{ 
+                                fontSize: '7.5px', 
+                                fontFamily: "'Segoe UI', Arial, sans-serif", 
+                                fontWeight: '800', 
+                                color: '#000000', 
+                                textTransform: 'uppercase', 
+                                letterSpacing: '0.5px', 
+                                textAlign: 'center', 
+                                lineHeight: '1' 
+                            }}>
+                                ATC & SONS
+                            </div>
+                            <div style={{ 
+                                fontSize: '7px', 
+                                fontFamily: "'Segoe UI', Arial, sans-serif", 
+                                fontWeight: '600', 
+                                color: '#000000', 
+                                textAlign: 'center', 
+                                whiteSpace: 'nowrap', 
+                                overflow: 'hidden', 
+                                textOverflow: 'ellipsis', 
+                                maxWidth: '100%', 
+                                lineHeight: '1',
+                                marginTop: '1px'
+                            }}>
                                 {item.ingredient_name}
                             </div>
-                            <div style={{ fontSize: '10px', lineHeight: '1', fontFamily: 'Arial, sans-serif', color: '#000', fontWeight: '700', marginBottom: '1mm' }}>
-                                Rs. {parseFloat(item.selling_price || 0).toFixed(2)}
+                            <div style={{ 
+                                display: 'flex', 
+                                justifyContent: 'center', 
+                                alignItems: 'center', 
+                                width: '100%', 
+                                margin: '0.5mm 0' 
+                            }}>
+                                <svg ref={printBarcodeRef} style={{ maxWidth: '100%', height: 'auto' }}></svg>
                             </div>
-                            <svg ref={printBarcodeRef} style={{ width: '34mm', maxWidth: '100%', height: 'auto' }}></svg>
+                            <div style={{ 
+                                fontSize: '11px', 
+                                fontFamily: "'Segoe UI', Arial, sans-serif", 
+                                fontWeight: '800', 
+                                color: '#000000', 
+                                textAlign: 'center', 
+                                lineHeight: '1',
+                                marginTop: 'auto'
+                            }}>
+                                LKR {parseFloat(item.selling_price || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </div>
                         </div>
                     </div>
                 </div>
+            )}
+
+            {showReceiveModal && (
+                <ReceiveInventoryModal
+                    initialItem={item}
+                    onClose={() => setShowReceiveModal(false)}
+                    onSuccess={() => {
+                        setShowReceiveModal(false);
+                        fetchDetails();
+                    }}
+                />
             )}
         </DashboardLayout>
     );

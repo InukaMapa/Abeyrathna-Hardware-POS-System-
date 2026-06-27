@@ -500,13 +500,7 @@ const StaffManagementPage = ({ onNavigate }) => {
                                                 </td>
                                                 <td className="p-4 text-right staff-actions-cell">
                                                     <div className="staff-table-actions">
-                                                        <button
-                                                            onClick={() => openViewModal(staff)}
-                                                            className="inventory-action-btn"
-                                                            title="View Staff Details"
-                                                        >
-                                                            <Eye />
-                                                        </button>
+                                                        
 
                                                         <button
                                                             onClick={() => openEditModal(staff)}

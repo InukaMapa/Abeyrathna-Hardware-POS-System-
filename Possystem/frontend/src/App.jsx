@@ -25,6 +25,7 @@ import ReturnManagementPage from './pages/admin/supplier/ReturnManagementPage';
 import ReportsPage from './pages/admin/ReportsPage';
 import StaffManagementPage from './pages/admin/StaffManagementPage';
 import PrinterSettingsPage from './pages/dashboard/PrinterSettingsPage';
+import SupplierPaymentsPage from './pages/dashboard/SupplierPaymentsPage';
 import './styles/dashboard.css';
 
 function AppContent() {
@@ -43,6 +44,7 @@ function AppContent() {
   // State to hold order object when editing from details
   const [editOrderData, setEditOrderData] = useState(null);
   const [supplierFocusSection, setSupplierFocusSection] = useState(null);
+  const [supplierParams, setSupplierParams] = useState(null);
 
   // Restore last page after auth initializes
   useEffect(() => {
@@ -52,7 +54,8 @@ function AppContent() {
       'dashboard', 'inventory', 'inventory-detail', 'reports', 'cash-management',
       'supplier', 'supplier-returns', 'supplier-recent-purchases', 'return-management',
       'staff-management', 'create-order', 'cashier-new-order', 'cash-counter',
-      'profile', 'orders', 'order-details', 'bill-open', 'printer-settings'
+      'profile', 'orders', 'order-details', 'bill-open', 'printer-settings',
+      'supplier-payments'
     ];
 
     try {
@@ -61,6 +64,16 @@ function AppContent() {
         const path = window.location.pathname.replace(/^\//, '');
         if (path && validPages.includes(path)) {
           setCurrentPage(path);
+
+          // Parse query parameters
+          const queryParams = new URLSearchParams(window.location.search);
+          if (path === 'inventory-detail' && queryParams.has('id')) {
+            setSelectedInventoryId(queryParams.get('id'));
+          } else if (path === 'return-management' && queryParams.has('id')) {
+            setSelectedReturnId(queryParams.get('id'));
+          } else if ((path === 'order-details' || path === 'bill-open') && queryParams.has('orderId')) {
+            setSelectedOrderId(queryParams.get('orderId'));
+          }
           return;
         }
 
@@ -68,7 +81,30 @@ function AppContent() {
         const last = localStorage.getItem('lastPage');
         if (last && validPages.includes(last)) {
           setCurrentPage(last);
-          window.history.replaceState({}, '', `/${last}`);
+
+          // Restore saved ID if navigating to a page that needs it
+          let queryStr = '';
+          if (last === 'inventory-detail') {
+            const savedId = localStorage.getItem('lastInventoryId');
+            if (savedId) {
+              setSelectedInventoryId(savedId);
+              queryStr = `?id=${savedId}`;
+            }
+          } else if (last === 'return-management') {
+            const savedId = localStorage.getItem('lastReturnId');
+            if (savedId) {
+              setSelectedReturnId(savedId);
+              queryStr = `?id=${savedId}`;
+            }
+          } else if (last === 'order-details' || last === 'bill-open') {
+            const savedOrderId = localStorage.getItem('lastOrderId');
+            if (savedOrderId) {
+              setSelectedOrderId(savedOrderId);
+              queryStr = `?orderId=${savedOrderId}`;
+            }
+          }
+
+          window.history.replaceState({}, '', `/${last}${queryStr}`);
           return;
         }
         setCurrentPage('dashboard');
@@ -103,16 +139,33 @@ function AppContent() {
     setCurrentPage(page);
     try {
       localStorage.setItem('lastPage', page);
+      if (page === 'inventory-detail' && params.id) {
+        localStorage.setItem('lastInventoryId', params.id);
+      }
+      if (page === 'return-management' && params.id) {
+        localStorage.setItem('lastReturnId', params.id);
+      }
+      if ((page === 'order-details' || page === 'bill-open') && params.orderId) {
+        localStorage.setItem('lastOrderId', params.orderId);
+      }
     } catch (e) {
       // ignore
     }
-    
+
     // Update browser URL
     const publicPages = ['login', 'forgot-password', 'verify-email', 'reset-password', 'unauthorized'];
     if (publicPages.includes(page)) {
       window.history.pushState({}, '', '/');
     } else {
-      window.history.pushState({}, '', `/${page}`);
+      let queryStr = '';
+      if (page === 'inventory-detail' && params.id) {
+        queryStr = `?id=${params.id}`;
+      } else if (page === 'return-management' && params.id) {
+        queryStr = `?id=${params.id}`;
+      } else if ((page === 'order-details' || page === 'bill-open') && params.orderId) {
+        queryStr = `?orderId=${params.orderId}`;
+      }
+      window.history.pushState({}, '', `/${page}${queryStr}`);
     }
 
     // Handle params if needed
@@ -130,6 +183,7 @@ function AppContent() {
     }
     if (page === 'supplier') {
       setSupplierFocusSection(params.focusSection || null);
+      setSupplierParams(params.supplierParams || null);
     }
   };
 
@@ -171,11 +225,11 @@ function AppContent() {
       )}
       {currentPage === 'supplier' && (
         <ProtectedRoute allowedRoles={['ADMIN']} onNavigate={navigateTo}>
-          <SupplierPage onNavigate={navigateTo} focusSection={supplierFocusSection} />
+          <SupplierPage onNavigate={navigateTo} focusSection={supplierFocusSection} supplierParams={supplierParams} />
         </ProtectedRoute>
       )}
       {currentPage === 'supplier-returns' && (
-        <ProtectedRoute allowedRoles={['ADMIN']} onNavigate={navigateTo}>
+        <ProtectedRoute allowedRoles={['ADMIN', 'CASHIER']} onNavigate={navigateTo}>
           <SupplierReturnsPage onNavigate={navigateTo} />
         </ProtectedRoute>
       )}
@@ -185,7 +239,7 @@ function AppContent() {
         </ProtectedRoute>
       )}
       {currentPage === 'return-management' && (
-        <ProtectedRoute allowedRoles={['ADMIN']} onNavigate={navigateTo}>
+        <ProtectedRoute allowedRoles={['CASHIER']} onNavigate={navigateTo}>
           <ReturnManagementPage onNavigate={navigateTo} returnId={selectedReturnId} />
         </ProtectedRoute>
       )}
@@ -209,6 +263,11 @@ function AppContent() {
       {currentPage === 'cash-counter' && (
         <ProtectedRoute allowedRoles={['CASHIER']} onNavigate={navigateTo}>
           <CashCounterPage onNavigate={navigateTo} />
+        </ProtectedRoute>
+      )}
+      {currentPage === 'supplier-payments' && (
+        <ProtectedRoute allowedRoles={['CASHIER']} onNavigate={navigateTo}>
+          <SupplierPaymentsPage onNavigate={navigateTo} />
         </ProtectedRoute>
       )}
 
