@@ -75,20 +75,28 @@ const SupplierPaymentsPage = ({ onNavigate }) => {
         const parseNotesToItems = (notesText) => {
             if (!notesText) return [];
             const regex = /(?:Purchased|Added)\s+(\d+(?:\.\d+)?)\s*x\s+(.*?)\s*\(Rs\.\s*(\d+(?:\.\d+)?)\s*each\)/gi;
-            const items = [];
+            const grouped = {};
             let match;
             while ((match = regex.exec(notesText)) !== null) {
                 const qty = parseFloat(match[1]);
                 const name = match[2].trim();
                 const price = parseFloat(match[3]);
-                items.push({
-                    name,
-                    qty,
-                    price: price.toLocaleString(),
-                    total: (qty * price).toLocaleString()
-                });
+                const key = `${name}_${price}`;
+                if (!grouped[key]) {
+                    grouped[key] = {
+                        name,
+                        qty: 0,
+                        price
+                    };
+                }
+                grouped[key].qty += qty;
             }
-            return items;
+            return Object.values(grouped).map(item => ({
+                name: item.name,
+                qty: item.qty,
+                price: item.price.toLocaleString(),
+                total: (item.qty * item.price).toLocaleString()
+            }));
         };
 
         const notesToParse = batch.notes || '';
