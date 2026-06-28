@@ -276,8 +276,9 @@ const ReportsPage = ({ onNavigate }) => {
                 const dueAmount = Math.max(netValue - paidAmount, 0);
                 
                 const grouped = (batch.inventory_batch_items || []).reduce((acc, item) => {
-                    const key = item.inventory_id || item.inventory?.ingredient_name || item.id;
+                    const id = item.inventory_id || item.inventory?.ingredient_name || item.id;
                     const price = Number(item.buying_price_at_time || 0);
+                    const key = `${id}_${price}`;
 
                     if (!acc[key]) {
                         acc[key] = {
@@ -791,10 +792,9 @@ supplier.email
 
                                 {activeTab === 'inventory' && (
                                     <div className="animate-fade-in">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
                                             {[
                                                 { label: 'Inventory Items', value: inventoryReport.summary.totalItems, sub: 'Active stock records' },
-                                                { label: 'Available Stock', value: inventoryReport.summary.totalStockQty, sub: 'Total quantity on hand' },
                                                 { label: 'Low Stock', value: inventoryReport.summary.lowStockCount, sub: 'Needs reorder attention' },
                                                 { label: 'Out of Stock', value: inventoryReport.summary.outOfStockCount, sub: 'Unavailable items' }
                                             ].map((item) => (

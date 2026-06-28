@@ -16,6 +16,18 @@ export default defineConfig(({ mode }) => {
       }),
       tailwindcss(),
     ],
+    build: {
+      chunkSizeWarningLimit: 2500,
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes("node_modules")) {
+              return "vendor";
+            }
+          },
+        },
+      },
+    },
     server: {
       port: 5173,
       proxy: {

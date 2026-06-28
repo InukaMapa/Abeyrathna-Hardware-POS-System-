@@ -63,8 +63,9 @@ const matchesDateFilter = (date, filter) => {
 
 const getBatchItems = (batch) => {
     const grouped = (batch.inventory_batch_items || []).reduce((acc, item) => {
-        const key = item.inventory_id || item.inventory?.ingredient_name || item.id;
+        const id = item.inventory_id || item.inventory?.ingredient_name || item.id;
         const price = Number(item.buying_price_at_time || 0);
+        const key = `${id}_${price}`;
 
         if (!acc[key]) {
             acc[key] = {
