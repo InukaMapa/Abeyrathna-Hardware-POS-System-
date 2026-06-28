@@ -154,29 +154,6 @@ const InventoryDetailPage = ({ inventoryId, onNavigate }) => {
                     >
                         <ArrowLeft className="w-4 h-4" /> Back to Products
                     </button>
-                    <button
-                        onClick={() => setShowReceiveModal(true)}
-                        className="inventory-action-btn"
-                        style={{
-                            minHeight: '36px',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '8px',
-                            padding: '0 16px',
-                            color: 'white',
-                            background: 'linear-gradient(135deg, var(--primary-green), var(--dark-green))',
-                            border: 'none',
-                            borderRadius: '20px',
-                            fontFamily: 'inherit',
-                            fontSize: '0.82rem',
-                            fontWeight: '600',
-                            cursor: 'pointer',
-                            boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-                        }}
-                    >
-                        <PackagePlus className="w-4 h-4" style={{ color: 'white', stroke: 'white' }} /> Receive Stock
-                    </button>
                 </div>
 
                 <div className="inventory-detail-grid">

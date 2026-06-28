@@ -144,16 +144,18 @@ const [paymentStats, setPaymentStats] = useState({ totalItems: 0, totalInvoiced:
                 || item.inventory?.item_code
                 || item.inventory?.ingredient_name
                 || item.id;
+            const price = parseFloat(item.buying_price_at_time || 0);
+            const key = `${id}_${price}`;
 
-            if (!acc[id]) {
-                acc[id] = {
+            if (!acc[key]) {
+                acc[key] = {
                     name: item.inventory?.ingredient_name || 'Unknown Item',
                     qty: 0,
-                    price: parseFloat(item.buying_price_at_time || 0)
+                    price: price
                 };
             }
 
-            acc[id].qty += parseFloat(item.quantity_added || 0);
+            acc[key].qty += parseFloat(item.quantity_added || 0);
             return acc;
         }, {});
 
@@ -1504,14 +1506,16 @@ useEffect(() => {
                                                                         || item.inventory?.item_code
                                                                         || item.inventory?.ingredient_name
                                                                         || item.id;
-                                                                    if (!acc[id]) {
-                                                                        acc[id] = {
+                                                                    const price = parseFloat(item.buying_price_at_time || 0);
+                                                                    const key = `${id}_${price}`;
+                                                                    if (!acc[key]) {
+                                                                        acc[key] = {
                                                                             name: item.inventory?.ingredient_name || 'Unknown Item',
                                                                             qty: 0,
-                                                                            price: item.buying_price_at_time || 0
+                                                                            price: price
                                                                         };
                                                                     }
-                                                                    acc[id].qty += parseFloat(item.quantity_added || 0);
+                                                                    acc[key].qty += parseFloat(item.quantity_added || 0);
                                                                     return acc;
                                                                 }, {});
 
