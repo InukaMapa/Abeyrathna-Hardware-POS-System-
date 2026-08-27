@@ -239,7 +239,7 @@ function AppContent() {
         </ProtectedRoute>
       )}
       {currentPage === 'return-management' && (
-        <ProtectedRoute allowedRoles={['CASHIER']} onNavigate={navigateTo}>
+        <ProtectedRoute allowedRoles={['ADMIN', 'CASHIER']} onNavigate={navigateTo}>
           <ReturnManagementPage onNavigate={navigateTo} returnId={selectedReturnId} />
         </ProtectedRoute>
       )}
@@ -266,7 +266,7 @@ function AppContent() {
         </ProtectedRoute>
       )}
       {currentPage === 'supplier-payments' && (
-        <ProtectedRoute allowedRoles={['CASHIER']} onNavigate={navigateTo}>
+        <ProtectedRoute allowedRoles={['ADMIN', 'CASHIER']} onNavigate={navigateTo}>
           <SupplierPaymentsPage onNavigate={navigateTo} />
         </ProtectedRoute>
       )}

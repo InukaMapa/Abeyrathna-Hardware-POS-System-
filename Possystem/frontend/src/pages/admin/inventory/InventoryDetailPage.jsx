@@ -275,7 +275,7 @@ const InventoryDetailPage = ({ inventoryId, onNavigate }) => {
                                             return (
                                                 <tr key={log.id}>
                                                     <td className="p-3 text-[#E0E0E0]">{new Date(log.created_at).toLocaleString()}</td>
-                                                    <td className="p-3 text-[#888]">{log.method === 'SUPPLIER' ? supplierName : '-'}</td>
+                                                    <td className="p-3 text-[#888]">{supplierName || log.supplier_name || '-'}</td>
                                                     <td className="p-3 font-semibold text-[#4ade80]">+{log.quantity} {item.unit}</td>
                                                     <td className="p-3 text-[#888]">
                                                         {buyingPrice !== null && buyingPrice !== undefined 

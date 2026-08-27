@@ -154,30 +154,105 @@ export const deleteSupplier = async (req, res) => {
     try {
         const { id } = req.params;
 
-        // 1. Check for pending payouts in supplier_payout_requests
-        const { data: pendingPayouts, error: payoutError } = await supabase
+        // 1. Check for pending payouts or unpaid balances in supplier_payout_requests
+        const { data: payouts, error: payoutError } = await supabase
             .from('supplier_payout_requests')
-            .select('id')
-            .eq('supplier_id', id)
-            .eq('status', 'PENDING');
+            .select('*')
+            .eq('supplier_id', id);
 
-        if (payoutError) throw payoutError;
+        if (payoutError && payoutError.code !== 'PGRST116') throw payoutError;
 
-        if (pendingPayouts && pendingPayouts.length > 0) {
-            return res.status(400).json({
-                message: 'Cannot delete supplier. Pending payments must be settled before removal.'
+        let totalPendingPayment = 0;
+        let pendingPayoutCount = 0;
+
+        if (payouts && payouts.length > 0) {
+            payouts.forEach(p => {
+                const amount = parseFloat(p.amount || 0);
+                let paidAmount = 0;
+                if (p.notes && typeof p.notes === 'string' && p.notes.startsWith('{')) {
+                    try {
+                        const parsed = JSON.parse(p.notes);
+                        paidAmount = parseFloat(parsed.paid_amount || 0);
+                    } catch (e) { }
+                }
+                if (p.status === 'COMPLETED' && paidAmount === 0) {
+                    paidAmount = amount;
+                }
+                const remaining = Math.max(0, amount - paidAmount);
+                if (p.status === 'PENDING' || remaining > 0) {
+                    pendingPayoutCount++;
+                    totalPendingPayment += remaining;
+                }
             });
         }
 
+        if (pendingPayoutCount > 0 && totalPendingPayment > 0) {
+            return res.status(400).json({
+                message: `Cannot delete supplier: Supplier has pending/outstanding payments of Rs. ${totalPendingPayment.toLocaleString('en-IN')}. All payments must be fully settled before deleting.`
+            });
+        }
 
+        // 2. Check for unresolved supplier returns
+        const { data: returns, error: returnError } = await supabase
+            .from('supplier_returns')
+            .select('id, return_number, status')
+            .eq('supplier_id', id);
 
-        // 3. Perform delete if allowed
+        if (returnError && returnError.code !== 'PGRST116') throw returnError;
+
+        const pendingReturns = (returns || []).filter(r => 
+            r.status !== 'COMPLETED' && r.status !== 'RESOLVED' && r.status !== 'CANCELLED'
+        );
+
+        if (pendingReturns.length > 0) {
+            return res.status(400).json({
+                message: `Cannot delete supplier: Supplier has ${pendingReturns.length} pending return request(s) (${pendingReturns.map(r => r.return_number).join(', ')}). All return requests must be resolved before deleting.`
+            });
+        }
+
+        // 3. Check for active stock in inventory linked to this supplier
+        const { data: inventoryItems, error: invError } = await supabase
+            .from('inventory')
+            .select('id, ingredient_name, quantity')
+            .eq('supplier_id', id);
+
+        if (invError && invError.code !== 'PGRST116') throw invError;
+
+        const activeStockItems = (inventoryItems || []).filter(item => parseFloat(item.quantity || 0) > 0);
+
+        if (activeStockItems.length > 0) {
+            return res.status(400).json({
+                message: `Cannot delete supplier: Supplier has ${activeStockItems.length} product(s) with active stock in inventory (${activeStockItems.slice(0, 3).map(i => i.ingredient_name).join(', ')}${activeStockItems.length > 3 ? '...' : ''}). Please clear or reassign stock first.`
+            });
+        }
+
+        // Unlink zero-stock inventory items from supplier
+        if (inventoryItems && inventoryItems.length > 0) {
+            await supabase
+                .from('inventory')
+                .update({ supplier_id: null })
+                .eq('supplier_id', id);
+        }
+
+        // Delete settled payouts and resolved returns linked to this supplier to prevent foreign key constraint issues
+        await supabase
+            .from('supplier_payout_requests')
+            .delete()
+            .eq('supplier_id', id);
+
+        await supabase
+            .from('supplier_returns')
+            .delete()
+            .eq('supplier_id', id);
+
+        // 4. Perform delete on suppliers table
         const { error } = await supabase
             .from('suppliers')
             .delete()
             .eq('id', id);
 
         if (error) throw error;
+
         res.status(200).json({ message: 'Supplier deleted successfully.' });
     } catch (err) {
         console.error('Error deleting supplier:', err);

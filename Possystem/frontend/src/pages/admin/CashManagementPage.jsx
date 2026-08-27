@@ -95,10 +95,6 @@ const CashManagementPage = ({ onNavigate }) => {
                                     <th>Date/Time</th>
                                     <th>Cashier</th>
                                     <th>Counter</th>
-                                    <th>Opening</th>
-                                    <th>Expected</th>
-                                    <th>Actual</th>
-                                    <th>Difference</th>
                                     <th>Status</th>
                                     <th className="cash-management-actions-heading">Action</th>
                                 </tr>
@@ -106,21 +102,17 @@ const CashManagementPage = ({ onNavigate }) => {
                             <tbody>
                                 {loading ? (
                                     <tr>
-                                        <td colSpan="9" className="cash-management-empty-cell">Loading shift history...</td>
+                                        <td colSpan="5" className="cash-management-empty-cell">Loading shift history...</td>
                                     </tr>
                                 ) : filteredShifts.length === 0 ? (
                                     <tr>
-                                        <td colSpan="9" className="cash-management-empty-cell">No shift records match the selected filters.</td>
+                                        <td colSpan="5" className="cash-management-empty-cell">No shift records match the selected filters.</td>
                                     </tr>
                                 ) : filteredShifts.map(shift => (
                                     <tr key={shift.shift_id}>
                                         <td className="cash-management-date-cell">{new Date(shift.start_time).toLocaleString()}</td>
                                         <td className="cash-management-cashier-cell">{shift.cashier_name || '-'}</td>
                                         <td>{shift.counter_number || '-'}</td>
-                                        <td className="cash-management-money-cell">{formatCurrency(shift.opening_cash)}</td>
-                                        <td className="cash-management-money-cell">{formatCurrency(shift.expected_cash)}</td>
-                                        <td className="cash-management-money-cell">{formatCurrency(shift.actual_cash)}</td>
-                                        <td className="cash-management-money-cell">{formatCurrency(shift.difference)}</td>
                                         <td>
                                             <span className={`cash-management-status ${getStatusClass(shift.status)}`}>
                                                 {formatStatus(shift.status)}

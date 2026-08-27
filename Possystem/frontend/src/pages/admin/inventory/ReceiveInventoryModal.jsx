@@ -5,12 +5,13 @@ import axios from 'axios';
 import { API_BASE_URL } from '../../../config/api';
 import '../../../styles/menu.css';
 
-const ReceiveInventoryModal = ({ onClose, onSuccess, initialItem }) => {
+const ReceiveInventoryModal = ({ onClose, onSuccess, initialItem, initialQuantity, isReplacement = false, returnId = null }) => {
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
         quantity: '',
         buying_price: '',
         selling_price: '',
+        payment_for_supplier: '',
         storage_location: '',
         expiry_date: '',
         notes: ''
@@ -28,11 +29,13 @@ const ReceiveInventoryModal = ({ onClose, onSuccess, initialItem }) => {
 
         setFormData(prev => ({
             ...prev,
-            buying_price: initialItem.buying_price || '',
-            selling_price: initialItem.selling_price || '',
-            storage_location: initialItem.storage_location || ''
+            quantity: isReplacement ? (initialQuantity || '') : (prev.quantity || ''),
+            buying_price: initialItem.buying_price !== undefined && initialItem.buying_price !== null ? initialItem.buying_price : '',
+            selling_price: initialItem.selling_price !== undefined && initialItem.selling_price !== null ? initialItem.selling_price : '',
+            storage_location: initialItem.storage_location || '',
+            payment_for_supplier: isReplacement ? '0' : (prev.payment_for_supplier || '')
         }));
-    }, [initialItem]);
+    }, [initialItem, initialQuantity, isReplacement]);
 
     // Active batches logic removed
 
@@ -50,11 +53,24 @@ const ReceiveInventoryModal = ({ onClose, onSuccess, initialItem }) => {
 
         setLoading(true);
         try {
-            await axios.post(`${API_BASE_URL}/inventory/${initialItem.id}/receive`, {
+            let performedBy = 'Admin';
+            try {
+                const storedUser = localStorage.getItem('user');
+                if (storedUser) {
+                    const parsedUser = JSON.parse(storedUser);
+                    performedBy = parsedUser.username || parsedUser.name || (parsedUser.role === 'CASHIER' ? 'Cashier' : 'Admin');
+                }
+            } catch (e) {}
+
+            const payload = {
                 ...formData,
-                method: 'SUPPLIER',
-                admin_name: 'Admin'
-            }, {
+                method: isReplacement ? 'REPLACEMENT' : 'SUPPLIER',
+                admin_name: performedBy,
+                is_replacement: isReplacement,
+                return_id: returnId
+            };
+
+            await axios.post(`${API_BASE_URL}/inventory/${initialItem.id}/receive`, payload, {
                 headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
             });
 
@@ -75,7 +91,7 @@ const ReceiveInventoryModal = ({ onClose, onSuccess, initialItem }) => {
                 <div className="add-inventory-header">
                     <div>
                         <PackagePlus size={17} />
-                        <h2>Receive Stock: {initialItem.ingredient_name}</h2>
+                        <h2>Add Stock: {initialItem.ingredient_name}</h2>
                     </div>
                     <button title="Close" onClick={onClose} className="add-inventory-close">
                         <X size={16} />
@@ -110,6 +126,8 @@ const ReceiveInventoryModal = ({ onClose, onSuccess, initialItem }) => {
                                             name="quantity"
                                             value={formData.quantity}
                                             onChange={handleChange}
+                                            disabled={isReplacement}
+                                            className={isReplacement ? 'bg-gray-100 cursor-not-allowed opacity-80' : ''}
                                             placeholder="0.00"
                                         />
                                     </div>
@@ -134,6 +152,8 @@ const ReceiveInventoryModal = ({ onClose, onSuccess, initialItem }) => {
                                             name="buying_price"
                                             value={formData.buying_price}
                                             onChange={handleChange}
+                                            disabled={isReplacement}
+                                            className={isReplacement ? 'bg-gray-100 cursor-not-allowed opacity-80' : ''}
                                             placeholder="Cost for this order"
                                         />
                                     </div>
@@ -150,6 +170,21 @@ const ReceiveInventoryModal = ({ onClose, onSuccess, initialItem }) => {
                                             placeholder="Retail price"
                                         />
                                     </div>
+                                </div>
+
+                                <div className="add-inventory-full">
+                                    <label>Payment for Supplier (Rs.)</label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        name="payment_for_supplier"
+                                        value={isReplacement ? '' : formData.payment_for_supplier}
+                                        onChange={handleChange}
+                                        disabled={isReplacement}
+                                        className={isReplacement ? 'bg-gray-100 cursor-not-allowed opacity-80' : ''}
+                                        placeholder={isReplacement ? 'Disabled for replacement item' : 'First payment for this stock (Optional)'}
+                                    />
                                 </div>
 
                                 <div>
@@ -196,11 +231,11 @@ const ReceiveInventoryModal = ({ onClose, onSuccess, initialItem }) => {
                         type="submit"
                         form="receiveInventoryForm"
                         disabled={loading}
-                        title="Receive Stock"
+                        title="Add Stock"
                         className="add-inventory-btn"
                     >
                         {loading ? <RefreshCw size={15} className="animate-spin" /> : <Save size={15} />}
-                        Receive Stock
+                        Add Stock
                     </button>
                 </div>
             </div>

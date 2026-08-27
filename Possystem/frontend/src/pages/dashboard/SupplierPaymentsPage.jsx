@@ -463,27 +463,75 @@ const SupplierPaymentsPage = ({ onNavigate }) => {
                                         <h4 style={{ margin: '0 0 10px 0', fontSize: '0.72rem', color: 'var(--primary-green)', fontWeight: '600', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px' }}>
                                             <CheckCircle2 size={14} /> Recent Payment Activity
                                         </h4>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <div>
-                                                <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: '700', color: 'var(--text-primary)' }}>Rs. {selectedPaymentProcessing.raw_paid_amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-                                                <p style={{ margin: '2px 0 0 0', fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
-                                                    {selectedPaymentProcessing.payment_date ? new Date(selectedPaymentProcessing.payment_date).toLocaleString() : 'Recorded'}
-                                                </p>
-                                            </div>
-                                            <div>
-                                                <span style={{
-                                                    fontSize: '0.68rem',
-                                                    fontWeight: '700',
-                                                    textTransform: 'uppercase',
-                                                    padding: '3px 8px',
-                                                    borderRadius: '4px',
-                                                    background: 'rgba(22, 163, 74, 0.08)',
-                                                    color: 'var(--primary-green)',
-                                                    border: '1px solid rgba(22, 163, 74, 0.15)'
-                                                }}>
-                                                    {selectedPaymentProcessing.latest_payout ? selectedPaymentProcessing.latest_payout.payout_number : 'PAID'}
-                                                </span>
-                                            </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                            {(() => {
+                                                let parsedPayments = [];
+                                                if (selectedPaymentProcessing.notes && selectedPaymentProcessing.notes.startsWith('{')) {
+                                                    try {
+                                                        const parsed = JSON.parse(selectedPaymentProcessing.notes);
+                                                        parsedPayments = parsed.payments || [];
+                                                    } catch (e) {}
+                                                }
+
+                                                if (parsedPayments.length > 0) {
+                                                    return parsedPayments.map((p, idx) => {
+                                                        const isAdmin = p.paid_by_role === 'Admin';
+                                                        const idTag = p.paid_by_id ? ` (ID: ${p.paid_by_id})` : '';
+                                                        const labelText = `${p.paid_by_role || 'Paid'}: ${p.paid_by_name || 'System'}${idTag}`;
+                                                        return (
+                                                            <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: '#fff', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
+                                                                <div>
+                                                                    <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: '700', color: 'var(--text-primary)' }}>
+                                                                        Rs. {parseFloat(p.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                                                    </p>
+                                                                    <p style={{ margin: '2px 0 0 0', fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
+                                                                        {p.date ? new Date(p.date).toLocaleString() : 'Recorded'} · via {p.method || 'Cash'}
+                                                                    </p>
+                                                                </div>
+                                                                <div style={{ textAlign: 'right' }}>
+                                                                    <span style={{
+                                                                        fontSize: '0.68rem',
+                                                                        fontWeight: '700',
+                                                                        padding: '4px 10px',
+                                                                        borderRadius: '6px',
+                                                                        background: isAdmin ? 'rgba(147, 51, 234, 0.1)' : 'rgba(59, 130, 246, 0.1)',
+                                                                        color: isAdmin ? '#7e22ce' : '#2563eb',
+                                                                        border: isAdmin ? '1px solid rgba(147, 51, 234, 0.2)' : '1px solid rgba(59, 130, 246, 0.2)',
+                                                                        textTransform: 'uppercase'
+                                                                    }}>
+                                                                        {labelText}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    });
+                                                }
+
+                                                return (
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                        <div>
+                                                            <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: '700', color: 'var(--text-primary)' }}>Rs. {selectedPaymentProcessing.raw_paid_amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                                                            <p style={{ margin: '2px 0 0 0', fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
+                                                                {selectedPaymentProcessing.payment_date ? new Date(selectedPaymentProcessing.payment_date).toLocaleString() : 'Recorded'}
+                                                            </p>
+                                                        </div>
+                                                        <div>
+                                                            <span style={{
+                                                                fontSize: '0.68rem',
+                                                                fontWeight: '700',
+                                                                textTransform: 'uppercase',
+                                                                padding: '3px 8px',
+                                                                borderRadius: '4px',
+                                                                background: 'rgba(22, 163, 74, 0.08)',
+                                                                color: 'var(--primary-green)',
+                                                                border: '1px solid rgba(22, 163, 74, 0.15)'
+                                                            }}>
+                                                                {selectedPaymentProcessing.latest_payout ? selectedPaymentProcessing.latest_payout.payout_number : 'PAID'}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })()}
                                         </div>
                                     </div>
                                 )}
