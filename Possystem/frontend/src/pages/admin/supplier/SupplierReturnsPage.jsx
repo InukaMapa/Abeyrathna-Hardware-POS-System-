@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import DashboardLayout from '../../../components/layout/DashboardLayout';
 import {
@@ -60,6 +60,45 @@ const SupplierReturnsPage = ({ onNavigate }) => {
     const [selectedItemInfo, setSelectedItemInfo] = useState(null);
     const [selectedTierId, setSelectedTierId] = useState('');
 
+    // Searchable dropdown state for Create Return Form
+    const [supplierSearchText, setSupplierSearchText] = useState('');
+    const [isSupplierDropdownOpen, setIsSupplierDropdownOpen] = useState(false);
+    const supplierDropdownRef = useRef(null);
+
+    const [itemSearchText, setItemSearchText] = useState('');
+    const [isItemDropdownOpen, setIsItemDropdownOpen] = useState(false);
+    const itemDropdownRef = useRef(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (supplierDropdownRef.current && !supplierDropdownRef.current.contains(event.target)) {
+                setIsSupplierDropdownOpen(false);
+            }
+            if (itemDropdownRef.current && !itemDropdownRef.current.contains(event.target)) {
+                setIsItemDropdownOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, []);
+
+    const filteredSuppliers = suppliers.filter(s =>
+        (s.supplier_name || '').toLowerCase().includes((supplierSearchText || '').toLowerCase()) ||
+        (s.company_name || '').toLowerCase().includes((supplierSearchText || '').toLowerCase()) ||
+        (s.supplier_id || '').toLowerCase().includes((supplierSearchText || '').toLowerCase())
+    );
+
+    const supplierProducts = formData.supplier_id
+        ? inventoryItems.filter(i => i.supplier_id === formData.supplier_id)
+        : [];
+
+    const filteredItems = supplierProducts.filter(i =>
+        (i.ingredient_name || '').toLowerCase().includes((itemSearchText || '').toLowerCase()) ||
+        (i.item_code || '').toLowerCase().includes((itemSearchText || '').toLowerCase())
+    );
+
     useEffect(() => {
         fetchInitialData();
     }, []);
@@ -118,15 +157,26 @@ const SupplierReturnsPage = ({ onNavigate }) => {
         setSelectedBatchInfo(null);
     };
 
+    const completedReplacementsQty = returns
+        .filter(r => (r.resolution_type === 'REPLACEMENT' || r.replacement_status === 'COMPLETED') && (r.status === 'COMPLETED' || r.status === 'APPROVED'))
+        .reduce((sum, r) => sum + parseFloat(r.quantity || 0), 0);
+
+    const refundReturnsValue = returns
+        .filter(r => r.resolution_type === 'REFUND' || (r.refund_amount !== null && r.refund_amount !== undefined && parseFloat(r.refund_amount) > 0))
+        .reduce((sum, r) => {
+            if (r.refund_amount !== null && r.refund_amount !== undefined && parseFloat(r.refund_amount) > 0) {
+                return sum + parseFloat(r.refund_amount);
+            }
+            const parsed = parseReturnNotes(r.notes);
+            const price = parsed.buying_price !== null && parsed.buying_price !== undefined ? parsed.buying_price : (r.inventory?.buying_price || 0);
+            return sum + (parseFloat(r.quantity) * parseFloat(price));
+        }, 0);
+
     const stats = {
         total: returns.length,
-        value: returns.reduce((sum, r) => {
-            const parsed = parseReturnNotes(r.notes);
-            const price = parsed.buying_price !== null ? parsed.buying_price : (r.inventory?.buying_price || 0);
-            return sum + (parseFloat(r.quantity) * parseFloat(price));
-        }, 0),
+        value: refundReturnsValue,
         pending: returns.filter(r => r.status === 'PENDING').length,
-        replacements: returns.filter(r => r.replacement_status === 'PENDING').length
+        replacements: completedReplacementsQty
     };
 
     return (
@@ -174,12 +224,11 @@ const SupplierReturnsPage = ({ onNavigate }) => {
                 </div>
 
                 {/* Stats Widgets */}
-                <div className="grid grid-cols-4 gap-6 mb-10">
+                <div className="grid grid-cols-3 gap-6 mb-10">
                     {[
                         { label: 'Total Return Requests', val: stats.total, icon: <RefreshCcw className="text-[#D4AF37]" />, desc: 'All time logs' },
-                        { label: 'Returned Items Value', val: `Rs. ${stats.value.toLocaleString()}`, icon: <Package className="text-blue-500" />, desc: 'Physical asset value' },
-                        { label: 'Pending Supplier Approvals', val: stats.pending, icon: <Clock className="text-yellow-500" />, desc: 'Awaiting response' },
-                        { label: 'Replacement Pending', val: stats.replacements, icon: <ShieldCheck className="text-green-500" />, desc: 'Warranty track' }
+                        { label: 'Returned Items Value', val: `Rs. ${stats.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, icon: <Package className="text-blue-500" />, desc: 'Refunded cash value' },
+                        { label: 'Replacement Items', val: stats.replacements, icon: <ShieldCheck className="text-green-500" />, desc: 'Restocked replacements' }
                     ].map((stat, i) => (
                         <div key={i} className="supplier-returns-stat-card p-6 bg-[#111] border border-[#333] rounded-[20px] shadow-lg hover:-translate-y-1 hover:shadow-xl hover:border-[#16A34A]/50 transition-all duration-300 group relative overflow-hidden">
                             <div className="absolute -right-6 -top-6 w-24 h-24 bg-gradient-to-br from-transparent to-[#16A34A]/10 rounded-full blur-xl group-hover:bg-[#16A34A]/20 transition-all"></div>
@@ -281,15 +330,9 @@ const SupplierReturnsPage = ({ onNavigate }) => {
                                         <td className="px-4 py-3 text-right">
                                             <div className="flex justify-end text-white">
                                                 <button
-                                                    onClick={() => {
-                                                        if (userRole === 'CASHIER') {
-                                                            onNavigate('return-management', { id: ret.id });
-                                                        } else {
-                                                            setSelectedReturnView(ret);
-                                                        }
-                                                    }}
+                                                    onClick={() => onNavigate('return-management', { id: ret.id })}
                                                     className="supplier-returns-row-action"
-                                                    title={userRole === 'CASHIER' ? "Manage return resolution" : "View return details"}
+                                                    title="Manage return resolution"
                                                 >
                                                     <MoreVertical className="w-4 h-4" />
                                                 </button>
@@ -326,49 +369,146 @@ const SupplierReturnsPage = ({ onNavigate }) => {
                             <div className="supplier-returns-form-content overflow-y-auto p-8 pt-6 space-y-6 custom-scrollbar">
                                 <form onSubmit={handleCreateReturn} className="supplier-returns-form-body space-y-5">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                        <div>
-                            <label className="text-[11px] font-bold text-green-800 mb-2 block">Supplier Name</label>
-                            <select
-                                value={formData.supplier_id}
-                                onChange={(e) => {
-                                    const supplierId = e.target.value;
-                                    setFormData({ ...formData, supplier_id: supplierId, item_id: '', batch_id: '', quantity: '' });
-                                    setSelectedItemInfo(null);
-                                    setSelectedBatchInfo(null);
-                                    setSelectedTierId('');
-                                }}
-                                required
-                                className="w-full bg-white border border-green-200 rounded-xl px-4 py-3 text-sm text-gray-800 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 transition-all"
-                            >
-                                <option value="">-- Choose Supplier --</option>
-                                {suppliers.map(s => (
-                                    <option key={s.id} value={s.id}>{s.supplier_name}</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div>
-                            <label className="text-[11px] font-bold text-green-800 mb-2 block">Search &amp; Select Item</label>
-                            <select
-                                value={formData.item_id}
-                                onChange={(e) => handleItemSelect(e.target.value)}
-                                required
-                                disabled={!formData.supplier_id}
-                                className="w-full bg-white border border-green-200 rounded-xl px-4 py-3 text-sm text-gray-800 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 transition-all"
-                            >
-                                <option value="">
-                                    {formData.supplier_id ? '-- Choose Item --' : 'Select a supplier first'}
-                                </option>
-                                {inventoryItems
-                                    .filter(i => i.supplier_id === formData.supplier_id)
-                                    .map(i => (
-                                        <option key={i.id} value={i.id}>
-                                            {i.ingredient_name} ({i.item_code}) - Avail: {i.quantity}
-                                        </option>
-                                    ))}
-                                {formData.supplier_id && inventoryItems.filter(i => i.supplier_id === formData.supplier_id).length === 0 && (
-                                    <option disabled>No products available for the selected supplier.</option>
+                        <div className="relative" ref={supplierDropdownRef}>
+                            <label className="text-[11px] font-bold text-green-800 mb-2 block">Supplier Name *</label>
+                            <div className="relative">
+                                <input
+                                    type="text"
+                                    placeholder="Search supplier by name..."
+                                    value={isSupplierDropdownOpen ? supplierSearchText : (suppliers.find(s => s.id === formData.supplier_id)?.supplier_name || supplierSearchText)}
+                                    onFocus={() => {
+                                        setSupplierSearchText('');
+                                        setIsSupplierDropdownOpen(true);
+                                    }}
+                                    onChange={(e) => {
+                                        setSupplierSearchText(e.target.value);
+                                        setIsSupplierDropdownOpen(true);
+                                    }}
+                                    className="w-full bg-white border border-green-200 rounded-xl pl-10 pr-10 py-3 text-sm text-gray-800 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 transition-all"
+                                />
+                                <Search className="w-4 h-4 text-green-600 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                                {formData.supplier_id && (
+                                    <button
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setFormData({ ...formData, supplier_id: '', item_id: '', batch_id: '', quantity: '' });
+                                            setSelectedItemInfo(null);
+                                            setSelectedBatchInfo(null);
+                                            setSelectedTierId('');
+                                            setSupplierSearchText('');
+                                            setItemSearchText('');
+                                        }}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
+                                    >
+                                        <X className="w-3.5 h-3.5" />
+                                    </button>
                                 )}
-                            </select>
+                            </div>
+
+                            {isSupplierDropdownOpen && (
+                                <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-green-200 rounded-xl shadow-xl z-[10000] max-h-60 overflow-y-auto custom-scrollbar">
+                                    {filteredSuppliers.length > 0 ? (
+                                        filteredSuppliers.map(s => (
+                                            <div
+                                                key={s.id}
+                                                onClick={() => {
+                                                    setFormData({ ...formData, supplier_id: s.id, item_id: '', batch_id: '', quantity: '' });
+                                                    setSelectedItemInfo(null);
+                                                    setSelectedBatchInfo(null);
+                                                    setSelectedTierId('');
+                                                    setSupplierSearchText(s.supplier_name);
+                                                    setItemSearchText('');
+                                                    setIsSupplierDropdownOpen(false);
+                                                }}
+                                                className={`px-4 py-2.5 hover:bg-green-50 cursor-pointer transition-colors border-b border-gray-50 last:border-0 text-xs flex justify-between items-center ${formData.supplier_id === s.id ? 'bg-green-100/60 font-bold text-green-900' : 'text-gray-800'}`}
+                                            >
+                                                <div>
+                                                    <span className="font-bold block">{s.supplier_name}</span>
+                                                    {s.company_name && <span className="text-[10px] text-gray-500">{s.company_name}</span>}
+                                                </div>
+                                                {s.supplier_id && <span className="text-[9px] font-mono text-green-700 bg-green-50 px-1.5 py-0.5 rounded border border-green-200">{s.supplier_id}</span>}
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div className="p-3 text-xs text-gray-500 text-center">No suppliers match "{supplierSearchText}"</div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="relative" ref={itemDropdownRef}>
+                            <label className="text-[11px] font-bold text-green-800 mb-2 block">Search &amp; Select Item *</label>
+                            <div className="relative">
+                                <input
+                                    type="text"
+                                    disabled={!formData.supplier_id}
+                                    placeholder={formData.supplier_id ? "Search item by name or code..." : "Select a supplier first"}
+                                    value={isItemDropdownOpen ? itemSearchText : (inventoryItems.find(i => i.id === formData.item_id)?.ingredient_name || itemSearchText)}
+                                    onFocus={() => {
+                                        if (formData.supplier_id) {
+                                            setItemSearchText('');
+                                            setIsItemDropdownOpen(true);
+                                        }
+                                    }}
+                                    onChange={(e) => {
+                                        if (formData.supplier_id) {
+                                            setItemSearchText(e.target.value);
+                                            setIsItemDropdownOpen(true);
+                                        }
+                                    }}
+                                    className="w-full bg-white border border-green-200 rounded-xl pl-10 pr-10 py-3 text-sm text-gray-800 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 transition-all disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
+                                />
+                                <Search className="w-4 h-4 text-green-600 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                                {formData.item_id && (
+                                    <button
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setFormData({ ...formData, item_id: '', batch_id: '', quantity: '' });
+                                            setSelectedItemInfo(null);
+                                            setSelectedBatchInfo(null);
+                                            setSelectedTierId('');
+                                            setItemSearchText('');
+                                        }}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
+                                    >
+                                        <X className="w-3.5 h-3.5" />
+                                    </button>
+                                )}
+                            </div>
+
+                            {isItemDropdownOpen && formData.supplier_id && (
+                                <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-green-200 rounded-xl shadow-xl z-[10000] max-h-60 overflow-y-auto custom-scrollbar">
+                                    {filteredItems.length > 0 ? (
+                                        filteredItems.map(i => (
+                                            <div
+                                                key={i.id}
+                                                onClick={() => {
+                                                    handleItemSelect(i.id);
+                                                    setItemSearchText(i.ingredient_name);
+                                                    setIsItemDropdownOpen(false);
+                                                }}
+                                                className={`px-4 py-2.5 hover:bg-green-50 cursor-pointer transition-colors border-b border-gray-50 last:border-0 text-xs flex justify-between items-center ${formData.item_id === i.id ? 'bg-green-100/60 font-bold text-green-900' : 'text-gray-800'}`}
+                                            >
+                                                <div>
+                                                    <span className="font-bold block">{i.ingredient_name}</span>
+                                                    {i.item_code && <span className="text-[10px] font-mono text-gray-500">Code: {i.item_code}</span>}
+                                                </div>
+                                                <span className="text-[10px] font-bold text-green-700 bg-green-50 px-2 py-0.5 rounded border border-green-200">
+                                                    Avail: {i.quantity} {i.unit}
+                                                </span>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div className="p-3 text-xs text-gray-500 text-center">
+                                            {supplierProducts.length === 0
+                                                ? "No products registered for this supplier."
+                                                : `No items match "${itemSearchText}"`}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     </div>
 

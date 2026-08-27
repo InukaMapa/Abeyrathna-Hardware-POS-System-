@@ -4,13 +4,14 @@ import DashboardLayout from '../../../components/layout/DashboardLayout';
 import AddSupplierModal from './AddSupplierModal';
 import AddInventoryModal from '../inventory/AddInventoryModal';
 import ReceiveInventoryModal from '../inventory/ReceiveInventoryModal';
+import CategoryManagerModal from '../inventory/CategoryManagerModal';
 import {
     Plus, Search, User, Mail, Phone, Building, Edit,
     FileText, CreditCard, RefreshCcw, LayoutDashboard,
     TrendingUp, AlertCircle, CheckCircle2, MoreHorizontal,
     Eye, Filter, ArrowUpRight, ArrowLeft, ArrowRight, DollarSign, Package, Printer, MapPin, X,
     Receipt, Landmark, Activity, Download, Save, PackagePlus,
-    ToggleLeft, ToggleRight
+    ToggleLeft, ToggleRight, Settings, Trash2
 } from 'lucide-react';
 import { API_BASE_URL, ENDPOINTS } from '../../../config/api';
 import '../../../styles/dashboard.css';
@@ -38,6 +39,7 @@ const [paymentStats, setPaymentStats] = useState({ totalItems: 0, totalInvoiced:
     const [productSearchQuery, setProductSearchQuery] = useState('');
     const [loadingProducts, setLoadingProducts] = useState(false);
     const [categories, setCategories] = useState([]);
+    const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
     const [isAddProductModalOpen, setAddProductModalOpen] = useState(false);
     const [receivingItem, setReceivingItem] = useState(null);
     const [batchItems, setBatchItems] = useState({});
@@ -246,6 +248,8 @@ const [paymentStats, setPaymentStats] = useState({ totalItems: 0, totalInvoiced:
                                 amount: p.amount,
                                 status: 'ACCEPTED',
                                 method: p.method,
+                                paid_by_role: p.paid_by_role || 'Payment',
+                                paid_by_name: p.paid_by_name || '',
                                 raw_date: new Date(p.date)
                             });
                         });
@@ -303,6 +307,24 @@ const [paymentStats, setPaymentStats] = useState({ totalItems: 0, totalInvoiced:
             console.error('Failed to fetch suppliers:', err);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleDeleteSupplier = async (supplier) => {
+        if (!window.confirm(`Are you sure you want to delete supplier "${supplier.supplier_name}"?`)) {
+            return;
+        }
+
+        try {
+            await deleteSupplier(supplier.id);
+            alert('Supplier deleted successfully.');
+            fetchSuppliers();
+            if (selectedSupplier?.id === supplier.id) {
+                setSelectedSupplier(null);
+            }
+        } catch (error) {
+            console.error('Failed to delete supplier:', error);
+            alert(error.message || 'Failed to delete supplier.');
         }
     };
 
@@ -719,29 +741,60 @@ useEffect(() => {
                                             </div>
                                         </div>
                                     </div>
-
-                                    {selectedPaymentProcessing.raw_paid_amount > 0 && (
-                                        <div className="bg-green-500/5 border border-green-500/10 p-5 rounded-2xl animate-fade-in mb-6">
-                                            <h4 className="text-[9px] font-bold text-green-500/60 uppercase tracking-[0.2em] mb-3 flex items-center gap-2">
-                                                <CheckCircle2 className="w-3 h-3" /> Recent Payment Activity
-                                            </h4>
-                                            <div className="flex justify-between items-center">
-                                                <div>
-                                                    <p className="text-xs font-bold text-white/80">Rs. {(selectedPaymentProcessing.raw_paid_amount || 0).toLocaleString()}</p>
-                                                    <p className="text-[9px] text-white/30 uppercase mt-0.5">
-                                                        {selectedPaymentProcessing.payment_date ? new Date(selectedPaymentProcessing.payment_date).toLocaleString() : 'N/A'}
-                                                    </p>
-                                                </div>
-                                                <div className="text-right">
-                                                    <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded border ${selectedPaymentProcessing.latest_payout?.status === 'COMPLETED' ? 'bg-green-500/5 text-green-500/50 border-green-500/10' : 'bg-yellow-500/10 text-yellow-500/50 border-yellow-500/10 animate-pulse'}`}>
-                                                        {selectedPaymentProcessing.latest_payout
-                                                            ? `${selectedPaymentProcessing.latest_payout.payout_number} • ${selectedPaymentProcessing.latest_payout.status === 'PENDING' ? 'WAITING FOR CASHIER' : 'ACCEPTED BY CASHIER'}`
-                                                            : `via ${selectedPaymentProcessing.payment_method || 'System'}`}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
+                                     {selectedPaymentProcessing.raw_paid_amount > 0 && (
+                                         <div className="bg-green-500/5 border border-green-500/10 p-5 rounded-2xl animate-fade-in mb-6">
+                                             <h4 className="text-[9px] font-bold text-green-500/60 uppercase tracking-[0.2em] mb-3 flex items-center gap-2">
+                                                 <CheckCircle2 className="w-3 h-3 text-green-400" /> Payment Transactions History
+                                             </h4>
+                                             <div className="space-y-2.5">
+                                                 {(() => {
+                                                     let parsedPayments = [];
+                                                     if (selectedPaymentProcessing.notes && selectedPaymentProcessing.notes.startsWith('{')) {
+                                                         try {
+                                                             const parsed = JSON.parse(selectedPaymentProcessing.notes);
+                                                             parsedPayments = parsed.payments || [];
+                                                         } catch (e) {}
+                                                     }
+                                                     if (parsedPayments.length > 0) {
+                                                         return parsedPayments.map((p, idx) => (
+                                                             <div key={idx} className="flex justify-between items-center bg-black/20 p-3 rounded-xl border border-white/5 text-xs">
+                                                                 <div>
+                                                                     <span className="font-bold text-white/90">Rs. {parseFloat(p.amount || 0).toLocaleString()}</span>
+                                                                     <span className="text-[10px] text-white/40 block mt-0.5">
+                                                                         {p.date ? new Date(p.date).toLocaleString() : 'N/A'} · via {p.method || 'Cash'}
+                                                                     </span>
+                                                                 </div>
+                                                                 <div className="text-right">
+                                                                     <span className={`text-[9px] font-black uppercase tracking-wider px-2.5 py-1 rounded border ${
+                                                                         p.paid_by_role === 'Admin'
+                                                                             ? 'bg-purple-500/20 text-purple-300 border-purple-500/30'
+                                                                             : 'bg-blue-500/20 text-blue-300 border-blue-500/30'
+                                                                     }`}>
+                                                                         {p.paid_by_role || 'Paid'}: {p.paid_by_name || 'System'}
+                                                                     </span>
+                                                                 </div>
+                                                             </div>
+                                                         ));
+                                                     }
+                                                     return (
+                                                         <div className="flex justify-between items-center">
+                                                             <div>
+                                                                 <p className="text-xs font-bold text-white/80">Rs. {(selectedPaymentProcessing.raw_paid_amount || 0).toLocaleString()}</p>
+                                                                 <p className="text-[9px] text-white/30 uppercase mt-0.5">
+                                                                     {selectedPaymentProcessing.payment_date ? new Date(selectedPaymentProcessing.payment_date).toLocaleString() : 'N/A'}
+                                                                 </p>
+                                                             </div>
+                                                             <div className="text-right">
+                                                                 <span className="text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded border bg-green-500/10 text-green-400 border-green-500/20">
+                                                                     Processed
+                                                                 </span>
+                                                             </div>
+                                                         </div>
+                                                     );
+                                                 })()}
+                                             </div>
+                                         </div>
+                                     )}
 
                                     <div>
                                         <h4 className="text-[10px] font-bold text-white/20 uppercase tracking-[0.3em] mb-3">Itemized Details</h4>
@@ -804,10 +857,10 @@ useEffect(() => {
                                 <DollarSign className="w-4 h-4" /> Payments
                             </button>
                             <button
-                                onClick={() => onNavigate('supplier-returns')}
+                                onClick={() => setIsCategoryModalOpen(true)}
                                 className="supplier-header-action"
                             >
-                                <RefreshCcw className="w-4 h-4" /> Return Items
+                                <Settings className="w-4 h-4" /> Manage Categories
                             </button>
                             <button
                                 onClick={() => setAddModalOpen(true)}
@@ -973,6 +1026,13 @@ useEffect(() => {
                                                                          <ToggleLeft className="w-4 h-4" />
                                                                      )}
                                                                  </button>
+                                                                 <button
+                                                                     onClick={() => handleDeleteSupplier(supplier)}
+                                                                     className="p-3 bg-[#121212] text-[#A0A0A0] hover:text-[#ff5252] hover:border-[#ff5252]/50 border border-[#333] rounded-xl transition-all group-hover:bg-[#1E1E1E]"
+                                                                     title="Delete Supplier"
+                                                                 >
+                                                                     <Trash2 className="w-4 h-4" />
+                                                                 </button>
                                                             </div>
                                                         </td>
                                                     </tr>
@@ -996,6 +1056,15 @@ useEffect(() => {
 
 
                         {/* --- Modals Component System --- */}
+
+                        {isCategoryModalOpen && (
+                            <CategoryManagerModal
+                                isOpen={isCategoryModalOpen}
+                                onClose={() => setIsCategoryModalOpen(false)}
+                                categories={categories}
+                                onCategoryChange={fetchCategories}
+                            />
+                        )}
 
                         {isAddModalOpen && (
                             <AddSupplierModal
@@ -1279,7 +1348,7 @@ useEffect(() => {
                                                                                         setReceivingItem(item);
                                                                                     }}
                                                                                     className="inventory-action-btn"
-                                                                                    title="Receive Stock"
+                                                                                    title="Add Stock"
                                                                                 >
                                                                                     <PackagePlus size={15} />
                                                                                 </button>
@@ -1685,11 +1754,6 @@ useEffect(() => {
                                                             <h4 className="text-[13px] font-bold text-green-900 uppercase tracking-[0.3em]">Supplier Ledger</h4>
                                                             <p className="text-[10px] text-gray-500 mt-1 uppercase font-bold tracking-widest">Statement of all financial dealings</p>
                                                         </div>
-                                                        <div className="flex gap-2">
-                                                            <button className="p-2 bg-green-50 text-green-700 hover:bg-green-100 rounded-xl transition-all border border-green-200" title="Download Ledger">
-                                                                <Download className="w-4 h-4" />
-                                                            </button>
-                                                        </div>
                                                     </div>
 
                                                     <div className="bg-white border border-green-200 rounded-[24px] overflow-hidden shadow-sm">
@@ -1717,14 +1781,25 @@ useEffect(() => {
                                                                             </span>
                                                                         </td>
                                                                         <td className="px-6 py-5">
-                                                                            <div className="flex items-center gap-3">
-                                                                                <div className={`p-2 rounded-xl ${entry.type === 'PAYMENT' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
-                                                                                    {entry.type === 'PAYMENT' ? <CreditCard className="w-3.5 h-3.5" /> : <FileText className="w-3.5 h-3.5" />}
-                                                                                </div>
-                                                                                <span className="text-[11px] font-bold text-gray-700 uppercase tracking-widest">
-                                                                                    {entry.type === 'PAYMENT' ? `Settlement via ${entry.method}` : 'Stock Procurement'}
-                                                                                </span>
-                                                                            </div>
+                                                                             <div className="flex items-center gap-3">
+                                                                                 <div className={`p-2 rounded-xl ${entry.type === 'PAYMENT' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                                                                                     {entry.type === 'PAYMENT' ? <CreditCard className="w-3.5 h-3.5" /> : <FileText className="w-3.5 h-3.5" />}
+                                                                                 </div>
+                                                                                 <div>
+                                                                                     <span className="text-[11px] font-bold text-gray-700 uppercase tracking-widest block">
+                                                                                         {entry.type === 'PAYMENT' ? `Settlement via ${entry.method}` : 'Stock Procurement'}
+                                                                                     </span>
+                                                                                     {entry.type === 'PAYMENT' && entry.paid_by_role && (
+                                                                                         <span className={`inline-block mt-0.5 text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${
+                                                                                             entry.paid_by_role === 'Admin'
+                                                                                                 ? 'bg-purple-100 text-purple-800 border-purple-200'
+                                                                                                 : 'bg-blue-100 text-blue-800 border-blue-200'
+                                                                                         }`}>
+                                                                                             {entry.paid_by_role}: {entry.paid_by_name || 'System'}
+                                                                                         </span>
+                                                                                     )}
+                                                                                 </div>
+                                                                             </div>
                                                                         </td>
                                                                         <td className={`px-6 py-5 text-right font-black text-sm ${entry.type === 'PAYMENT' ? 'text-green-600' : 'text-gray-800'}`}>
                                                                             {entry.type === 'PAYMENT' ? '-' : '+'} Rs. {entry.amount.toLocaleString()}

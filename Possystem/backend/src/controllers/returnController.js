@@ -10,7 +10,7 @@ export const fetchSupplierReturns = async (req, res) => {
 
         let query = supabase
             .from('supplier_returns')
-            .select('*, inventory(ingredient_name, item_code, buying_price), suppliers(supplier_name)')
+            .select('*, inventory(id, ingredient_name, item_code, buying_price, selling_price, quantity, unit, storage_location), suppliers(supplier_name)')
             .order('created_at', { ascending: false });
 
         if (supplier_id && supplier_id !== 'all') {
@@ -186,66 +186,6 @@ export const resolveSupplierReturn = async (req, res) => {
 
         if (fetchErr) throw fetchErr;
 
-        let activeShift = null;
-
-        // If resolution is REFUND, locate the active cashier shift
-        if (resolution_type === 'REFUND') {
-            const { userId } = req.user || {};
-            let cashierName = '';
-            let cashierFullName = '';
-            
-            if (userId) {
-                const { data: userData } = await supabase
-                    .from('users')
-                    .select('username, full_name')
-                    .eq('id', userId)
-                    .maybeSingle();
-                    
-                if (userData) {
-                    cashierName = userData.username;
-                    cashierFullName = userData.full_name;
-                    
-                    let shiftQuery = supabase
-                        .from('cash_shifts')
-                        .select('shift_id')
-                        .in('status', ['OPEN', 'REPORT_SUBMITTED']);
-                    
-                    const conditions = [];
-                    if (cashierName) conditions.push(`cashier_name.ilike."${cashierName}"`);
-                    if (cashierFullName) conditions.push(`cashier_name.ilike."${cashierFullName}"`);
-                    if (conditions.length > 0) {
-                        shiftQuery = shiftQuery.or(conditions.join(','));
-                    }
-                    
-                    const { data: userShift } = await shiftQuery.maybeSingle();
-                    if (userShift) {
-                        activeShift = userShift;
-                    }
-                }
-            }
-
-            // Fallback: look for any open shift in the system if no personal open shift found
-            if (!activeShift) {
-                const { data: openShift } = await supabase
-                    .from('cash_shifts')
-                    .select('shift_id')
-                    .eq('status', 'OPEN')
-                    .order('start_time', { ascending: false })
-                    .limit(1)
-                    .maybeSingle();
-                if (openShift) {
-                    activeShift = openShift;
-                }
-            }
-
-            // If still no open shift found, block the refund
-            if (!activeShift) {
-                return res.status(400).json({
-                    message: 'Cannot resolve as cash refund. No active cashier shift is open to record the cash-in movement.'
-                });
-            }
-        }
-
         let mergedNotes = notes || ret.notes;
         if (ret.notes && ret.notes.startsWith('{')) {
             try {
@@ -257,7 +197,6 @@ export const resolveSupplierReturn = async (req, res) => {
             }
         }
 
-        // Direct COMPLETED status since refund is handled immediately
         const updates = {
             status: 'COMPLETED',
             resolution_type,
@@ -275,32 +214,6 @@ export const resolveSupplierReturn = async (req, res) => {
             .single();
 
         if (updateErr) throw updateErr;
-
-        // Record the cash_in movement under the active shift
-        if (resolution_type === 'REFUND' && activeShift) {
-            const { data: supplier } = await supabase
-                .from('suppliers')
-                .select('supplier_name')
-                .eq('id', ret.supplier_id)
-                .maybeSingle();
-                
-            const supplierName = supplier?.supplier_name || 'Supplier';
-            const reasonText = `Supplier Return Refund: ${supplierName} (Ref: ${ret.return_number})`;
-            
-            const { error: moveError } = await supabase
-                .from('cash_movements')
-                .insert({
-                    shift_id: activeShift.shift_id,
-                    type: 'cash_in',
-                    amount: parseFloat(refund_amount),
-                    reason: reasonText,
-                    time: new Date().toISOString()
-                });
-                
-            if (moveError) {
-                console.error('[RETURN RESOLUTION] Error recording automatic cash in movement:', moveError);
-            }
-        }
 
         res.status(200).json(updatedReturn);
     } catch (err) {

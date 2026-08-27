@@ -41,16 +41,16 @@ router.put('/batches/:id', protect, authorize('ADMIN'), updateEmulatedBatch);
 
 // Payout Routes
 router.get('/payout-requests', protect, authorize('ADMIN', 'CASHIER'), fetchPayoutRequests);
-router.post('/payout-requests/:id/complete', protect, authorize('CASHIER'), completePayoutRequest);
+router.post('/payout-requests/:id/complete', protect, authorize('ADMIN', 'CASHIER'), completePayoutRequest);
 // Return Routes
 router.get('/returns', protect, authorize('ADMIN', 'CASHIER'), fetchReturns);
 router.post('/returns', protect, authorize('ADMIN', 'CASHIER'), createReturn);
 router.put('/returns/:id/status', protect, authorize('ADMIN'), updateStatus);
-router.post('/returns/:id/resolve', protect, authorize('CASHIER'), resolveReturn);
+router.post('/returns/:id/resolve', protect, authorize('ADMIN', 'CASHIER'), resolveReturn);
 
 router.post('/', protect, authorize('ADMIN'), addInventoryItem); // Add new or add stock
 router.get('/', protect, authorize('ADMIN', 'CASHIER'), fetchInventoryList);
-router.post('/:id/receive', protect, authorize('ADMIN'), receiveInventoryStock); // Receive stock for existing item
+router.post('/:id/receive', protect, authorize('ADMIN', 'CASHIER'), receiveInventoryStock); // Receive stock for existing item
 router.get('/:id/validate-delete', protect, authorize('ADMIN'), validateDeleteInventoryItem); // Validate delete before confirmation
 router.get('/:id', protect, authorize('ADMIN', 'CASHIER'), fetchInventoryItemDetails); // Get details
 router.put('/:id', protect, authorize('ADMIN'), updateInventoryItem); // Edit details
