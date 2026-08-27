@@ -353,10 +353,9 @@ supplier.email
 
     const reportCategories = [
         { id: 'sales', name: 'Sales Reports', icon: DollarSign },
-        { id: 'inventory', name: 'Inventory Reports', icon: BarChart2 },
+        { id: 'inventory', name: 'Product Reports', icon: BarChart2 },
         { id: 'purchase', name: 'Purchase Reports', icon: Briefcase },
         { id: 'supplier', name: 'Supplier Reports', icon: Truck },
-        { id: 'cashier', name: 'Cashier Reports', icon: User },
     ];
     const cashierOptions = [
         'All Cashiers',
@@ -1164,21 +1163,6 @@ supplier.email
                                     </div>
                                 )}
 
-                                {activeTab === 'cashier' && (
-                                    <div className="flex flex-col items-center justify-center py-20 text-center">
-                                        <div className="w-20 h-20 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mb-4">
-                                            <User className="w-10 h-10" />
-                                        </div>
-                                        <h3 className="text-lg font-bold text-gray-800">Cashier Reports</h3>
-                                        <p className="text-gray-500 max-w-sm">To view cashier reports, open the cash counter management page.</p>
-                                        <button
-                                            onClick={() => onNavigate('cash-management')}
-                                            className="inventory-outline-btn report-page-btn mt-6 px-6 py-2"
-                                        >
-                                            View Cashier Reports
-                                        </button>
-                                    </div>
-                                )}
                             </div>
                         </div>
                     </div>

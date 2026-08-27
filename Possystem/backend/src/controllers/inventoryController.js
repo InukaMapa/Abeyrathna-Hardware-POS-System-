@@ -225,13 +225,51 @@ export const fetchInventoryItemDetails = async (req, res) => {
     }
 };
 
-const handleSupplierPaymentOnPurchase = async (supplierId, qty, price, itemName) => {
+const handleSupplierPaymentOnPurchase = async (supplierId, qty, price, itemName, initialPayment = 0, user = null) => {
     if (!supplierId || !qty || qty <= 0 || !price || price <= 0) return;
     
     try {
         const cost = parseFloat(qty) * parseFloat(price);
+        const firstPay = Math.max(0, parseFloat(initialPayment || 0));
         const newItemNote = `Purchased ${qty}x ${itemName} (Rs. ${price} each)`;
-        
+
+        const userRole = user?.role || 'ADMIN';
+        let paidByRole = userRole === 'ADMIN' ? 'Admin' : 'Cashier';
+        let paidByName = user?.username || paidByRole;
+
+        if (user?.userId) {
+            const { data: userData } = await supabase
+                .from('users')
+                .select('username, full_name, role')
+                .eq('id', user.userId)
+                .maybeSingle();
+
+            if (userData) {
+                paidByName = userData.full_name || userData.username;
+                if (userData.role) paidByRole = userData.role === 'ADMIN' ? 'Admin' : 'Cashier';
+            }
+        }
+
+        // If Cashier made initial payment, record cash out movement in active shift
+        if (firstPay > 0 && userRole === 'CASHIER' && paidByName) {
+            const { data: activeShift } = await supabase
+                .from('cash_shifts')
+                .select('shift_id')
+                .in('status', ['OPEN', 'REPORT_SUBMITTED'])
+                .or(`cashier_name.ilike."${paidByName}"`)
+                .maybeSingle();
+
+            if (activeShift) {
+                await supabase.from('cash_movements').insert({
+                    shift_id: activeShift.shift_id,
+                    type: 'cash_out',
+                    amount: firstPay,
+                    reason: `First Payment for Supplier on ${qty}x ${itemName}`,
+                    time: new Date().toISOString()
+                });
+            }
+        }
+
         // Find existing pending payout request for this supplier
         const { data: existingPayout, error: selectError } = await supabase
             .from('supplier_payout_requests')
@@ -245,39 +283,69 @@ const handleSupplierPaymentOnPurchase = async (supplierId, qty, price, itemName)
         if (selectError) {
             console.error('Error fetching existing payout request:', selectError);
         }
+
+        const firstPaymentObj = {
+            amount: firstPay,
+            method: 'Cash',
+            reference: 'First Payment',
+            notes: `First payment on purchase of ${qty}x ${itemName}`,
+            date: new Date().toISOString(),
+            paid_by_role: paidByRole,
+            paid_by_name: paidByName
+        };
         
         if (existingPayout) {
             // Update existing payout request amount and notes
             const currentAmount = parseFloat(existingPayout.amount || 0);
             const newAmount = currentAmount + cost;
             
-            let updatedNotes = '';
-            if (existingPayout.notes) {
-                if (existingPayout.notes.trim().startsWith('{')) {
-                    try {
-                        const parsed = JSON.parse(existingPayout.notes);
-                        let legacy = parsed.legacy_notes || '';
-                        if (legacy) {
-                            legacy += '\n' + newItemNote;
-                        } else {
-                            legacy = newItemNote;
-                        }
-                        parsed.legacy_notes = legacy;
-                        updatedNotes = JSON.stringify(parsed);
-                    } catch (e) {
-                        updatedNotes = existingPayout.notes + '\n' + newItemNote;
-                    }
-                } else {
-                    updatedNotes = existingPayout.notes + '\n' + newItemNote;
+            let currentPaid = 0;
+            let paymentsList = [];
+            let legacyNotes = '';
+
+            if (existingPayout.notes && existingPayout.notes.trim().startsWith('{')) {
+                try {
+                    const parsed = JSON.parse(existingPayout.notes);
+                    currentPaid = parseFloat(parsed.paid_amount || 0);
+                    paymentsList = Array.isArray(parsed.payments) ? parsed.payments : [];
+                    legacyNotes = parsed.legacy_notes || '';
+                } catch (e) {
+                    legacyNotes = existingPayout.notes || '';
                 }
             } else {
-                updatedNotes = newItemNote;
+                legacyNotes = existingPayout.notes || '';
             }
+
+            if (legacyNotes) {
+                legacyNotes += '\n' + newItemNote;
+            } else {
+                legacyNotes = newItemNote;
+            }
+
+            const newPaid = currentPaid + firstPay;
+            if (firstPay > 0) {
+                paymentsList.push(firstPaymentObj);
+            }
+
+            let updatedNotes = '';
+            if (newPaid > 0 || paymentsList.length > 0) {
+                updatedNotes = JSON.stringify({
+                    paid_amount: newPaid,
+                    payments: paymentsList,
+                    legacy_notes: legacyNotes
+                });
+            } else {
+                updatedNotes = legacyNotes;
+            }
+
+            const isCompleted = newPaid >= newAmount;
             
             const { error: updateError } = await supabase
                 .from('supplier_payout_requests')
                 .update({
                     amount: newAmount,
+                    status: isCompleted ? 'COMPLETED' : 'PENDING',
+                    completed_at: isCompleted ? new Date().toISOString() : null,
                     notes: updatedNotes
                 })
                 .eq('id', existingPayout.id);
@@ -288,15 +356,26 @@ const handleSupplierPaymentOnPurchase = async (supplierId, qty, price, itemName)
         } else {
             // Create a new payout request
             const payoutNumber = 'PAY-' + Date.now().toString().slice(-6) + Math.floor(1000 + Math.random() * 9000);
+            const isCompleted = firstPay >= cost;
             
+            let initialNotes = newItemNote;
+            if (firstPay > 0) {
+                initialNotes = JSON.stringify({
+                    paid_amount: firstPay,
+                    payments: [firstPaymentObj],
+                    legacy_notes: newItemNote
+                });
+            }
+
             const { error: insertError } = await supabase
                 .from('supplier_payout_requests')
                 .insert([{
                     payout_number: payoutNumber,
                     supplier_id: supplierId,
                     amount: cost,
-                    status: 'PENDING',
-                    notes: newItemNote,
+                    status: isCompleted ? 'COMPLETED' : 'PENDING',
+                    completed_at: isCompleted ? new Date().toISOString() : null,
+                    notes: initialNotes,
                     authorized_at: new Date().toISOString()
                 }]);
                 
@@ -331,7 +410,8 @@ export const addInventoryItem = async (req, res) => {
             admin_name,
             supplier_id,
             selling_price,
-            buying_price
+            buying_price,
+            payment_for_supplier
         } = req.body;
 
         if (!ingredient_name) {
@@ -468,7 +548,9 @@ export const addInventoryItem = async (req, res) => {
                 finalSupplierId, 
                 quantity, 
                 buying_price || (existing && existing.buying_price) || 0, 
-                ingredient_name
+                ingredient_name,
+                payment_for_supplier,
+                req.user
             );
         }
 
@@ -496,8 +578,17 @@ export const receiveInventoryStock = async (req, res) => {
             expiry_date,
             method,
             admin_name,
-            notes
+            notes,
+            payment_for_supplier,
+            is_replacement,
+            return_id
         } = req.body;
+
+        const isReplacementMode = is_replacement || method === 'REPLACEMENT';
+
+        if (req.user?.role === 'CASHIER' && !isReplacementMode) {
+            return res.status(403).json({ message: 'Access denied. Cashiers can only add stock for replacement items.' });
+        }
 
         const receivedQty = parseFloat(quantity);
         if (!Number.isFinite(receivedQty) || receivedQty <= 0) {
@@ -517,6 +608,29 @@ export const receiveInventoryStock = async (req, res) => {
         const previousQty = parseFloat(existing.quantity || 0);
         const newQty = previousQty + receivedQty;
 
+        let returnRecord = null;
+        let returnTierId = null;
+        if (return_id) {
+            try {
+                const { data: ret } = await supabase
+                    .from('supplier_returns')
+                    .select('*')
+                    .eq('id', return_id)
+                    .maybeSingle();
+                if (ret) {
+                    returnRecord = ret;
+                    if (ret.notes && ret.notes.startsWith('{')) {
+                        try {
+                            const parsedRetNotes = JSON.parse(ret.notes);
+                            returnTierId = parsedRetNotes.tier_id;
+                        } catch (e) {}
+                    }
+                }
+            } catch (e) {
+                console.error('Error fetching return record in receiveInventoryStock:', e);
+            }
+        }
+
         let tiers = [];
         if (existing.supplier_info) {
             try {
@@ -527,29 +641,57 @@ export const receiveInventoryStock = async (req, res) => {
             }
         }
 
-        // Fallback for existing stock if tiers total remaining is less than current quantity
-        const sumTiersQty = tiers.reduce((sum, t) => sum + parseFloat(t.quantity_remaining || 0), 0);
-        if (previousQty > sumTiersQty) {
-            const fallbackQty = previousQty - sumTiersQty;
-            tiers.unshift({
-                id: 'tier_fallback_' + Date.now(),
-                quantity: fallbackQty,
-                quantity_remaining: fallbackQty,
-                buying_price: parseFloat(existing.buying_price || 0),
-                selling_price: parseFloat(existing.selling_price || 0),
-                created_at: existing.last_updated || new Date()
+        if (isReplacementMode) {
+            let targetTier = null;
+            if (returnTierId) {
+                targetTier = tiers.find(t => t.id === returnTierId);
+            }
+            if (!targetTier) {
+                const targetPrice = parseFloat(buying_price || existing.buying_price || 0);
+                targetTier = tiers.find(t => parseFloat(t.buying_price || 0) === targetPrice);
+            }
+            if (!targetTier && tiers.length > 0) {
+                targetTier = tiers[tiers.length - 1];
+            }
+
+            if (targetTier) {
+                targetTier.quantity = parseFloat(targetTier.quantity || 0) + receivedQty;
+                targetTier.quantity_remaining = parseFloat(targetTier.quantity_remaining || 0) + receivedQty;
+            } else {
+                tiers.push({
+                    id: 'tier_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+                    quantity: receivedQty,
+                    quantity_remaining: receivedQty,
+                    buying_price: parseFloat(buying_price || existing.buying_price || 0) || 0,
+                    selling_price: parseFloat(selling_price || existing.selling_price || 0) || 0,
+                    created_at: new Date()
+                });
+            }
+        } else {
+            // Fallback for existing stock if tiers total remaining is less than current quantity
+            const sumTiersQty = tiers.reduce((sum, t) => sum + parseFloat(t.quantity_remaining || 0), 0);
+            if (previousQty > sumTiersQty) {
+                const fallbackQty = previousQty - sumTiersQty;
+                tiers.unshift({
+                    id: 'tier_fallback_' + Date.now(),
+                    quantity: fallbackQty,
+                    quantity_remaining: fallbackQty,
+                    buying_price: parseFloat(existing.buying_price || 0),
+                    selling_price: parseFloat(existing.selling_price || 0),
+                    created_at: existing.last_updated || new Date()
+                });
+            }
+
+            // Add the new load/tier
+            tiers.push({
+                id: 'tier_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+                quantity: receivedQty,
+                quantity_remaining: receivedQty,
+                buying_price: parseFloat(buying_price || existing.buying_price || 0) || 0,
+                selling_price: parseFloat(selling_price || existing.selling_price || 0) || 0,
+                created_at: new Date()
             });
         }
-
-        // Add the new load/tier
-        tiers.push({
-            id: 'tier_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
-            quantity: receivedQty,
-            quantity_remaining: receivedQty,
-            buying_price: parseFloat(buying_price || existing.buying_price || 0) || 0,
-            selling_price: parseFloat(selling_price || existing.selling_price || 0) || 0,
-            created_at: new Date()
-        });
 
         const updateData = {
             quantity: newQty,
@@ -571,8 +713,12 @@ export const receiveInventoryStock = async (req, res) => {
 
         if (updateError) throw updateError;
 
+        const defaultNote = isReplacementMode
+            ? (returnRecord ? `Replacement for return ${returnRecord.return_number}` : 'Replacement item restocked')
+            : 'Received new supplier order';
+
         const notesObj = {
-            notes: notes || 'Received new supplier order',
+            notes: notes || defaultNote,
             buying_price: buying_price || existing.buying_price || 0,
             selling_price: selling_price || existing.selling_price || 0
         };
@@ -583,7 +729,7 @@ export const receiveInventoryStock = async (req, res) => {
             quantity: receivedQty,
             previous_quantity: previousQty,
             new_quantity: newQty,
-            method: method || 'SUPPLIER',
+            method: method || (isReplacementMode ? 'REPLACEMENT' : 'SUPPLIER'),
             admin_name: admin_name || 'Admin',
             notes: JSON.stringify(notesObj)
         }]);
@@ -591,13 +737,34 @@ export const receiveInventoryStock = async (req, res) => {
         await inventoryService.updateInventoryQuantity(id, newQty);
 
         const finalSupplierId = existing.supplier_id;
-        if (finalSupplierId) {
+        if (finalSupplierId && !isReplacementMode) {
             await handleSupplierPaymentOnPurchase(
                 finalSupplierId, 
                 receivedQty, 
                 buying_price || existing.buying_price || 0, 
-                existing.ingredient_name
+                existing.ingredient_name,
+                payment_for_supplier,
+                req.user
             );
+        }
+
+        if (return_id || isReplacementMode) {
+            try {
+                const targetReturnId = return_id;
+                if (targetReturnId) {
+                    await supabase
+                        .from('supplier_returns')
+                        .update({
+                            status: 'COMPLETED',
+                            resolution_type: 'REPLACEMENT',
+                            resolved_at: new Date().toISOString(),
+                            notes: `Replacement item received into inventory (Qty: ${receivedQty}).`
+                        })
+                        .eq('id', targetReturnId);
+                }
+            } catch (rErr) {
+                console.error('Failed to update supplier_return record in receiveInventoryStock:', rErr);
+            }
         }
 
         res.status(200).json({
@@ -928,17 +1095,110 @@ export const fetchPayoutRequests = async (req, res) => {
 export const completePayoutRequest = async (req, res) => {
     try {
         const { id } = req.params;
+        const { role, username, userId } = req.user || {};
+        let paidByRole = role === 'ADMIN' ? 'Admin' : 'Cashier';
+        let paidByName = username || paidByRole;
+
+        let userFullName = '';
+        if (userId) {
+            const { data: userData } = await supabase
+                .from('users')
+                .select('username, full_name, role')
+                .eq('id', userId)
+                .maybeSingle();
+
+            if (userData) {
+                paidByName = userData.full_name || userData.username;
+                userFullName = userData.full_name || '';
+                if (userData.role) paidByRole = userData.role === 'ADMIN' ? 'Admin' : 'Cashier';
+            }
+        }
+
+        const { data: existingPayout } = await supabase
+            .from('supplier_payout_requests')
+            .select('*')
+            .eq('id', id)
+            .single();
+
+        if (!existingPayout) {
+            return res.status(404).json({ message: 'Payout request not found.' });
+        }
+
+        const payoutTotalAmount = parseFloat(existingPayout.amount || 0);
+        let currentPaid = 0;
+        let previousPayments = [];
+        let legacyNotes = '';
+
+        if (existingPayout.notes && existingPayout.notes.startsWith('{')) {
+            try {
+                const parsed = JSON.parse(existingPayout.notes);
+                currentPaid = parseFloat(parsed.paid_amount || 0);
+                previousPayments = parsed.payments || [];
+                legacyNotes = parsed.legacy_notes || '';
+            } catch (e) {
+                legacyNotes = existingPayout.notes;
+            }
+        } else {
+            legacyNotes = existingPayout.notes || '';
+        }
+
+        const remainingToPay = Math.max(0, payoutTotalAmount - currentPaid);
+        if (remainingToPay > 0) {
+            previousPayments.push({
+                amount: remainingToPay,
+                method: 'Cash',
+                reference: 'Full Settlement',
+                notes: 'Settled full payout balance',
+                date: new Date().toISOString(),
+                paid_by_role: paidByRole,
+                paid_by_name: paidByName
+            });
+        }
+
+        const notesJson = JSON.stringify({
+            paid_amount: payoutTotalAmount,
+            payments: previousPayments,
+            legacy_notes: legacyNotes
+        });
+
         const { data, error } = await supabase
             .from('supplier_payout_requests')
             .update({
                 status: 'COMPLETED',
-                completed_at: new Date().toISOString()
+                completed_at: new Date().toISOString(),
+                notes: notesJson
             })
             .eq('id', id)
             .select()
             .single();
 
         if (error) throw error;
+
+        // Automatically record as cash out ONLY IF THE USER IS A CASHIER
+        if (role === 'CASHIER' && remainingToPay > 0 && userId) {
+            let shiftQuery = supabase
+                .from('cash_shifts')
+                .select('shift_id')
+                .in('status', ['OPEN', 'REPORT_SUBMITTED']);
+
+            const conditions = [];
+            if (username) conditions.push(`cashier_name.ilike."${username}"`);
+            if (userFullName) conditions.push(`cashier_name.ilike."${userFullName}"`);
+            if (conditions.length > 0) shiftQuery = shiftQuery.or(conditions.join(','));
+
+            const { data: activeShift } = await shiftQuery.maybeSingle();
+
+            if (activeShift) {
+                await supabase.from('cash_movements').insert({
+                    shift_id: activeShift.shift_id,
+                    type: 'cash_out',
+                    amount: remainingToPay,
+                    reason: `Supplier Payout Completed (Ref: ${existingPayout.payout_number})`,
+                    time: new Date().toISOString()
+                });
+            }
+        }
+
         res.status(200).json(data);
     } catch (err) {
         console.error('Error completing payout:', err);
@@ -1117,12 +1377,34 @@ export const payEmulatedBatch = async (req, res) => {
         const newPaidAmount = currentPaid + newPaymentAmount;
         const isFullyPaid = newPaidAmount >= payoutTotalAmount;
 
+        const { role, username, userId } = req.user || {};
+        let paidByRole = role === 'ADMIN' ? 'Admin' : 'Cashier';
+        let paidByName = username || paidByRole;
+
+        let userFullName = '';
+        if (userId) {
+            const { data: userData } = await supabase
+                .from('users')
+                .select('username, full_name, role')
+                .eq('id', userId)
+                .maybeSingle();
+
+            if (userData) {
+                paidByName = userData.full_name || userData.username;
+                userFullName = userData.full_name || '';
+                if (userData.role) paidByRole = userData.role === 'ADMIN' ? 'Admin' : 'Cashier';
+            }
+        }
+
         const paymentRecord = {
             amount: newPaymentAmount,
             method: method || 'Cash',
             reference: reference || 'N/A',
             notes: notes || '',
-            date: new Date().toISOString()
+            date: new Date().toISOString(),
+            paid_by_role: paidByRole,
+            paid_by_name: paidByName,
+            paid_by_id: userId || ''
         };
 
         const updatedPayments = [...previousPayments, paymentRecord];
@@ -1149,69 +1431,54 @@ export const payEmulatedBatch = async (req, res) => {
 
         if (error) throw error;
 
-        // Automatically record as cash out if there is an active shift
-        const { role, username, userId } = req.user || {};
-        if (userId) {
-            let cashierName = username;
-            let cashierFullName = '';
+        // Automatically record as cash out ONLY IF THE USER IS A CASHIER
+        if (role === 'CASHIER' && userId) {
+            let shiftQuery = supabase
+                .from('cash_shifts')
+                .select('shift_id')
+                .in('status', ['OPEN', 'REPORT_SUBMITTED']);
             
-            const { data: userData } = await supabase
-                .from('users')
-                .select('username, full_name')
-                .eq('id', userId)
-                .maybeSingle();
-                
-            if (userData) {
-                cashierName = userData.username;
-                cashierFullName = userData.full_name;
+            const conditions = [];
+            if (username) {
+                conditions.push(`cashier_name.ilike."${username}"`);
+            }
+            if (userFullName) {
+                conditions.push(`cashier_name.ilike."${userFullName}"`);
+            }
+            if (conditions.length > 0) {
+                shiftQuery = shiftQuery.or(conditions.join(','));
+            }
+            
+            const { data: activeShift, error: shiftError } = await shiftQuery.maybeSingle();
+
+            if (shiftError) {
+                console.error('[PAYMENT] Error fetching active shift:', shiftError);
             }
 
-            if (cashierName) {
-                let shiftQuery = supabase
-                    .from('cash_shifts')
-                    .select('shift_id')
-                    .in('status', ['OPEN', 'REPORT_SUBMITTED']);
+            if (activeShift) {
+                const supplierName = payout.suppliers?.supplier_name || 'Supplier';
+                const notesDetail = notes ? ` - Notes: ${notes}` : '';
+                const reasonText = `Supplier Payment: ${supplierName} (Ref: ${payout.payout_number} via ${method || 'Cash'})${notesDetail}`;
+                const { error: moveError } = await supabase
+                    .from('cash_movements')
+                    .insert({
+                        shift_id: activeShift.shift_id,
+                        type: 'cash_out',
+                        amount: newPaymentAmount,
+                        reason: reasonText,
+                        time: new Date().toISOString()
+                    });
                 
-                const conditions = [];
-                if (cashierName) {
-                    conditions.push(`cashier_name.ilike."${cashierName}"`);
-                }
-                if (cashierFullName) {
-                    conditions.push(`cashier_name.ilike."${cashierFullName}"`);
-                }
-                if (conditions.length > 0) {
-                    shiftQuery = shiftQuery.or(conditions.join(','));
-                }
-                
-                const { data: activeShift, error: shiftError } = await shiftQuery.maybeSingle();
-
-                if (shiftError) {
-                    console.error('[PAYMENT] Error fetching active shift:', shiftError);
-                }
-
-                if (activeShift) {
-                    const supplierName = payout.suppliers?.supplier_name || 'Supplier';
-                    const notesDetail = notes ? ` - Notes: ${notes}` : '';
-                    const reasonText = `Supplier Payment: ${supplierName} (Ref: ${payout.payout_number} via ${method || 'Cash'})${notesDetail}`;
-                    const { error: moveError } = await supabase
-                        .from('cash_movements')
-                        .insert({
-                            shift_id: activeShift.shift_id,
-                            type: 'cash_out',
-                            amount: newPaymentAmount,
-                            reason: reasonText,
-                            time: new Date().toISOString()
-                        });
-                    
-                    if (moveError) {
-                        console.error('[PAYMENT] Error recording automatic cash out movement:', moveError);
-                    } else {
-                        console.log('[PAYMENT] Automatic cash out movement recorded successfully.');
-                    }
+                if (moveError) {
+                    console.error('[PAYMENT] Error recording automatic cash out movement:', moveError);
                 } else {
-                    console.log('[PAYMENT] No active shift found for cashier/admin, skipped automatic cash out.');
+                    console.log('[PAYMENT] Automatic cash out movement recorded for Cashier.');
                 }
+            } else {
+                console.log('[PAYMENT] No active shift found for cashier, skipped automatic cash out.');
             }
+        } else if (role === 'ADMIN') {
+            console.log('[PAYMENT] Payment made by Admin - skipped cash out for cashier cash counter.');
         }
 
         res.status(200).json({

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import DashboardLayout from '../../../components/layout/DashboardLayout';
+import ReceiveInventoryModal from '../inventory/ReceiveInventoryModal';
 import {
     RefreshCcw, ArrowLeft,
     FileText, Calendar, AlertCircle, ArrowRight,
@@ -20,7 +21,7 @@ const parseReturnNotes = (notesStr) => {
 const ReturnManagementPage = ({ onNavigate, returnId }) => {
     const [returnData, setReturnData] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [resolution, setResolution] = useState('REFUND'); // REFUND, CREDIT_NOTE, REPLACEMENT
+    const [resolution, setResolution] = useState('REFUND'); // REFUND, REPLACEMENT
     const [processing, setProcessing] = useState(false);
 
     const [form, setForm] = useState({
@@ -213,16 +214,15 @@ const ReturnManagementPage = ({ onNavigate, returnId }) => {
                                 <div className="mb-6 rounded-lg border border-green-200 bg-green-50 px-4 py-3">
                                     <p className="text-sm font-bold text-green-800">Already Returned</p>
                                     <p className="mt-1 text-xs font-medium text-green-700">
-                                        This return is no longer pending, so another refund, credit note, or replacement cannot be created from it.
+                                        This return is no longer pending, so another refund or replacement cannot be created from it.
                                     </p>
                                 </div>
                             )}
 
                             {/* Resolution Options */}
-                            <div className="grid grid-cols-3 gap-3 mb-6">
+                            <div className="grid grid-cols-2 gap-3 mb-6">
                                 {[
                                     { id: 'REFUND', label: 'Refund Money', icon: DollarSign, desc: 'Create Cash-In Batch' },
-                                    { id: 'CREDIT_NOTE', label: 'Give Credit Note', icon: FileText, desc: 'Add balance to Profile' },
                                     { id: 'REPLACEMENT', label: 'Replace Products', icon: RefreshCcw, desc: 'Restock new batch' }
                                 ].map(opt => (
                                     <button
@@ -277,57 +277,16 @@ const ReturnManagementPage = ({ onNavigate, returnId }) => {
                                     </div>
                                 )}
 
-                                {resolution === 'CREDIT_NOTE' && (
-                                    <div className="space-y-4">
-                                        <div className="flex items-center gap-3 mb-2">
-                                            <FileText className="w-5 h-5 text-blue-500" />
-                                            <h4 className="text-sm font-bold text-gray-950">Credit Note Issuance</h4>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-4 font-semibold">
-                                            <div className="space-y-3">
-                                                <label className="text-xs text-gray-600 block">Credit Note Number</label>
-                                                <input
-                                                    type="text"
-                                                    value={form.credit_note_number}
-                                                    readOnly
-                                                    className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2.5 text-sm font-semibold text-gray-700 focus:outline-none"
-                                                />
-                                            </div>
-                                            <div className="space-y-3">
-                                                <label className="text-xs text-gray-600 block">Note Validity</label>
-                                                <div className="bg-white border border-gray-200 px-3 py-2.5 rounded-lg flex items-center justify-between">
-                                                    <span className="text-gray-700 text-xs font-semibold">Indefinite</span>
-                                                    <Calendar className="w-4 h-4 text-gray-500" />
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div className="p-3 bg-blue-50 border border-blue-100 rounded-lg font-semibold">
-                                            <p className="text-xs text-blue-800 leading-relaxed">
-                                                This credit will be stored in the supplier profile and can be used for future procurements.
-                                            </p>
-                                        </div>
-                                    </div>
-                                )}
-
                                 {resolution === 'REPLACEMENT' && (
-                                    <div className="space-y-4 text-center py-5">
-                                        <div className="w-12 h-12 bg-purple-50 rounded-lg flex items-center justify-center mx-auto mb-3 border border-purple-100">
-                                            <TrendingDown className="w-6 h-6 text-purple-600" />
+                                    <div className="space-y-4 text-center py-4">
+                                        <div className="w-12 h-12 bg-green-50 rounded-lg flex items-center justify-center mx-auto mb-2 border border-green-100">
+                                            <TrendingDown className="w-6 h-6 text-green-700" />
                                         </div>
                                         <div className="max-w-md mx-auto">
-                                            <h4 className="text-sm font-bold text-gray-950 mb-2">Inventory Restocking Workflow</h4>
-                                            <p className="text-xs text-gray-600 leading-relaxed mb-5">
-                                                By selecting Replacement, you will approve the return and be redirected to create a new Inventory Batch to represent the incoming replacement items.
+                                            <h4 className="text-sm font-bold text-gray-950 mb-1">Inventory Restocking Workflow</h4>
+                                            <p className="text-xs text-gray-600 leading-relaxed">
+                                                By selecting Replacement, you will restock the replacement item directly into your inventory and finalize the return request.
                                             </p>
-                                            <button
-                                                title="Initiate replacement batch"
-                                                disabled={!isPendingReturn}
-                                                onClick={() => setShowReplacementModal(true)}
-                                                className="bg-[#7C3AED] border border-[#7C3AED] px-4 py-2 rounded-lg text-xs font-semibold text-white hover:bg-[#6D28D9] transition-all flex items-center gap-2 mx-auto"
-                                            >
-                                                Initiate Replacement Batch
-                                                <ArrowRight className="w-4 h-4" />
-                                            </button>
                                         </div>
                                     </div>
                                 )}
@@ -354,15 +313,27 @@ const ReturnManagementPage = ({ onNavigate, returnId }) => {
                                     Cancel & Stay Pending
                                 </button>
                                 {isPendingReturn ? (
-                                    <button
-                                        title="Authorize final resolution"
-                                        disabled={processing}
-                                        onClick={handleResolve}
-                                        className="return-management-primary-btn"
-                                    >
-                                        {processing ? 'Processing...' : 'Authorize Final Resolution'}
-                                        <ArrowRight className="w-4 h-4" />
-                                    </button>
+                                    resolution === 'REFUND' ? (
+                                        <button
+                                            title="Authorize final resolution"
+                                            disabled={processing}
+                                            onClick={handleResolve}
+                                            className="return-management-primary-btn bg-green-700 hover:bg-green-800 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition-all shadow-md flex items-center gap-2 cursor-pointer"
+                                        >
+                                            {processing ? 'Processing...' : 'Authorize Final Resolution'}
+                                            <ArrowRight className="w-4 h-4" />
+                                        </button>
+                                    ) : (
+                                        <button
+                                            title="Confirm replacement item"
+                                            disabled={processing}
+                                            onClick={() => setShowReplacementModal(true)}
+                                            className="return-management-primary-btn bg-green-700 hover:bg-green-800 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition-all shadow-md flex items-center gap-2 cursor-pointer"
+                                        >
+                                            Confirm Replacement Item
+                                            <ArrowRight className="w-4 h-4" />
+                                        </button>
+                                    )
                                 ) : (
                                     <button
                                         title="Already returned"
@@ -383,135 +354,47 @@ const ReturnManagementPage = ({ onNavigate, returnId }) => {
                             <div>
                                 <p className="text-xs font-bold text-gray-950 mb-1">Standard Operating Procedure</p>
                                 <p className="text-xs text-gray-600 font-medium leading-relaxed">
-                                    Refunds require Cashier confirmation at the till. Credit Notes are immediate balance updates. Replacements create new inventory debt.
+                                    Refunds require Cashier confirmation at the till. Replacements create new inventory debt.
                                 </p>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-            {showReplacementModal && (
-                <ReplacementBatchModal
-                    returnData={returnData}
-                    onClose={() => setShowReplacementModal(false)}
-                    onSuccess={async (newBatch) => {
-                        // Mark return as resolved/completed
-                        try {
-                            const token = localStorage.getItem('token');
-                            await axios.post(`${API_BASE_URL}/inventory/returns/${returnId}/resolve`, {
-                                resolution_type: 'REPLACEMENT',
-                                notes: `Replacement batch ${newBatch.batch_number} created.`
-                            }, { headers: { Authorization: `Bearer ${token}` } });
+            {(() => {
+                if (!showReplacementModal || !returnData) return null;
+                const parsedReturn = parseReturnNotes(returnData.notes);
+                const returnBuyingPrice = parsedReturn.buying_price !== null && parsedReturn.buying_price !== undefined
+                    ? parsedReturn.buying_price
+                    : (returnData.inventory?.buying_price || 0);
+
+                const itemForModal = {
+                    ...returnData.inventory,
+                    id: returnData.item_id || returnData.inventory?.id,
+                    ingredient_name: returnData.inventory?.ingredient_name || 'Item',
+                    buying_price: returnBuyingPrice,
+                    selling_price: returnData.inventory?.selling_price || 0,
+                    quantity: returnData.inventory?.quantity || 0,
+                    unit: returnData.inventory?.unit || 'pcs',
+                    storage_location: returnData.inventory?.storage_location || ''
+                };
+
+                return (
+                    <ReceiveInventoryModal
+                        initialItem={itemForModal}
+                        initialQuantity={returnData.quantity}
+                        isReplacement={true}
+                        returnId={returnData.id}
+                        onClose={() => setShowReplacementModal(false)}
+                        onSuccess={() => {
                             setShowReplacementModal(false);
-                            alert(`Replacement Batch ${newBatch.batch_number} created and Return finalized.`);
+                            alert(`Replacement item stock added and Return ${returnData.return_number} finalized!`);
                             onNavigate('supplier-returns');
-                        } catch (err) { alert("Failed to finalize return: " + err.message); }
-                    }}
-                />
-            )}
+                        }}
+                    />
+                );
+            })()}
         </DashboardLayout>
-    );
-};
-
-const ReplacementBatchModal = ({ returnData, onClose, onSuccess }) => {
-    const [loading, setLoading] = useState(false);
-    const [batchData] = useState({
-        batch_number: 'REP-' + Math.floor(10000 + Math.random() * 90000),
-        supplier_id: returnData.supplier_id,
-        supplier_name: returnData.suppliers?.supplier_name,
-        date: new Date().toISOString().split('T')[0],
-        net_value: 0,
-        items: 1, // Usually 1 item for replacement or the same line item
-        item_name: returnData.inventory?.ingredient_name,
-        quantity: returnData.quantity
-    });
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setLoading(true);
-        try {
-            const token = localStorage.getItem('token');
-            const payload = {
-                batch_number: batchData.batch_number,
-                supplier_id: batchData.supplier_id,
-                batch_date: batchData.date,
-                net_value: 0,
-                total_items: 1,
-                batch_type: 'REPLACEMENT',
-                return_id: returnData.id
-            };
-
-            const response = await axios.post(`${API_BASE_URL}/inventory/batches`, payload, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-
-            onSuccess(response.data);
-        } catch (error) {
-            console.error('Error creating replacement batch:', error);
-            alert('Failed to create replacement batch.');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    return (
-        <div className="fixed inset-0 z-[5000] backdrop-blur-sm bg-black/40 p-4 sm:p-0 flex items-center justify-center">
-            <div className="bg-white w-full max-w-lg max-h-[90vh] flex flex-col rounded-lg shadow-2xl border border-green-100 overflow-hidden animate-scale-up relative">
-                <div className="overflow-y-auto p-6 w-full custom-scrollbar relative z-10 text-gray-950">
-                    <div className="flex justify-between items-center mb-6">
-                        <div>
-                            <h2 className="text-lg font-bold text-gray-950">Replacement Batch</h2>
-                            <p className="text-xs text-gray-500 font-medium mt-1">Authorized restocking session</p>
-                        </div>
-                    <button title="Close replacement batch" onClick={onClose} className="p-2 bg-gray-50 hover:bg-gray-100 rounded-lg text-gray-600 hover:text-gray-950 border border-gray-200 transition-all">
-                        <ArrowLeft className="w-5 h-5" />
-                    </button>
-                </div>
-
-                <form onSubmit={handleSubmit} className="space-y-5 relative">
-                    <div className="p-4 bg-purple-50 border border-purple-100 rounded-lg flex items-center gap-4">
-                        <div className="w-11 h-11 bg-white rounded-lg border border-purple-100 flex items-center justify-center">
-                            <RefreshCcw className="w-5 h-5 text-purple-600" />
-                        </div>
-                        <div>
-                            <p className="text-[10px] font-bold text-purple-700 uppercase tracking-wider">Resolution Item</p>
-                            <p className="text-sm font-bold text-gray-950 mt-1">{batchData.item_name}</p>
-                            <p className="text-xs font-medium text-gray-600 mt-0.5">{batchData.quantity} Units | {batchData.supplier_name}</p>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="form-group space-y-2">
-                            <label className="text-xs font-semibold text-gray-600">Batch Number</label>
-                            <div className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5 text-xs font-semibold text-gray-950">
-                                {batchData.batch_number}
-                            </div>
-                        </div>
-                        <div className="form-group space-y-2">
-                            <label className="text-xs font-semibold text-gray-600">Procurement Date</label>
-                            <div className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5 text-xs font-semibold text-gray-950">
-                                {batchData.date}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="form-group space-y-2">
-                        <label className="text-xs font-semibold text-gray-600">Net Transaction Value</label>
-                        <div className="bg-green-50 border border-green-100 rounded-lg px-3 py-2.5 text-sm font-bold text-green-800 flex items-center justify-between">
-                            <span>Rs. 0.00</span>
-                            <span className="text-[10px] font-semibold text-green-700">Non-monetary replacement</span>
-                        </div>
-                    </div>
-
-                    <div className="flex gap-4 pt-2">
-                        <button title="Authorize replacement batch" type="submit" disabled={loading} className="flex-1 py-2.5 bg-[#7C3AED] text-white font-semibold rounded-lg text-xs hover:bg-[#6D28D9] transition-all shadow-sm disabled:opacity-50 active:scale-[0.99]">
-                            {loading ? 'Finalizing...' : 'Authorize Replacement Batch'}
-                        </button>
-                    </div>
-                </form>
-                </div>
-            </div>
-        </div>
     );
 };
 

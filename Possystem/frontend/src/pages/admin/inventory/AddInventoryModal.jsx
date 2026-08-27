@@ -17,6 +17,7 @@ const AddInventoryModal = ({ onClose, onSuccess, onScanBillClick, categories = [
         batch_id: '',
         buying_price: '',
         selling_price: '',
+        payment_for_supplier: '',
         storage_location: '',
         expiry_date: '',
         supplier_id: initialSupplierId || ''
@@ -448,6 +449,14 @@ const AddInventoryModal = ({ onClose, onSuccess, onScanBillClick, categories = [
                                                 placeholder="Retail Price"
                                             />
                                         </div>
+                                    </div>
+                                    <div className="add-inventory-full">
+                                        <label>Payment for Supplier (Rs.)</label>
+                                        <input
+                                            type="number" step="0.01" min="0" name="payment_for_supplier"
+                                            value={formData.payment_for_supplier} onChange={handleChange}
+                                            placeholder="First payment for this product (Optional)"
+                                        />
                                     </div>
                                     <div>
                                         <label>Storage Location</label>

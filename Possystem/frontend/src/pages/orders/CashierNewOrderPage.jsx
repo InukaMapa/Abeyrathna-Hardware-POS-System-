@@ -109,6 +109,7 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
     const [priceModalItem, setPriceModalItem] = useState(null);
     const [selectedTierId, setSelectedTierId] = useState(null);
     const [modalQuantity, setModalQuantity] = useState(1);
+    const [overlimitModal, setOverlimitModal] = useState(null);
 
     // Initialize cart from editOrder if present
     useEffect(() => {
@@ -224,13 +225,47 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
     }, []);
 
     /* ── cart helpers ── */
+    const getAvailableTiersExcludingCart = (item, currentCartItems) => {
+        const tiers = getPriceTiers(item);
+        return tiers.filter(t => {
+            const qtyInCart = (currentCartItems || [])
+                .filter(c => c.id === item.id && c.batchId === t.id)
+                .reduce((sum, c) => sum + c.quantity, 0);
+            const limit = parseFloat(t.quantity_remaining || 0);
+            return (limit - qtyInCart) > 0;
+        });
+    };
+
     const addToCartWithTier = (item, tier, qty = 1) => {
+        const tierLimit = parseFloat(tier.quantity_remaining || 0);
+        const currentInCart = cartItems
+            .filter(c => c.id === item.id && c.batchId === tier.id)
+            .reduce((sum, c) => sum + c.quantity, 0);
+
+        const maxCanAdd = Math.max(0, tierLimit - currentInCart);
+
+        if (maxCanAdd <= 0) {
+            const otherTiers = getAvailableTiersExcludingCart(item, cartItems);
+            setOverlimitModal({
+                show: true,
+                item: item,
+                currentBatchId: tier.id,
+                currentLimit: tierLimit,
+                unit: item.unit || 'pcs',
+                hasOtherTiers: otherTiers.length > 0,
+                otherTiers: otherTiers
+            });
+            return;
+        }
+
+        const actualQtyToAdd = Math.min(qty, maxCanAdd);
+
         setCartItems(prev => {
             const existingIndex = prev.findIndex(c => c.id === item.id && c.batchId === tier.id);
             if (existingIndex > -1) {
                 return prev.map((c, index) =>
                     index === existingIndex
-                        ? { ...c, quantity: c.quantity + qty }
+                        ? { ...c, quantity: c.quantity + actualQtyToAdd }
                         : c
                 );
             }
@@ -241,7 +276,7 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
                 buyingPrice: parseFloat(tier.buying_price || item.buyingPrice || 0),
                 priceTiers: item.priceTiers || [],
                 image: item.image,
-                quantity: qty,
+                quantity: actualQtyToAdd,
                 batchId: tier.id,
                 discount: 0
             }];
@@ -249,14 +284,99 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
     };
 
     const changeQty = (id, batchId, delta) => {
-        setCartItems(prev => {
-            return prev.map(c => {
+        if (delta <= 0) {
+            setCartItems(prev => prev.map(c => {
                 if (c.id === id && c.batchId === batchId) {
                     return { ...c, quantity: Math.max(1, c.quantity + delta) };
                 }
                 return c;
+            }));
+            return;
+        }
+
+        const inventoryItem = inventoryItems.find(i => i.id === id);
+        const currentCartItem = cartItems.find(c => c.id === id && c.batchId === batchId);
+        if (!inventoryItem || !currentCartItem) return;
+
+        const tiers = getPriceTiers(inventoryItem);
+        const currentTier = tiers.find(t => t.id === batchId);
+        const tierMaxLimit = currentTier ? parseFloat(currentTier.quantity_remaining || 0) : parseFloat(inventoryItem.quantity || 0);
+
+        const proposedQty = currentCartItem.quantity + delta;
+
+        if (proposedQty > tierMaxLimit) {
+            const otherTiers = getAvailableTiersExcludingCart(inventoryItem, cartItems);
+            
+            setOverlimitModal({
+                show: true,
+                item: inventoryItem,
+                currentBatchId: batchId,
+                currentLimit: tierMaxLimit,
+                unit: inventoryItem.unit || 'pcs',
+                hasOtherTiers: otherTiers.length > 0,
+                otherTiers: otherTiers
             });
-        });
+            return;
+        }
+
+        setCartItems(prev => prev.map(c => {
+            if (c.id === id && c.batchId === batchId) {
+                return { ...c, quantity: c.quantity + delta };
+            }
+            return c;
+        }));
+    };
+
+    const handleDirectQtyInput = (id, batchId, rawValue) => {
+        const parsed = parseInt(rawValue, 10);
+        if (isNaN(parsed) || parsed < 1) {
+            setCartItems(prev => prev.map(c => {
+                if (c.id === id && c.batchId === batchId) {
+                    return { ...c, quantity: 1 };
+                }
+                return c;
+            }));
+            return;
+        }
+
+        const inventoryItem = inventoryItems.find(i => i.id === id);
+        const currentCartItem = cartItems.find(c => c.id === id && c.batchId === batchId);
+        if (!inventoryItem || !currentCartItem) return;
+
+        const tiers = getPriceTiers(inventoryItem);
+        const currentTier = tiers.find(t => t.id === batchId);
+        const tierMaxLimit = currentTier ? parseFloat(currentTier.quantity_remaining || 0) : parseFloat(inventoryItem.quantity || 0);
+
+        if (parsed > tierMaxLimit) {
+            setCartItems(prev => prev.map(c => {
+                if (c.id === id && c.batchId === batchId) {
+                    return { ...c, quantity: Math.max(1, tierMaxLimit) };
+                }
+                return c;
+            }));
+
+            const excessNeeded = Math.max(1, parsed - tierMaxLimit);
+            const otherTiers = getAvailableTiersExcludingCart(inventoryItem, cartItems);
+
+            setOverlimitModal({
+                show: true,
+                item: inventoryItem,
+                currentBatchId: batchId,
+                currentLimit: tierMaxLimit,
+                excessNeeded: excessNeeded,
+                unit: inventoryItem.unit || 'pcs',
+                hasOtherTiers: otherTiers.length > 0,
+                otherTiers: otherTiers
+            });
+            return;
+        }
+
+        setCartItems(prev => prev.map(c => {
+            if (c.id === id && c.batchId === batchId) {
+                return { ...c, quantity: parsed };
+            }
+            return c;
+        }));
     };
 
     const removeFromCart = (id, batchId) =>
@@ -269,7 +389,7 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
             return;
         }
 
-        const availableTiers = getAvailableTiers(item);
+        const availableTiers = getAvailableTiersExcludingCart(item, cartItems);
         if (availableTiers.length > 1) {
             setPriceModalItem(item);
             setSelectedTierId(availableTiers[0].id);
@@ -277,13 +397,15 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
         } else if (availableTiers.length === 1) {
             addToCartWithTier(item, availableTiers[0], 1);
         } else {
-            const fallbackTier = {
-                id: 'tier_init_' + item.id,
-                selling_price: item.price,
-                buying_price: item.buyingPrice,
-                quantity_remaining: 0
-            };
-            addToCartWithTier(item, fallbackTier, 1);
+            setOverlimitModal({
+                show: true,
+                item: item,
+                currentBatchId: null,
+                currentLimit: item.quantity || 0,
+                unit: item.unit || 'pcs',
+                hasOtherTiers: false,
+                otherTiers: []
+            });
         }
     };
 
@@ -773,20 +895,26 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
                                                     </td>
                                                     <td className="px-3 py-2 font-mono text-gray-500 text-[10px]">SYS-{item.id}</td>
                                                     <td className="px-3 py-2 text-center">
-                                                        <div className="flex items-center justify-center gap-1 bg-gray-50 border border-[#D7E7DC] rounded-md p-0.5 max-w-[80px] mx-auto">
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => changeQty(item.id, item.batchId, -1)}
-                                                                className="w-5 h-5 flex items-center justify-center rounded text-gray-400 hover:text-emerald-700 hover:bg-emerald-50 transition-colors font-bold text-[10px]"
-                                                            >-</button>
-                                                            <span className="w-6 text-center text-xs font-bold text-gray-700">{item.quantity}</span>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => changeQty(item.id, item.batchId, 1)}
-                                                                className="w-5 h-5 flex items-center justify-center rounded text-gray-400 hover:text-emerald-700 hover:bg-emerald-50 transition-colors font-bold text-[10px]"
-                                                            >+</button>
-                                                        </div>
-                                                    </td>
+                                                         <div className="flex items-center justify-center gap-0.5 bg-gray-50 border border-[#D7E7DC] rounded-md p-0.5 max-w-[90px] mx-auto">
+                                                             <button
+                                                                 type="button"
+                                                                 onClick={() => changeQty(item.id, item.batchId, -1)}
+                                                                 className="w-5 h-5 flex items-center justify-center rounded text-gray-400 hover:text-emerald-700 hover:bg-emerald-50 transition-colors font-bold text-[10px] shrink-0"
+                                                             >-</button>
+                                                             <input
+                                                                 type="number"
+                                                                 min="1"
+                                                                 value={item.quantity}
+                                                                 onChange={(e) => handleDirectQtyInput(item.id, item.batchId, e.target.value)}
+                                                                 className="w-8 text-center text-xs font-bold text-gray-800 bg-transparent outline-none p-0 focus:ring-1 focus:ring-emerald-500 rounded [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                             />
+                                                             <button
+                                                                 type="button"
+                                                                 onClick={() => changeQty(item.id, item.batchId, 1)}
+                                                                 className="w-5 h-5 flex items-center justify-center rounded text-gray-400 hover:text-emerald-700 hover:bg-emerald-50 transition-colors font-bold text-[10px] shrink-0"
+                                                             >+</button>
+                                                         </div>
+                                                     </td>
                                                     <td className="px-3 py-2 text-right">
                                                         <span className="font-mono text-gray-700 font-bold">Rs. {parseFloat(item.price).toFixed(2)}</span>
                                                     </td>
@@ -1149,21 +1277,34 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
                                 overflowY: 'auto',
                                 paddingRight: '2px'
                             }}>
-                                {getAvailableTiers(priceModalItem).map(tier => {
+                                {getPriceTiers(priceModalItem).map(tier => {
+                                    const qtyInCart = cartItems
+                                        .filter(c => c.id === priceModalItem.id && c.batchId === tier.id)
+                                        .reduce((sum, c) => sum + c.quantity, 0);
+                                    const totalLimit = parseFloat(tier.quantity_remaining || 0);
+                                    const remainingAvailable = Math.max(0, totalLimit - qtyInCart);
+                                    const isDisabled = remainingAvailable <= 0;
                                     const isSelected = selectedTierId === tier.id;
+
                                     return (
                                         <div
                                             key={tier.id}
-                                            onClick={() => setSelectedTierId(tier.id)}
+                                            onClick={() => {
+                                                if (!isDisabled) {
+                                                    setSelectedTierId(tier.id);
+                                                    setModalQuantity(1);
+                                                }
+                                            }}
                                             style={{
                                                 display: 'flex',
                                                 alignItems: 'center',
                                                 justifyContent: 'space-between',
                                                 padding: '12px 16px',
-                                                border: isSelected ? '1px solid #94a3b8' : '1px solid #e2e8f0',
+                                                border: isSelected ? '1px solid #166534' : '1px solid #e2e8f0',
                                                 borderRadius: '12px',
-                                                cursor: 'pointer',
-                                                backgroundColor: isSelected ? '#f8fafc' : '#ffffff',
+                                                cursor: isDisabled ? 'not-allowed' : 'pointer',
+                                                backgroundColor: isDisabled ? '#f8fafc' : isSelected ? '#f0fdf4' : '#ffffff',
+                                                opacity: isDisabled ? 0.55 : 1,
                                                 transition: 'all 0.15s ease',
                                                 boxShadow: isSelected ? '0 1px 3px rgba(0,0,0,0.02)' : 'none'
                                             }}
@@ -1173,34 +1314,34 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
                                                     width: '16px',
                                                     height: '16px',
                                                     borderRadius: '50%',
-                                                    border: '1px solid #cbd5e1',
+                                                    border: isDisabled ? '1px solid #cbd5e1' : isSelected ? '1px solid #166534' : '1px solid #cbd5e1',
                                                     display: 'flex',
                                                     alignItems: 'center',
                                                     justifyContent: 'center',
                                                     marginRight: '12px',
-                                                    backgroundColor: '#ffffff'
+                                                    backgroundColor: isDisabled ? '#f1f5f9' : '#ffffff'
                                                 }}>
-                                                    {isSelected && (
+                                                    {isSelected && !isDisabled && (
                                                         <div style={{
                                                             width: '8px',
                                                             height: '8px',
                                                             borderRadius: '50%',
-                                                            backgroundColor: '#475569'
+                                                            backgroundColor: '#166534'
                                                         }} />
                                                     )}
                                                 </div>
                                                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                                                     <p style={{
                                                         fontSize: '0.85rem',
-                                                        fontWeight: 400,
-                                                        color: '#0f172a',
+                                                        fontWeight: isSelected ? 600 : 400,
+                                                        color: isDisabled ? '#94a3b8' : '#0f172a',
                                                         margin: 0
                                                     }}>
                                                         Rs. {parseFloat(tier.selling_price || 0).toFixed(2)}
                                                     </p>
                                                     <p style={{
                                                         fontSize: '0.7rem',
-                                                        color: '#64748b',
+                                                        color: isDisabled ? '#cbd5e1' : '#64748b',
                                                         margin: '2px 0 0',
                                                         fontWeight: 400
                                                     }}>
@@ -1209,17 +1350,31 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
                                                 </div>
                                             </div>
                                             <div style={{ textAlign: 'right' }}>
-                                                <span style={{
-                                                    fontSize: '0.72rem',
-                                                    fontWeight: 400,
-                                                    color: '#475569',
-                                                    backgroundColor: '#f1f5f9',
-                                                    border: '1px solid #e2e8f0',
-                                                    padding: '3px 8px',
-                                                    borderRadius: '9999px'
-                                                }}>
-                                                    {tier.quantity_remaining} {priceModalItem.unit || 'pcs'} left
-                                                </span>
+                                                {isDisabled ? (
+                                                    <span style={{
+                                                        fontSize: '0.7rem',
+                                                        fontWeight: 700,
+                                                        color: '#991b1b',
+                                                        backgroundColor: '#fee2e2',
+                                                        border: '1px solid #fecaca',
+                                                        padding: '3px 8px',
+                                                        borderRadius: '9999px'
+                                                    }}>
+                                                        All in Cart ({qtyInCart}/{totalLimit})
+                                                    </span>
+                                                ) : (
+                                                    <span style={{
+                                                        fontSize: '0.72rem',
+                                                        fontWeight: 600,
+                                                        color: isSelected ? '#166534' : '#475569',
+                                                        backgroundColor: isSelected ? '#dcfce7' : '#f1f5f9',
+                                                        border: isSelected ? '1px solid #bbf7d0' : '1px solid #e2e8f0',
+                                                        padding: '3px 8px',
+                                                        borderRadius: '9999px'
+                                                    }}>
+                                                        {remainingAvailable} {priceModalItem.unit || 'pcs'} left
+                                                    </span>
+                                                )}
                                             </div>
                                         </div>
                                     );
@@ -1288,9 +1443,14 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
                                     <button
                                         type="button"
                                         onClick={() => {
-                                            const activeTier = getAvailableTiers(priceModalItem).find(t => t.id === selectedTierId);
-                                            const maxQty = activeTier ? parseFloat(activeTier.quantity_remaining || 0) : 9999;
-                                            setModalQuantity(q => Math.min(maxQty, q + 1));
+                                            const activeTier = getPriceTiers(priceModalItem).find(t => t.id === selectedTierId);
+                                            if (activeTier) {
+                                                const qtyInCart = cartItems
+                                                    .filter(c => c.id === priceModalItem.id && c.batchId === activeTier.id)
+                                                    .reduce((sum, c) => sum + c.quantity, 0);
+                                                const maxCanAdd = Math.max(0, parseFloat(activeTier.quantity_remaining || 0) - qtyInCart);
+                                                setModalQuantity(q => Math.min(maxCanAdd, q + 1));
+                                            }
                                         }}
                                         style={{
                                             cursor: 'pointer',
@@ -1375,6 +1535,112 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
                                 Add to Cart
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Overlimit Prompt / Confirmation Modal */}
+            {overlimitModal && overlimitModal.show && (
+                <div className="fixed inset-0 z-[5000] backdrop-blur-md bg-black/40 p-4 flex items-center justify-center animate-fade-in">
+                    <div className="bg-white w-full max-w-md rounded-[24px] shadow-2xl border border-green-200 overflow-hidden animate-scale-up text-gray-900 flex flex-col">
+                        
+                        {/* Modal Header matching clean green system design */}
+                        <div className="p-6 bg-[#C1DFCD] flex justify-between items-center border-b border-green-200">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-amber-500/10 rounded-xl text-amber-700">
+                                    <svg className="w-6 h-6 text-amber-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest">
+                                        {overlimitModal.hasOtherTiers ? 'Price Level Limit Reached' : 'All Stock Quantities Used'}
+                                    </h3>
+                                    <p className="text-xs font-black text-green-900 mt-0.5">
+                                        {overlimitModal.item.name}
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setOverlimitModal(null)}
+                                className="p-2 bg-green-700 text-white hover:bg-green-800 rounded-xl transition-all shadow-sm"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        {/* Modal Body */}
+                        <div className="p-6 space-y-4">
+                            {overlimitModal.hasOtherTiers ? (
+                                <div className="p-4 bg-[#F4F9F6] border border-green-200 rounded-2xl text-xs text-gray-800 space-y-2">
+                                    <p className="font-semibold leading-relaxed">
+                                        This price level has reached its maximum stock limit of <strong className="font-black text-green-900">{overlimitModal.currentLimit} {overlimitModal.unit}</strong> (all {overlimitModal.currentLimit} {overlimitModal.unit} are already added in your cart).
+                                    </p>
+                                    <p className="font-black text-green-800 pt-1">
+                                        You can add more items using another available price level. Would you like to select another price level?
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="p-4 bg-red-50/80 border border-red-200 rounded-2xl text-xs text-red-900 space-y-2">
+                                    <p className="font-bold leading-relaxed">
+                                        All available stock quantities for this item across all price levels have been added to your cart.
+                                    </p>
+                                    <p className="text-gray-600 font-medium">
+                                        No additional stock is available in any price level.
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Modal Actions */}
+                        <div className="p-4 bg-[#F4F9F6] border-t border-green-200 flex justify-end gap-3">
+                            {overlimitModal.hasOtherTiers ? (
+                                <>
+                                    <button
+                                        type="button"
+                                        onClick={() => setOverlimitModal(null)}
+                                        className="px-5 py-2.5 rounded-xl border border-gray-300 text-gray-700 font-bold text-xs hover:bg-gray-100 transition-all cursor-pointer"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const targetItem = overlimitModal.item;
+                                            const remainingTiers = overlimitModal.otherTiers;
+                                            const initialQty = overlimitModal.excessNeeded || 1;
+                                            setOverlimitModal(null);
+                                            if (remainingTiers && remainingTiers.length > 0) {
+                                                setPriceModalItem(targetItem);
+                                                setSelectedTierId(remainingTiers[0].id);
+                                                
+                                                const firstRemainingTier = remainingTiers[0];
+                                                const qtyInCart = cartItems
+                                                    .filter(c => c.id === targetItem.id && c.batchId === firstRemainingTier.id)
+                                                    .reduce((sum, c) => sum + c.quantity, 0);
+                                                const maxForTier = Math.max(1, parseFloat(firstRemainingTier.quantity_remaining || 0) - qtyInCart);
+                                                
+                                                setModalQuantity(Math.min(initialQty, maxForTier));
+                                            }
+                                        }}
+                                        className="px-6 py-2.5 rounded-xl bg-green-700 hover:bg-green-800 text-white font-bold text-xs transition-all shadow-md active:scale-95 cursor-pointer"
+                                    >
+                                        Select Another Price Level
+                                    </button>
+                                </>
+                            ) : (
+                                <button
+                                    type="button"
+                                    onClick={() => setOverlimitModal(null)}
+                                    className="px-6 py-2.5 rounded-xl bg-green-700 hover:bg-green-800 text-white font-bold text-xs transition-all shadow-md active:scale-95 cursor-pointer"
+                                >
+                                    OK / Got It
+                                </button>
+                            )}
+                        </div>
+
                     </div>
                 </div>
             )}
