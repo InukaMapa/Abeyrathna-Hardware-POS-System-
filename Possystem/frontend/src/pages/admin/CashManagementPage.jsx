@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
+import Pagination from '../../components/common/Pagination';
 import { API_BASE_URL } from '../../config/api';
 import ShiftReportModal from '../../components/cash/ShiftReportModal';
 import { Eye, RefreshCw } from 'lucide-react';
@@ -23,6 +24,7 @@ const CashManagementPage = ({ onNavigate }) => {
     const [shifts, setShifts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState({ date: '', cashier: '' });
+    const [currentPage, setCurrentPage] = useState(1);
     const [selectedShift, setSelectedShift] = useState(null);
     const [isReportModalOpen, setIsReportModalOpen] = useState(false);
 
@@ -45,12 +47,21 @@ const CashManagementPage = ({ onNavigate }) => {
         fetchShifts();
     }, []);
 
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [filter]);
+
     const filteredShifts = shifts.filter(shift => {
         const matchesDate = !filter.date || shift.start_time.includes(filter.date);
         const cashierName = shift.cashier_name || '';
         const matchesCashier = !filter.cashier || cashierName.toLowerCase().includes(filter.cashier.toLowerCase());
         return matchesDate && matchesCashier;
     });
+
+    const itemsPerPage = 12;
+    const totalCount = filteredShifts.length;
+    const totalPages = Math.ceil(totalCount / itemsPerPage) || 1;
+    const paginatedShifts = filteredShifts.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
     return (
         <DashboardLayout onNavigate={onNavigate} activePage="cash-management">
@@ -108,7 +119,7 @@ const CashManagementPage = ({ onNavigate }) => {
                                     <tr>
                                         <td colSpan="5" className="cash-management-empty-cell">No shift records match the selected filters.</td>
                                     </tr>
-                                ) : filteredShifts.map(shift => (
+                                ) : paginatedShifts.map(shift => (
                                     <tr key={shift.shift_id}>
                                         <td className="cash-management-date-cell">{new Date(shift.start_time).toLocaleString()}</td>
                                         <td className="cash-management-cashier-cell">{shift.cashier_name || '-'}</td>
@@ -136,6 +147,14 @@ const CashManagementPage = ({ onNavigate }) => {
                             </tbody>
                         </table>
                     </div>
+                    <Pagination
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        totalItems={totalCount}
+                        itemsPerPage={itemsPerPage}
+                        onPageChange={setCurrentPage}
+                        label="shifts"
+                    />
                 </div>
 
                 <ShiftReportModal

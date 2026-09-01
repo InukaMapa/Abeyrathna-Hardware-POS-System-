@@ -355,7 +355,10 @@ export const getShiftSummary = async (req, res) => {
         const expectedCash = openingCash + cashSales + cashIn - cashOut;
         const fullTotal = openingCash + cashSales + bankTransferTotal + cardPaymentTotal + cashIn - cashOut;
 
-        // Calculate total profit of the day for all sales in this shift
+        // Calculate total sales for all closed orders in this shift
+        const totalSales = closedOrders.reduce((sum, order) => sum + parseFloat(order.total_amount || 0), 0);
+
+        // Calculate total buying cost and profit (discount-adjusted, matching Sales Report)
         const itemIds = [...new Set(closedOrders.flatMap(order => 
             (order.order_items || []).map(item => item.item_id).filter(Boolean)
         ))];
@@ -371,7 +374,7 @@ export const getShiftSummary = async (req, res) => {
 
         const inventoryMap = new Map(inventoryItems.map(item => [item.id, parseFloat(item.buying_price || 0)]));
 
-        let totalProfit = 0;
+        let totalBuyingCost = 0;
         closedOrders.forEach(order => {
             (order.order_items || []).forEach(item => {
                 const batchAllocation = Array.isArray(item.selected_variants)
@@ -384,15 +387,12 @@ export const getShiftSummary = async (req, res) => {
                     : (inventoryMap.get(item.item_id) || 0);
 
                 const qty = parseFloat(item.quantity) || 0;
-                const subtotal = parseFloat(item.subtotal) || 0;
-                const sellingPrice = parseFloat(item.item_price) || (qty > 0 ? subtotal / qty : 0);
-                
-                const itemProfit = (sellingPrice - buyingPrice) * qty;
-                if (!isNaN(itemProfit)) {
-                    totalProfit += itemProfit;
-                }
+                totalBuyingCost += buyingPrice * qty;
             });
         });
+
+        // Profit = Total Net Sales - Total Buying Cost
+        const totalProfit = totalSales - totalBuyingCost;
 
         res.status(200).json({
             opening_cash: shift.opening_cash,
@@ -405,6 +405,7 @@ export const getShiftSummary = async (req, res) => {
             cash_out: cashOut,
             expected_cash: expectedCash,
             full_total: fullTotal,
+            total_sales: Number(totalSales.toFixed(2)),
             total_profit: Number(totalProfit.toFixed(2))
         });
     } catch (error) {

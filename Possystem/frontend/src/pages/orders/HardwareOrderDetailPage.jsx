@@ -22,7 +22,6 @@ const HardwareOrderDetailPage = ({ orderId, onNavigate }) => {
             setInventoryItems(itemsData);
         } catch (err) {
             console.error('Failed to load order details', err);
-            alert('Failed to load order details');
             onNavigate('orders');
         } finally {
             setLoading(false);
@@ -37,37 +36,7 @@ const HardwareOrderDetailPage = ({ orderId, onNavigate }) => {
         loadData();
     }, [orderId]);
 
-    const handleStatusChange = async (newStatus) => {
-        setActionLoading(true);
-        try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`${API_BASE_URL}/orders/${order.order_id}/status`, {
-                method: 'PATCH',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ status: newStatus })
-            });
-
-            if (response.ok) {
-                if (newStatus === 'PAID') {
-                    onNavigate('orders');
-                } else {
-                    await loadData();
-                }
-            } else {
-                alert('Failed to update order status');
-            }
-        } catch (error) {
-            alert('Error updating order status');
-        } finally {
-            setActionLoading(false);
-        }
-    };
-
     const handleCancelOrder = async () => {
-        if (!window.confirm('Are you absolutely sure you want to cancel and delete this order?')) return;
         setActionLoading(true);
         try {
             const token = localStorage.getItem('token');
@@ -76,20 +45,18 @@ const HardwareOrderDetailPage = ({ orderId, onNavigate }) => {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (response.ok) {
-                alert('Order cancelled completely.');
                 onNavigate('orders');
             } else {
-                alert('Failed to cancel order.');
+                console.error('Failed to cancel order.');
             }
         } catch (err) {
-            alert('Error cancelling order');
+            console.error('Error cancelling order', err);
         } finally {
             setActionLoading(false);
         }
     };
 
     const handleRemoveItem = async (orderItemId) => {
-        if (!window.confirm('Remove this item from the order?')) return;
         setActionLoading(true);
         try {
             const token = localStorage.getItem('token');
@@ -100,43 +67,10 @@ const HardwareOrderDetailPage = ({ orderId, onNavigate }) => {
             if (response.ok) {
                 await loadData();
             } else {
-                alert('Failed to remove item.');
+                console.error('Failed to remove item.');
             }
         } catch (err) {
-            alert('Error removing item.');
-        } finally {
-            setActionLoading(false);
-        }
-    };
-
-    const handleAddItem = async () => {
-        if (!selectedItemId) return alert('Please select an item');
-        if (addQuantity <= 0) return alert('Quantity must be at least 1');
-
-        setActionLoading(true);
-        try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`${API_BASE_URL}/orders/${order.order_id}/items`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    menu_item_id: selectedItemId,
-                    quantity: addQuantity,
-                    variants: []
-                })
-            });
-            if (response.ok) {
-                await loadData();
-                setSelectedItemId('');
-                setAddQuantity(1);
-            } else {
-                alert('Failed to add item.');
-            }
-        } catch (err) {
-            alert('Error adding item.');
+            console.error('Error removing item.', err);
         } finally {
             setActionLoading(false);
         }

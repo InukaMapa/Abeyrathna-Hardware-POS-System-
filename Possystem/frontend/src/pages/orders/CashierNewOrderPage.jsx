@@ -35,15 +35,16 @@ const getAvailableTiers = (item) => {
 };
 
 const calculateTieredLine = (item, quantity) => {
+    const validQty = Math.max(0, parseFloat(quantity) || 0);
     if (item.batchId) {
         const price = parseFloat(item.price || 0);
         return {
-            total: price * quantity,
-            allocations: [{ quantity, price }]
+            total: price * validQty,
+            allocations: [{ quantity: validQty, price }]
         };
     }
 
-    let remaining = quantity;
+    let remaining = validQty;
     let total = 0;
     const allocations = [];
 
@@ -230,7 +231,7 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
         return tiers.filter(t => {
             const qtyInCart = (currentCartItems || [])
                 .filter(c => c.id === item.id && c.batchId === t.id)
-                .reduce((sum, c) => sum + c.quantity, 0);
+                .reduce((sum, c) => sum + (parseFloat(c.quantity) || 0), 0);
             const limit = parseFloat(t.quantity_remaining || 0);
             return (limit - qtyInCart) > 0;
         });
@@ -240,7 +241,7 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
         const tierLimit = parseFloat(tier.quantity_remaining || 0);
         const currentInCart = cartItems
             .filter(c => c.id === item.id && c.batchId === tier.id)
-            .reduce((sum, c) => sum + c.quantity, 0);
+            .reduce((sum, c) => sum + (parseFloat(c.quantity) || 0), 0);
 
         const maxCanAdd = Math.max(0, tierLimit - currentInCart);
 
@@ -265,7 +266,7 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
             if (existingIndex > -1) {
                 return prev.map((c, index) =>
                     index === existingIndex
-                        ? { ...c, quantity: c.quantity + actualQtyToAdd }
+                        ? { ...c, quantity: (parseFloat(c.quantity) || 0) + actualQtyToAdd }
                         : c
                 );
             }
@@ -284,10 +285,14 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
     };
 
     const changeQty = (id, batchId, delta) => {
+        const currentCartItem = cartItems.find(c => c.id === id && c.batchId === batchId);
+        if (!currentCartItem) return;
+        const currentQty = parseInt(currentCartItem.quantity, 10) || 1;
+
         if (delta <= 0) {
             setCartItems(prev => prev.map(c => {
                 if (c.id === id && c.batchId === batchId) {
-                    return { ...c, quantity: Math.max(1, c.quantity + delta) };
+                    return { ...c, quantity: Math.max(1, currentQty + delta) };
                 }
                 return c;
             }));
@@ -295,14 +300,13 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
         }
 
         const inventoryItem = inventoryItems.find(i => i.id === id);
-        const currentCartItem = cartItems.find(c => c.id === id && c.batchId === batchId);
-        if (!inventoryItem || !currentCartItem) return;
+        if (!inventoryItem) return;
 
         const tiers = getPriceTiers(inventoryItem);
         const currentTier = tiers.find(t => t.id === batchId);
         const tierMaxLimit = currentTier ? parseFloat(currentTier.quantity_remaining || 0) : parseFloat(inventoryItem.quantity || 0);
 
-        const proposedQty = currentCartItem.quantity + delta;
+        const proposedQty = currentQty + delta;
 
         if (proposedQty > tierMaxLimit) {
             const otherTiers = getAvailableTiersExcludingCart(inventoryItem, cartItems);
@@ -321,18 +325,28 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
 
         setCartItems(prev => prev.map(c => {
             if (c.id === id && c.batchId === batchId) {
-                return { ...c, quantity: c.quantity + delta };
+                return { ...c, quantity: proposedQty };
             }
             return c;
         }));
     };
 
     const handleDirectQtyInput = (id, batchId, rawValue) => {
-        const parsed = parseInt(rawValue, 10);
-        if (isNaN(parsed) || parsed < 1) {
+        if (rawValue === '') {
             setCartItems(prev => prev.map(c => {
                 if (c.id === id && c.batchId === batchId) {
-                    return { ...c, quantity: 1 };
+                    return { ...c, quantity: '' };
+                }
+                return c;
+            }));
+            return;
+        }
+
+        const parsed = parseInt(rawValue, 10);
+        if (isNaN(parsed) || parsed < 0) {
+            setCartItems(prev => prev.map(c => {
+                if (c.id === id && c.batchId === batchId) {
+                    return { ...c, quantity: '' };
                 }
                 return c;
             }));
@@ -374,6 +388,18 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
         setCartItems(prev => prev.map(c => {
             if (c.id === id && c.batchId === batchId) {
                 return { ...c, quantity: parsed };
+            }
+            return c;
+        }));
+    };
+
+    const handleQtyBlur = (id, batchId) => {
+        setCartItems(prev => prev.map(c => {
+            if (c.id === id && c.batchId === batchId) {
+                const parsed = parseInt(c.quantity, 10);
+                if (isNaN(parsed) || parsed < 1) {
+                    return { ...c, quantity: 1 };
+                }
             }
             return c;
         }));
@@ -484,7 +510,7 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
 
     /* ── derived checkout math ── */
     const subtotal = cartItems.reduce((s, c) => s + calculateTieredLine(c, c.quantity).total, 0);
-    const cartCount = cartItems.reduce((s, c) => s + c.quantity, 0);
+    const cartCount = cartItems.reduce((s, c) => s + (parseInt(c.quantity, 10) || 0), 0);
     const totalItemDiscounts = cartItems.reduce((sum, item) => sum + (parseFloat(item.discount) || 0), 0);
     const priceAfterItemDiscounts = subtotal - totalItemDiscounts;
 
@@ -522,16 +548,24 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
 
     /* ── submit flows ── */
     const handleHoldOrder = async () => {
-        if (cartItems.length === 0) return;
+        if (submitting || cartItems.length === 0) return;
         setSubmitting(true);
         setSubmitError(null);
         try {
+            const totalDiscountAmount = overallDiscountAmount + totalItemDiscounts;
             const orderData = {
                 table_id: null,
                 customer_phone: customerPhone || null,
+                customer_name: customerName || null,
+                discount: totalDiscountAmount,
+                other_charges: parsedOtherCharges,
+                other_charges_reason: hasOtherCharges ? normalizedOtherChargesReason : null,
+                notes: notes || null,
+                final_total: grandTotal,
+                total_amount: grandTotal,
                 items: cartItems.map(c => ({
                     id: c.id,
-                    quantity: c.quantity,
+                    quantity: Math.max(1, parseInt(c.quantity, 10) || 1),
                     batchId: c.batchId,
                     variants: [],
                 })),
@@ -547,11 +581,8 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
                     const errPayload = await response.json().catch(() => ({}));
                     throw new Error(errPayload.error || 'Failed to update order cart.');
                 }
-                alert(`✅ Order #${editOrder.order_id} updated & saved on hold.`);
             } else {
-                const res = await createOrder(orderData);
-                const orderId = res.id || res.orderId || res.order_id;
-                alert(`✅ Order #${orderId || ''} saved on hold.`);
+                await createOrder(orderData);
             }
             onNavigate('orders');
         } catch (err) {
@@ -563,28 +594,30 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
     };
 
     const handleCompletePayment = async () => {
-        if (cartItems.length === 0) return;
+        if (submitting || cartItems.length === 0) return;
         if (hasOtherCharges && !normalizedOtherChargesReason) {
             setOtherChargesReasonError('Reason is required when other charges are added.');
             return;
-        }
-
-        if (totalReceived < grandTotal) {
-            if (!window.confirm(`Amount received (Rs. ${totalReceived.toFixed(2)}) is less than Grand Total (Rs. ${grandTotal.toFixed(2)}). Continue?`)) {
-                return;
-            }
         }
 
         setSubmitting(true);
         setSubmitError(null);
 
         try {
+            const totalDiscountAmount = overallDiscountAmount + totalItemDiscounts;
             const orderData = {
                 table_id: null,
                 customer_phone: customerPhone || null,
+                customer_name: customerName || null,
+                discount: totalDiscountAmount,
+                other_charges: parsedOtherCharges,
+                other_charges_reason: hasOtherCharges ? normalizedOtherChargesReason : null,
+                notes: notes || null,
+                final_total: grandTotal,
+                total_amount: grandTotal,
                 items: cartItems.map(c => ({
                     id: c.id,
-                    quantity: c.quantity,
+                    quantity: Math.max(1, parseInt(c.quantity, 10) || 1),
                     batchId: c.batchId,
                     variants: [],
                 })),
@@ -624,7 +657,7 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
                     final_total: grandTotal,
                     customer_phone: customerPhone,
                     customer_name: customerName,
-                    discount: overallDiscountAmount,
+                    discount: totalDiscountAmount,
                     other_charges: parsedOtherCharges,
                     other_charges_reason: hasOtherCharges ? normalizedOtherChargesReason : null,
                     payments: normalizedPayments,
@@ -637,7 +670,6 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
                 throw new Error(errPayload.error || 'Failed to process payment completion.');
             }
 
-            alert(`✅ Order #${orderId} completed successfully!`);
             onNavigate('bill-open', { orderId });
         } catch (err) {
             console.error('Payment flow failed:', err);
@@ -649,7 +681,6 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
 
     const handleCancelOrder = async () => {
         if (editOrder) {
-            if (!window.confirm('Cancel this bill? This completely deletes the order.')) return;
             setSubmitting(true);
             try {
                 const token = localStorage.getItem('token');
@@ -658,27 +689,25 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 if (response.ok) {
-                    alert('Order Cancelled.');
                     onNavigate('orders');
                 } else {
-                    alert('Failed to cancel.');
+                    setSubmitError('Failed to cancel order.');
                 }
             } catch (err) {
-                alert('Error cancelling order');
+                console.error('Cancel order error:', err);
+                setSubmitError('Error cancelling order');
             } finally {
                 setSubmitting(false);
             }
         } else {
-            if (window.confirm('Clear all items and reset order?')) {
-                setCartItems([]);
-                setCustomerName('');
-                setCustomerPhone('');
-                setOverallDiscountValue(0);
-                setOtherCharges(0);
-                setOtherChargesReason('');
-                setNotes('');
-                setPaymentMethods([{ id: Date.now(), method: 'Cash', amount: '' }]);
-            }
+            setCartItems([]);
+            setCustomerName('');
+            setCustomerPhone('');
+            setOverallDiscountValue(0);
+            setOtherCharges(0);
+            setOtherChargesReason('');
+            setNotes('');
+            setPaymentMethods([{ id: Date.now(), method: 'Cash', amount: '' }]);
         }
     };
 
@@ -905,7 +934,9 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
                                                                  type="number"
                                                                  min="1"
                                                                  value={item.quantity}
+                                                                 onFocus={(e) => e.target.select()}
                                                                  onChange={(e) => handleDirectQtyInput(item.id, item.batchId, e.target.value)}
+                                                                 onBlur={() => handleQtyBlur(item.id, item.batchId)}
                                                                  className="w-8 text-center text-xs font-bold text-gray-800 bg-transparent outline-none p-0 focus:ring-1 focus:ring-emerald-500 rounded [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                              />
                                                              <button
@@ -927,11 +958,17 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
                                                             min="0"
                                                             step="0.01"
                                                             className="w-full bg-gray-50 border border-[#D7E7DC] rounded px-1.5 py-0.5 text-right text-red-500 font-bold outline-none text-xs focus:border-red-500"
-                                                            value={item.discount || ''}
+                                                            value={item.discount === 0 ? '' : item.discount}
+                                                            onFocus={(e) => e.target.select()}
                                                             onChange={(e) => {
-                                                                const val = parseFloat(e.target.value) || 0;
+                                                                const val = e.target.value;
                                                                 setCartItems(prev => prev.map(c => 
                                                                     c.id === item.id && c.batchId === item.batchId ? { ...c, discount: val } : c
+                                                                ));
+                                                            }}
+                                                            onBlur={() => {
+                                                                setCartItems(prev => prev.map(c => 
+                                                                    c.id === item.id && c.batchId === item.batchId ? { ...c, discount: parseFloat(c.discount) || 0 } : c
                                                                 ));
                                                             }}
                                                             placeholder="0"
@@ -1027,6 +1064,7 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
                                         type="number" min="0" step="0.01"
                                         className="w-20 bg-gray-50 border border-[#D7E7DC] rounded px-1.5 py-0.5 text-right text-gray-800 font-mono font-bold outline-none text-xs"
                                         value={overallDiscountValue}
+                                        onFocus={(e) => e.target.select()}
                                         onChange={(e) => setOverallDiscountValue(e.target.value)}
                                         placeholder="0"
                                     />
@@ -1038,6 +1076,7 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
                                         type="number" min="0" step="0.01"
                                         className={`w-20 bg-gray-50 border rounded px-1.5 py-0.5 text-right text-emerald-600 font-mono font-bold outline-none text-xs ${otherChargesReasonError ? 'border-red-500' : 'border-[#D7E7DC]'}`}
                                         value={otherCharges}
+                                        onFocus={(e) => e.target.select()}
                                         onChange={(e) => {
                                             setOtherCharges(e.target.value);
                                             if ((parseFloat(e.target.value) || 0) <= 0) {
@@ -1102,6 +1141,7 @@ const CashierNewOrderPage = ({ onNavigate, editOrder }) => {
                                                 type="number" min="0" step="0.01"
                                                 className="flex-1 bg-gray-50 border border-[#D7E7DC] rounded px-2 py-1 text-right text-gray-800 font-mono font-bold outline-none text-xs"
                                                 value={pm.amount}
+                                                onFocus={(e) => e.target.select()}
                                                 onChange={e => updatePaymentMethod(pm.id, 'amount', e.target.value)}
                                                 placeholder={`Rs. ${grandTotal.toFixed(2)}`}
                                             />

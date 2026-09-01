@@ -4,7 +4,7 @@ import DashboardLayout from '../../../components/layout/DashboardLayout';
 import {
     RefreshCcw, Search, Plus, Filter, Package, Calendar,
     Truck, AlertCircle, CheckCircle2, ChevronRight, X, ArrowUpRight,
-    Clock, Archive, ShieldCheck, Download, MoreVertical, Trash2
+    Clock, Archive, ShieldCheck, Download, MoreVertical, Trash2, Eye
 } from 'lucide-react';
 import { API_BASE_URL } from '../../../config/api';
 import { useAuth } from '../../../context/AuthContext';
@@ -295,7 +295,11 @@ const SupplierReturnsPage = ({ onNavigate }) => {
                                 .filter(r => (filterStatus === 'all' || r.status === filterStatus))
                                 .filter(r => r.return_number.toLowerCase().includes(searchQuery.toLowerCase()) || r.inventory?.ingredient_name.toLowerCase().includes(searchQuery.toLowerCase()))
                                 .map((ret) => (
-                                    <tr key={ret.id} className="hover:bg-white/[0.02] transition-colors group">
+                                    <tr
+                                        key={ret.id}
+                                        onClick={() => onNavigate('return-management', { id: ret.id })}
+                                        className="hover:bg-white/[0.04] transition-colors group cursor-pointer"
+                                    >
                                         <td className="px-4 py-3">
                                             <div className="flex flex-col">
                                                 <span className="text-xs font-black text-white tracking-widest uppercase">{ret.return_number}</span>
@@ -330,11 +334,14 @@ const SupplierReturnsPage = ({ onNavigate }) => {
                                         <td className="px-4 py-3 text-right">
                                             <div className="flex justify-end text-white">
                                                 <button
-                                                    onClick={() => onNavigate('return-management', { id: ret.id })}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        onNavigate('return-management', { id: ret.id });
+                                                    }}
                                                     className="supplier-returns-row-action"
-                                                    title="Manage return resolution"
+                                                    title="View return details"
                                                 >
-                                                    <MoreVertical className="w-4 h-4" />
+                                                    <Eye className="w-4 h-4" />
                                                 </button>
                                             </div>
                                         </td>
