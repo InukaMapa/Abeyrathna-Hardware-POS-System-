@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
+import Pagination from '../../components/common/Pagination';
 import ShiftStartForm from '../../components/cash/ShiftStartForm';
 import CashierProfileCard from '../../components/cash/CashierProfileCard';
 import DenominationCounter from '../../components/cash/DenominationCounter';
@@ -31,6 +32,10 @@ const CashCounterPage = ({ onNavigate }) => {
     });
     const [electronicPaymentsLoading, setElectronicPaymentsLoading] = useState(false);
 
+    // Pagination states
+    const [paymentsPage, setPaymentsPage] = useState(1);
+    const [docsPage, setDocsPage] = useState(1);
+
     // For historical report pop-up
     const [historyReportCount, setHistoryReportCount] = useState(null);
     const [showHistoryModal, setShowHistoryModal] = useState(false);
@@ -42,6 +47,11 @@ const CashCounterPage = ({ onNavigate }) => {
     // For tracking latest values without triggering prop loops
     const liveCounts = React.useRef({});
     const isActiveWorkingShift = currentShift && ['OPEN', 'REPORT_SUBMITTED'].includes(currentShift.status);
+
+    useEffect(() => {
+        setPaymentsPage(1);
+        setDocsPage(1);
+    }, [activeCashTab, currentShift?.shift_id]);
 
     useEffect(() => {
         // Find active shift on mount
@@ -212,27 +222,21 @@ const CashCounterPage = ({ onNavigate }) => {
 
             setShowSubmitModal(false);
             setCurrentShift(data.shift); // Update local shift state to 'REPORT_SUBMITTED'
-            alert('Report submitted to admin for review. You can now end your shift if the cash is balanced.');
         } catch (err) {
-            alert('Error: ' + err.message);
+            console.error('Submit report error:', err);
         } finally {
             setSavingCount(false);
         }
     };
 
     const handleEndShift = async () => {
-        if (currentShift.status !== 'REPORT_SUBMITTED') {
-            alert('Please submit a report to admin before ending your shift.');
+        if (endingShift) return;
+        if (currentShift?.status !== 'REPORT_SUBMITTED') {
             return;
         }
 
         const difference = actualTotal - (summaryData?.expected_cash || 0);
         if (Math.abs(difference) > 0.01) {
-            alert('Shift cannot be ended unless cash is balanced (Difference must be 0).');
-            return;
-        }
-
-        if (!window.confirm('Are you sure you want to end your shift? You will be logged out after completion.')) {
             return;
         }
 
@@ -255,15 +259,11 @@ const CashCounterPage = ({ onNavigate }) => {
             const data = await response.json();
             if (!response.ok) throw new Error(data.error || 'Failed to end shift');
 
-            alert('Shift ended successfully! You will now be logged out.');
-
-            // Trigger logout logic (TopBar/AuthContext will handle the actual redirection)
-            // But here we can clear shift and redirect
             setCurrentShift(null);
             localStorage.removeItem('token'); // Forces logout
             window.location.reload();
         } catch (err) {
-            alert('Error: ' + err.message);
+            console.error('End shift error:', err);
         } finally {
             setEndingShift(false);
         }
@@ -484,40 +484,57 @@ const CashCounterPage = ({ onNavigate }) => {
                                         <div className="electronic-empty-state">
                                             No bank transfer or card payments recorded for this shift yet.
                                         </div>
-                                    ) : (
-                                        <div className="electronic-table-wrap">
-                                            <table className="electronic-payments-table">
-                                                <thead>
-                                                    <tr>
-                                                        <th>Order ID</th>
-                                                        <th>Payment Type</th>
-                                                        <th>Method</th>
-                                                        <th>Closed Time</th>
-                                                        <th>Order Total</th>
-                                                        <th>Transfer / Card Amount</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {electronicPayments.payments.map((payment, index) => (
-                                                        <tr key={`${payment.order_id}-${payment.method}-${index}`}>
-                                                            <td>#{payment.order_id}</td>
-                                                            <td>
-                                                                <span className={`electronic-method-pill ${payment.type === 'Card' ? 'is-card' : 'is-bank'}`}>
-                                                                    {payment.type}
-                                                                </span>
-                                                            </td>
-                                                            <td>{payment.method}</td>
-                                                            <td>{payment.closed_at ? new Date(payment.closed_at).toLocaleString() : '-'}</td>
-                                                            <td>Rs. {Number(payment.order_total || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                                                            <td className="electronic-amount-cell">
-                                                                Rs. {Number(payment.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                            </td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    )}
+                                    ) : (() => {
+                                        const paymentsPerPage = 10;
+                                        const totalPayments = electronicPayments.payments.length;
+                                        const totalPaymentsPages = Math.ceil(totalPayments / paymentsPerPage) || 1;
+                                        const paginatedPayments = electronicPayments.payments.slice((paymentsPage - 1) * paymentsPerPage, paymentsPage * paymentsPerPage);
+
+                                        return (
+                                            <>
+                                                <div className="electronic-table-wrap">
+                                                    <table className="electronic-payments-table">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>Order ID</th>
+                                                                <th>Payment Type</th>
+                                                                <th>Method</th>
+                                                                <th>Closed Time</th>
+                                                                <th>Order Total</th>
+                                                                <th>Transfer / Card Amount</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {paginatedPayments.map((payment, index) => (
+                                                                <tr key={`${payment.order_id}-${payment.method}-${index}`}>
+                                                                    <td>#{payment.order_id}</td>
+                                                                    <td>
+                                                                        <span className={`electronic-method-pill ${payment.type === 'Card' ? 'is-card' : 'is-bank'}`}>
+                                                                            {payment.type}
+                                                                        </span>
+                                                                    </td>
+                                                                    <td>{payment.method}</td>
+                                                                    <td>{payment.closed_at ? new Date(payment.closed_at).toLocaleString() : '-'}</td>
+                                                                    <td>Rs. {Number(payment.order_total || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                                                    <td className="electronic-amount-cell">
+                                                                        Rs. {Number(payment.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                                    </td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                                <Pagination
+                                                    currentPage={paymentsPage}
+                                                    totalPages={totalPaymentsPages}
+                                                    totalItems={totalPayments}
+                                                    itemsPerPage={paymentsPerPage}
+                                                    onPageChange={setPaymentsPage}
+                                                    label="electronic payments"
+                                                />
+                                            </>
+                                        );
+                                    })()}
                                 </div>
                             </div>
                         )}
@@ -537,63 +554,81 @@ const CashCounterPage = ({ onNavigate }) => {
                                         <h4>No saved documents yet</h4>
                                         <p>Save progress from the denomination counter to create your first cash count document.</p>
                                     </div>
-                                ) : (
-                                    <div className="saved-documents-table-wrap">
-                                        <table className="saved-documents-table">
-                                            <thead>
-                                                <tr>
-                                                    <th>Document</th>
-                                                    <th>Saved Time</th>
-                                                    <th>Total Cash</th>
-                                                    <th>Expected Cash</th>
-                                                    <th>Difference</th>
-                                                    <th>Status</th>
-                                                    <th className="text-right">Action</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {savedCounts.map((c, idx) => {
-                                                    const expectedCash = Number(c.expected_cash || summaryData?.expected_cash || 0);
-                                                    const totalCash = Number(c.total_cash || 0);
-                                                    const difference = totalCash - expectedCash;
-                                                    return (
-                                                        <tr key={c.count_id}>
-                                                            <td>
-                                                                <div className="saved-table-document">
-                                                                    <span>#{String(idx + 1).padStart(2, '0')}</span>
-                                                                    <div>
-                                                                        <strong>Cash Count Summary</strong>
-                                                                        <p>{idx === 0 ? 'Latest saved report' : 'Saved report'}</p>
-                                                                    </div>
-                                                                </div>
-                                                            </td>
-                                                            <td>{new Date(c.created_at).toLocaleString()}</td>
-                                                            <td>Rs. {totalCash.toLocaleString()}</td>
-                                                            <td>Rs. {expectedCash.toLocaleString()}</td>
-                                                            <td className={Math.abs(difference) < 0.01 ? 'saved-table-positive' : 'saved-table-attention'}>
-                                                                Rs. {difference.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                            </td>
-                                                            <td>
-                                                                <span className={`saved-table-status ${Math.abs(difference) < 0.01 ? 'balanced' : 'variance'}`}>
-                                                                    {Math.abs(difference) < 0.01 ? 'Balanced' : 'Variance'}
-                                                                </span>
-                                                            </td>
-                                                            <td className="text-right">
-                                                                <button
-                                                                    type="button"
-                                                                    className="inventory-outline-btn saved-table-view-btn"
-                                                                    onClick={() => handleSelectHistoryCount(c)}
-                                                                >
-                                                                    View
-                                                                </button>
-                                                            </td>
+                                ) : (() => {
+                                    const docsPerPage = 8;
+                                    const totalDocs = savedCounts.length;
+                                    const totalDocsPages = Math.ceil(totalDocs / docsPerPage) || 1;
+                                    const paginatedDocs = savedCounts.slice((docsPage - 1) * docsPerPage, docsPage * docsPerPage);
+
+                                    return (
+                                        <>
+                                            <div className="saved-documents-table-wrap">
+                                                <table className="saved-documents-table">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Document</th>
+                                                            <th>Saved Time</th>
+                                                            <th>Total Cash</th>
+                                                            <th>Expected Cash</th>
+                                                            <th>Difference</th>
+                                                            <th>Status</th>
+                                                            <th className="text-right">Action</th>
                                                         </tr>
-                                                    );
-                                                })}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                )}
+                                                    </thead>
+                                                    <tbody>
+                                                        {paginatedDocs.map((c, idx) => {
+                                                            const overallIdx = (docsPage - 1) * docsPerPage + idx;
+                                                            const expectedCash = Number(c.expected_cash || summaryData?.expected_cash || 0);
+                                                            const totalCash = Number(c.total_cash || 0);
+                                                            const difference = totalCash - expectedCash;
+                                                            return (
+                                                                <tr key={c.count_id}>
+                                                                    <td>
+                                                                        <div className="saved-table-document">
+                                                                            <span>#{String(overallIdx + 1).padStart(2, '0')}</span>
+                                                                            <div>
+                                                                                <strong>Cash Count Summary</strong>
+                                                                                <p>{overallIdx === 0 ? 'Latest saved report' : 'Saved report'}</p>
+                                                                            </div>
+                                                                        </div>
+                                                                    </td>
+                                                                    <td>{new Date(c.created_at).toLocaleString()}</td>
+                                                                    <td>Rs. {totalCash.toLocaleString()}</td>
+                                                                    <td>Rs. {expectedCash.toLocaleString()}</td>
+                                                                    <td className={Math.abs(difference) < 0.01 ? 'saved-table-positive' : 'saved-table-attention'}>
+                                                                        Rs. {difference.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                                    </td>
+                                                                    <td>
+                                                                        <span className={`saved-table-status ${Math.abs(difference) < 0.01 ? 'balanced' : 'variance'}`}>
+                                                                            {Math.abs(difference) < 0.01 ? 'Balanced' : 'Variance'}
+                                                                        </span>
+                                                                    </td>
+                                                                    <td className="text-right">
+                                                                        <button
+                                                                            type="button"
+                                                                            className="inventory-outline-btn saved-table-view-btn"
+                                                                            onClick={() => handleSelectHistoryCount(c)}
+                                                                        >
+                                                                            View
+                                                                        </button>
+                                                                    </td>
+                                                                </tr>
+                                                            );
+                                                        })}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                            <Pagination
+                                                currentPage={docsPage}
+                                                totalPages={totalDocsPages}
+                                                totalItems={totalDocs}
+                                                itemsPerPage={docsPerPage}
+                                                onPageChange={setDocsPage}
+                                                label="count documents"
+                                            />
+                                        </>
+                                    );
+                                })()}
                             </div>
                         )}
                     </>

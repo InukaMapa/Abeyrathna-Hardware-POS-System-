@@ -206,10 +206,8 @@ const CreateOrderPage = ({ onNavigate, tableData }) => {
             };
 
             console.log('Creating order:', orderData);
-            const response = await createOrder(orderData);
+            await createOrder(orderData);
 
-            // Show success message and navigate back
-            alert(`Order #${response.id || response.orderId || response.order_id} created successfully!`);
             onNavigate('dashboard');
         } catch (err) {
             console.error('Failed to create order:', err);
@@ -219,11 +217,6 @@ const CreateOrderPage = ({ onNavigate, tableData }) => {
     };
 
     const handleCancel = () => {
-        if (selectedItems.length > 0) {
-            if (!confirm('Are you sure you want to cancel? All selected items will be lost.')) {
-                return;
-            }
-        }
         onNavigate('dashboard');
     };
 

@@ -163,6 +163,7 @@ const ShiftReportModal = ({ isOpen, onClose, shift, onApproved, selectedCount = 
     const bankTransferTotal = Number(summary?.bank_transfer_total || 0);
     const cardPaymentTotal = Number(summary?.card_payment_total || 0);
     const electronicPaymentTotal = bankTransferTotal + cardPaymentTotal;
+    const shiftTotalSales = Number(summary?.total_sales !== undefined ? summary.total_sales : (cashSales + electronicPaymentTotal));
     const fullReportTotal = Number(summary?.full_total || (openingCash + cashIn + cashSales + electronicPaymentTotal - cashOut));
     const difference = selectedTotal - expectedCash;
     const conclusionText = Math.abs(difference) < 0.01
@@ -261,8 +262,8 @@ const ShiftReportModal = ({ isOpen, onClose, shift, onApproved, selectedCount = 
                                             <strong>{formatCurrency(summary?.total_profit || 0)}</strong>
                                         </div>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', borderTop: '1px solid #E2E8F0', paddingTop: '8px' }}>
-                                            <span style={{ color: '#475569' }}>Full Total (Net Cash Position)</span>
-                                            <strong style={{ color: '#0f172a' }}>{formatCurrency(fullReportTotal)}</strong>
+                                            <span style={{ color: '#475569' }}>Total Sales</span>
+                                            <strong style={{ color: '#0f172a' }}>{formatCurrency(shiftTotalSales)}</strong>
                                         </div>
                                     </div>
                                     <div className="official-formula-expression">
@@ -292,7 +293,7 @@ const ShiftReportModal = ({ isOpen, onClose, shift, onApproved, selectedCount = 
                                         </div>
                                     </div>
                                     <p>
-                                        Full Total = Opening Balance + Cash In + Cash Sales + Bank & Card Payments - Cash Out
+                                        Total Sales = Cash Sales + Bank & Card Payments
                                     </p>
                                 </div>
                             </section>

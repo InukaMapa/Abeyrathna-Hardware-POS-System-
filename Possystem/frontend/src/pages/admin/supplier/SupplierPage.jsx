@@ -5,6 +5,7 @@ import AddSupplierModal from './AddSupplierModal';
 import AddInventoryModal from '../inventory/AddInventoryModal';
 import ReceiveInventoryModal from '../inventory/ReceiveInventoryModal';
 import CategoryManagerModal from '../inventory/CategoryManagerModal';
+import Pagination from '../../../components/common/Pagination';
 import {
     Plus, Search, User, Mail, Phone, Building, Edit,
     FileText, CreditCard, RefreshCcw, LayoutDashboard,
@@ -30,6 +31,10 @@ const SupplierPage = ({ onNavigate, focusSection, supplierParams }) => {
     const [sellerNote, setSellerNote] = useState("");
     const [noteDate, setNoteDate] = useState("15 May 24");
     const [activeProfileTab, setActiveProfileTab] = useState('Overview');
+    const [productsPage, setProductsPage] = useState(1);
+    const [historyPage, setHistoryPage] = useState(1);
+    const [ledgerPage, setLedgerPage] = useState(1);
+    const [returnsPage, setReturnsPage] = useState(1);
 const [paymentStats, setPaymentStats] = useState({ totalItems: 0, totalInvoiced: 0, totalPaid: 0, outstanding: 0 });
     const [totalInventoryValue, setTotalInventoryValue] = useState(0);
     const [selectedTransaction, setSelectedTransaction] = useState(null);
@@ -57,6 +62,18 @@ const [paymentStats, setPaymentStats] = useState({ totalItems: 0, totalInvoiced:
     const [supplierPagePaymentStatus, setSupplierPagePaymentStatus] = useState('PENDING'); // PENDING, PAID, ALL
     const [supplierPagePaymentDate, setSupplierPagePaymentDate] = useState('NEWEST');
     const [supplierPagePaymentSupplier, setSupplierPagePaymentSupplier] = useState('ALL');
+
+    // Reset pagination when switching tabs or selecting another supplier
+    useEffect(() => {
+        setProductsPage(1);
+        setHistoryPage(1);
+        setLedgerPage(1);
+        setReturnsPage(1);
+    }, [selectedSupplier, activeProfileTab]);
+
+    useEffect(() => {
+        setProductsPage(1);
+    }, [productSearchQuery]);
 
     // Add effect to toggle body class when modal is open
     useEffect(() => {
@@ -131,6 +148,7 @@ const [paymentStats, setPaymentStats] = useState({ totalItems: 0, totalInvoiced:
     };
 
     const [selectedPaymentProcessing, setSelectedPaymentProcessing] = useState(null);
+    const [paymentSubmitting, setPaymentSubmitting] = useState(false);
     const [paymentForm, setPaymentForm] = useState({
         type: 'Full',
         amount: '',
@@ -184,7 +202,8 @@ const [paymentStats, setPaymentStats] = useState({ totalItems: 0, totalInvoiced:
     };
 
     const handleCompletePaymentForm = async () => {
-        if (!selectedPaymentProcessing) return;
+        if (!selectedPaymentProcessing || paymentSubmitting) return;
+        setPaymentSubmitting(true);
         try {
             const res = await axios.post(`${API_BASE_URL}/inventory/batches/${selectedPaymentProcessing.id}/pay`, {
                 amount: paymentForm.amount,
@@ -195,26 +214,33 @@ const [paymentStats, setPaymentStats] = useState({ totalItems: 0, totalInvoiced:
             }, {
                 headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
             });
-            fetchBatches();
+            await fetchBatches();
             setSelectedPaymentProcessing(null);
-
-            if (res.data.payout_request) {
-                alert(`Payment Authorized! Payout Request #${res.data.payout_request.payout_number} created and sent to cashier.`);
-            } else {
-                alert("Payment Processed Successfully!");
-            }
-        } catch (error) { alert("Payment Failed"); }
+        } catch (error) {
+            console.error('Payment Failed:', error);
+            const msg = error.response?.data?.message || error.message || 'Payment Failed';
+            alert(msg);
+        } finally {
+            setPaymentSubmitting(false);
+        }
     };
 
 
     const handleProcessPayment = async (batchId) => {
+        if (paymentSubmitting) return;
+        setPaymentSubmitting(true);
         try {
             await axios.post(`${API_BASE_URL}/inventory/batches/${batchId}/pay`, {}, {
                 headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
             });
-            fetchBatches();
-            alert("Payment Processed Successfully!");
-        } catch (error) { alert("Payment Failed"); }
+            await fetchBatches();
+        } catch (error) {
+            console.error('Payment Failed:', error);
+            const msg = error.response?.data?.message || error.message || 'Payment Failed';
+            alert(msg);
+        } finally {
+            setPaymentSubmitting(false);
+        }
     };
 
     const getLedgerEntries = () => {
@@ -1223,145 +1249,160 @@ useEffect(() => {
                                     </div>
 
                                     <div className="supplier-profile-content flex-1 overflow-y-auto p-8 pt-6 custom-scrollbar bg-white">
-                                        {activeProfileTab === 'Products' && (
-                                            <div className="space-y-4 animate-fade-in">
-                                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
-                                                    <div>
-                                                        <h4 className="text-[11px] font-bold text-gray-900 uppercase tracking-[0.3em]">Supplier Products</h4>
-                                                        <p className="text-[9px] text-gray-400 mt-1 uppercase">Products supplied by this partner</p>
-                                                    </div>
-                                                    <div className="flex items-center gap-3 w-full md:w-auto">
-                                                        <div className="relative flex-1 md:flex-initial">
-                                                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-                                                            <input
-                                                                type="text"
-                                                                placeholder="Search products by name, code..."
-                                                                className="pl-9 pr-8 py-1.5 w-full md:w-64 bg-gray-50 text-gray-800 rounded-full border border-gray-200 focus:outline-none focus:border-green-600 focus:bg-white transition-all text-xs placeholder:text-gray-400"
-                                                                value={productSearchQuery}
-                                                                onChange={(e) => setProductSearchQuery(e.target.value)}
-                                                            />
-                                                            {productSearchQuery && (
-                                                                <span
-                                                                    role="button"
-                                                                    onClick={() => setProductSearchQuery('')}
-                                                                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer flex items-center justify-center p-1 rounded-full hover:bg-gray-200 transition-colors"
-                                                                    title="Clear search"
-                                                                >
-                                                                    <X className="w-3.5 h-3.5" />
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                        <button
-                                                            onClick={() => setAddProductModalOpen(true)}
-                                                            className="supplier-profile-inline-btn shrink-0"
-                                                            style={{
-                                                                background: 'linear-gradient(135deg, var(--primary-green), var(--dark-green))',
-                                                                color: 'white',
-                                                                borderRadius: '20px',
-                                                                border: 'none',
-                                                                padding: '6px 14px',
-                                                                display: 'inline-flex',
-                                                                alignItems: 'center',
-                                                                gap: '6px',
-                                                                cursor: 'pointer'
-                                                            }}
-                                                        >
-                                                            <Plus className="w-3.5 h-3.5" style={{ color: 'white', stroke: 'white' }} /> Add Product
-                                                        </button>
-                                                    </div>
-                                                </div>
+                                        {activeProfileTab === 'Products' && (() => {
+                                            const productsPerPage = 8;
+                                            const totalProducts = filteredProfileProducts.length;
+                                            const totalProductPages = Math.ceil(totalProducts / productsPerPage) || 1;
+                                            const paginatedProducts = filteredProfileProducts.slice((productsPage - 1) * productsPerPage, productsPage * productsPerPage);
 
-                                                <div className="bg-gray-50 border border-gray-200 rounded-3xl overflow-hidden">
-                                                    <table className="w-full text-left">
-                                                        <thead>
-                                                            <tr className="border-b border-gray-200 bg-gray-50">
-                                                                <th className="px-6 py-4 text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em]">Item Name</th>
-                                                                <th className="px-6 py-4 text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em]">Code</th>
-                                                                <th className="px-6 py-4 text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em]">Category</th>
-                                                                <th className="px-6 py-4 text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em]">Quantity</th>
-                                                                <th className="px-6 py-4 text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em] text-center">Status</th>
-                                                                <th className="px-6 py-4 text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em] text-right">Buying Price</th>
-                                                                <th className="px-6 py-4 text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em] text-right">Selling Price</th>
-                                                                <th className="px-6 py-4 text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em] text-right">Actions</th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody className="divide-y divide-white/[0.03]">
-                                                            {loadingProducts ? (
-                                                                <tr>
-                                                                    <td colSpan="8" className="p-12 text-center text-[#A0A0A0]">
-                                                                        <RefreshCcw className="w-6 h-6 animate-spin mx-auto mb-2 text-green-700" />
-                                                                        Loading products...
-                                                                    </td>
+                                            return (
+                                                <div className="space-y-4 animate-fade-in">
+                                                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+                                                        <div>
+                                                            <h4 className="text-[11px] font-bold text-gray-900 uppercase tracking-[0.3em]">Supplier Products</h4>
+                                                            <p className="text-[9px] text-gray-400 mt-1 uppercase">Products supplied by this partner</p>
+                                                        </div>
+                                                        <div className="flex items-center gap-3 w-full md:w-auto">
+                                                            <div className="relative flex-1 md:flex-initial">
+                                                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                                                                <input
+                                                                    type="text"
+                                                                    placeholder="Search products by name, code..."
+                                                                    className="pl-9 pr-8 py-1.5 w-full md:w-64 bg-gray-50 text-gray-800 rounded-full border border-gray-200 focus:outline-none focus:border-green-600 focus:bg-white transition-all text-xs placeholder:text-gray-400"
+                                                                    value={productSearchQuery}
+                                                                    onChange={(e) => setProductSearchQuery(e.target.value)}
+                                                                />
+                                                                {productSearchQuery && (
+                                                                    <span
+                                                                        role="button"
+                                                                        onClick={() => setProductSearchQuery('')}
+                                                                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer flex items-center justify-center p-1 rounded-full hover:bg-gray-200 transition-colors"
+                                                                        title="Clear search"
+                                                                    >
+                                                                        <X className="w-3.5 h-3.5" />
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <button
+                                                                onClick={() => setAddProductModalOpen(true)}
+                                                                className="supplier-profile-inline-btn shrink-0"
+                                                                style={{
+                                                                    background: 'linear-gradient(135deg, var(--primary-green), var(--dark-green))',
+                                                                    color: 'white',
+                                                                    borderRadius: '20px',
+                                                                    border: 'none',
+                                                                    padding: '6px 14px',
+                                                                    display: 'inline-flex',
+                                                                    alignItems: 'center',
+                                                                    gap: '6px',
+                                                                    cursor: 'pointer'
+                                                                }}
+                                                            >
+                                                                <Plus className="w-3.5 h-3.5" style={{ color: 'white', stroke: 'white' }} /> Add Product
+                                                            </button>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="bg-gray-50 border border-gray-200 rounded-3xl overflow-hidden">
+                                                        <table className="w-full text-left">
+                                                            <thead>
+                                                                <tr className="border-b border-gray-200 bg-gray-50">
+                                                                    <th className="px-6 py-4 text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em]">Item Name</th>
+                                                                    <th className="px-6 py-4 text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em]">Code</th>
+                                                                    <th className="px-6 py-4 text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em]">Category</th>
+                                                                    <th className="px-6 py-4 text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em]">Quantity</th>
+                                                                    <th className="px-6 py-4 text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em] text-center">Status</th>
+                                                                    <th className="px-6 py-4 text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em] text-right">Buying Price</th>
+                                                                    <th className="px-6 py-4 text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em] text-right">Selling Price</th>
+                                                                    <th className="px-6 py-4 text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em] text-right">Actions</th>
                                                                 </tr>
-                                                            ) : profileProducts.length === 0 ? (
-                                                                <tr>
-                                                                    <td colSpan="8" className="p-20 text-center">
-                                                                        <Package className="w-8 h-8 text-gray-300 mx-auto mb-4" />
-                                                                        <p className="text-xs text-gray-400 font-medium">No products registered for this supplier.</p>
-                                                                    </td>
-                                                                </tr>
-                                                            ) : filteredProfileProducts.length === 0 ? (
-                                                                <tr>
-                                                                    <td colSpan="8" className="p-20 text-center">
-                                                                        <Search className="w-8 h-8 text-gray-300 mx-auto mb-4" />
-                                                                        <p className="text-xs text-gray-400 font-medium">No products match your search query.</p>
-                                                                    </td>
-                                                                </tr>
-                                                            ) : (
-                                                                filteredProfileProducts.map((item, idx) => (
-                                                                    <tr key={idx} onClick={() => onNavigate('inventory-detail', { id: item.id })} className="hover:bg-gray-50 transition-colors group cursor-pointer">
-                                                                        <td className="px-6 py-5">
-                                                                            <span className="text-[10px] font-bold text-gray-700">{item.ingredient_name}</span>
-                                                                            <div className="text-[9px] text-gray-400 mt-0.5">{item.unit}</div>
-                                                                        </td>
-                                                                        <td className="px-6 py-5">
-                                                                            <span className="text-[10px] font-mono text-gray-500">{item.item_code || '-'}</span>
-                                                                        </td>
-                                                                        <td className="px-6 py-5">
-                                                                            <span className="inventory-category-pill bg-gray-100 text-gray-600 px-2 py-0.5 rounded text-[9px] font-bold">
-                                                                                {item.category || 'Uncategorized'}
-                                                                            </span>
-                                                                        </td>
-                                                                        <td className="px-6 py-5">
-                                                                            <span className="text-xs font-black text-gray-800">{item.quantity} {item.unit}</span>
-                                                                        </td>
-                                                                        <td className="px-6 py-5 text-center">
-                                                                            <span className={`px-2 py-1 rounded-full text-[9px] font-bold border flex items-center w-fit mx-auto gap-1
-                                                                                ${item.status === 'Out of Stock' ? 'bg-[#ff5252]/10 text-[#ff5252] border-[#ff5252]/30' :
-                                                                                    item.status === 'Low Stock' ? 'bg-[#ffb74d]/10 text-[#ffb74d] border-[#ffb74d]/30' :
-                                                                                        'bg-[#4ade80]/10 text-[#4ade80] border-[#4ade80]/30'}`}
-                                                                            >
-                                                                                {item.status}
-                                                                            </span>
-                                                                        </td>
-                                                                        <td className="px-6 py-5 text-right">
-                                                                            <span className="text-xs font-bold text-gray-900">Rs. {parseFloat(item.buying_price || 0).toFixed(2)}</span>
-                                                                        </td>
-                                                                        <td className="px-6 py-5 text-right">
-                                                                            <span className="text-xs font-bold text-gray-900">Rs. {parseFloat(item.selling_price || 0).toFixed(2)}</span>
-                                                                        </td>
-                                                                        <td className="px-6 py-5 text-right">
-                                                                            <div className="flex items-center justify-end gap-2">
-                                                                                <button
-                                                                                    onClick={(e) => {
-                                                                                        e.stopPropagation();
-                                                                                        setReceivingItem(item);
-                                                                                    }}
-                                                                                    className="inventory-action-btn"
-                                                                                    title="Add Stock"
-                                                                                >
-                                                                                    <PackagePlus size={15} />
-                                                                                </button>
-                                                                            </div>
+                                                            </thead>
+                                                            <tbody className="divide-y divide-white/[0.03]">
+                                                                {loadingProducts ? (
+                                                                    <tr>
+                                                                        <td colSpan="8" className="p-12 text-center text-[#A0A0A0]">
+                                                                            <RefreshCcw className="w-6 h-6 animate-spin mx-auto mb-2 text-green-700" />
+                                                                            Loading products...
                                                                         </td>
                                                                     </tr>
-                                                                ))
-                                                            )}
-                                                        </tbody>
-                                                    </table>
+                                                                ) : profileProducts.length === 0 ? (
+                                                                    <tr>
+                                                                        <td colSpan="8" className="p-20 text-center">
+                                                                            <Package className="w-8 h-8 text-gray-300 mx-auto mb-4" />
+                                                                            <p className="text-xs text-gray-400 font-medium">No products registered for this supplier.</p>
+                                                                        </td>
+                                                                    </tr>
+                                                                ) : filteredProfileProducts.length === 0 ? (
+                                                                    <tr>
+                                                                        <td colSpan="8" className="p-20 text-center">
+                                                                            <Search className="w-8 h-8 text-gray-300 mx-auto mb-4" />
+                                                                            <p className="text-xs text-gray-400 font-medium">No products match your search query.</p>
+                                                                        </td>
+                                                                    </tr>
+                                                                ) : (
+                                                                    paginatedProducts.map((item, idx) => (
+                                                                        <tr key={idx} onClick={() => onNavigate('inventory-detail', { id: item.id })} className="hover:bg-gray-50 transition-colors group cursor-pointer">
+                                                                            <td className="px-6 py-5">
+                                                                                <span className="text-[10px] font-bold text-gray-700">{item.ingredient_name}</span>
+                                                                                <div className="text-[9px] text-gray-400 mt-0.5">{item.unit}</div>
+                                                                            </td>
+                                                                            <td className="px-6 py-5">
+                                                                                <span className="text-[10px] font-mono text-gray-500">{item.item_code || '-'}</span>
+                                                                            </td>
+                                                                            <td className="px-6 py-5">
+                                                                                <span className="inventory-category-pill bg-gray-100 text-gray-600 px-2 py-0.5 rounded text-[9px] font-bold">
+                                                                                    {item.category || 'Uncategorized'}
+                                                                                </span>
+                                                                            </td>
+                                                                            <td className="px-6 py-5">
+                                                                                <span className="text-xs font-black text-gray-800">{item.quantity} {item.unit}</span>
+                                                                            </td>
+                                                                            <td className="px-6 py-5 text-center">
+                                                                                <span className={`px-2 py-1 rounded-full text-[9px] font-bold border flex items-center w-fit mx-auto gap-1
+                                                                                    ${item.status === 'Out of Stock' ? 'bg-[#ff5252]/10 text-[#ff5252] border-[#ff5252]/30' :
+                                                                                        item.status === 'Low Stock' ? 'bg-[#ffb74d]/10 text-[#ffb74d] border-[#ffb74d]/30' :
+                                                                                            'bg-[#4ade80]/10 text-[#4ade80] border-[#4ade80]/30'}`}
+                                                                                >
+                                                                                    {item.status}
+                                                                                </span>
+                                                                            </td>
+                                                                            <td className="px-6 py-5 text-right">
+                                                                                <span className="text-xs font-bold text-gray-900">Rs. {parseFloat(item.buying_price || 0).toFixed(2)}</span>
+                                                                            </td>
+                                                                            <td className="px-6 py-5 text-right">
+                                                                                <span className="text-xs font-bold text-gray-900">Rs. {parseFloat(item.selling_price || 0).toFixed(2)}</span>
+                                                                            </td>
+                                                                            <td className="px-6 py-5 text-right">
+                                                                                <div className="flex items-center justify-end gap-2">
+                                                                                    <button
+                                                                                        onClick={(e) => {
+                                                                                            e.stopPropagation();
+                                                                                            setReceivingItem(item);
+                                                                                        }}
+                                                                                        className="inventory-action-btn"
+                                                                                        title="Add Stock"
+                                                                                    >
+                                                                                        <PackagePlus size={15} />
+                                                                                    </button>
+                                                                                </div>
+                                                                            </td>
+                                                                        </tr>
+                                                                    ))
+                                                                )}
+                                                            </tbody>
+                                                        </table>
+                                                        <Pagination
+                                                            currentPage={productsPage}
+                                                            totalPages={totalProductPages}
+                                                            totalItems={totalProducts}
+                                                            itemsPerPage={productsPerPage}
+                                                            onPageChange={setProductsPage}
+                                                            label="products"
+                                                        />
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        )}
+                                            );
+                                        })()}
                                         {activeProfileTab === 'Overview' && (
                                             <div className="grid grid-cols-3 gap-10 animate-fade-in">
                                                 <div className="col-span-2 space-y-10">
@@ -1555,88 +1596,101 @@ useEffect(() => {
                                             </div>
                                         )}
 
-                                        {activeProfileTab === 'History' && !selectedTransaction && (
-                                            <div className="space-y-4 animate-fade-in max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+                                        {activeProfileTab === 'History' && !selectedTransaction && (() => {
+                                            const supplierBatches = profileBatches.filter(b => b.supplier_id === selectedSupplier.id);
+                                            const historyPerPage = 6;
+                                            const totalHistoryBatches = supplierBatches.length;
+                                            const totalHistoryPages = Math.ceil(totalHistoryBatches / historyPerPage) || 1;
+                                            const paginatedBatches = supplierBatches.slice((historyPage - 1) * historyPerPage, historyPage * historyPerPage);
 
+                                            return (
+                                                <div className="space-y-4 animate-fade-in">
+                                                    <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.3em] flex items-center gap-2 mb-4">
+                                                        <span className="w-1 h-3 bg-gray-200 rounded-full"></span>
+                                                        Procurement Registry
+                                                    </h4>
+                                                    <div className="space-y-3">
+                                                        {paginatedBatches.map((trx, idx) => (
+                                                            <div
+                                                                key={idx}
+                                                                onClick={() => {
+                                                                    const grouped = (trx.inventory_batch_items || []).reduce((acc, item) => {
+                                                                        const id = item.inventory_id
+                                                                            || item.inventory?.item_code
+                                                                            || item.inventory?.ingredient_name
+                                                                            || item.id;
+                                                                        const price = parseFloat(item.buying_price_at_time || 0);
+                                                                        const key = `${id}_${price}`;
+                                                                        if (!acc[key]) {
+                                                                            acc[key] = {
+                                                                                name: item.inventory?.ingredient_name || 'Unknown Item',
+                                                                                qty: 0,
+                                                                                price: price
+                                                                            };
+                                                                        }
+                                                                        acc[key].qty += parseFloat(item.quantity_added || 0);
+                                                                        return acc;
+                                                                    }, {});
 
-                                                <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.3em] flex items-center gap-2 mb-4">
-                                                    <span className="w-1 h-3 bg-gray-200 rounded-full"></span>
-                                                    Procurement Registry
-                                                </h4>
-                                                {profileBatches
-                                                    .filter(b => b.supplier_id === selectedSupplier.id)
-                                                    .map((trx, idx) => (
-                                                        <div
-                                                            key={idx}
-                                                            onClick={() => {
-                                                                // Group repeated ledger rows for the same item, but keep different products separate.
-                                                                const grouped = (trx.inventory_batch_items || []).reduce((acc, item) => {
-                                                                    const id = item.inventory_id
-                                                                        || item.inventory?.item_code
-                                                                        || item.inventory?.ingredient_name
-                                                                        || item.id;
-                                                                    const price = parseFloat(item.buying_price_at_time || 0);
-                                                                    const key = `${id}_${price}`;
-                                                                    if (!acc[key]) {
-                                                                        acc[key] = {
-                                                                            name: item.inventory?.ingredient_name || 'Unknown Item',
-                                                                            qty: 0,
-                                                                            price: price
-                                                                        };
-                                                                    }
-                                                                    acc[key].qty += parseFloat(item.quantity_added || 0);
-                                                                    return acc;
-                                                                }, {});
+                                                                    const itemsInBatch = Object.values(grouped).map(item => ({
+                                                                        name: item.name,
+                                                                        qty: item.qty,
+                                                                        price: parseFloat(item.price).toLocaleString(),
+                                                                        total: (item.qty * parseFloat(item.price)).toLocaleString()
+                                                                    }));
 
-                                                                const itemsInBatch = Object.values(grouped).map(item => ({
-                                                                    name: item.name,
-                                                                    qty: item.qty,
-                                                                    price: parseFloat(item.price).toLocaleString(),
-                                                                    total: (item.qty * parseFloat(item.price)).toLocaleString()
-                                                                }));
-
-                                                                setSelectedTransaction({
-                                                                    ...trx,
-                                                                    db_id: trx.id,
-                                                                    id: trx.batch_number,
-                                                                    amount: trx.net_value,
-                                                                    actual_amount: itemsInBatch.reduce((sum, i) => sum + (parseFloat(i.qty) * parseFloat(i.price.replace(/,/g, ''))), 0),
-                                                                    items: itemsInBatch.length,
-                                                                    target_items: trx.total_items,
-                                                                    lineItems: itemsInBatch
-                                                                });
-                                                            }}
-                                                            className="group p-5 bg-gray-50 border border-gray-200 rounded-2xl flex items-center justify-between hover:bg-gray-100 hover:border-green-600/30 transition-all cursor-pointer"
-                                                        >
-                                                            <div className="flex items-center gap-6">
-                                                                <div className="p-3 bg-gray-100 rounded-xl text-green-700">
-                                                                    <Package className="w-5 h-5" />
+                                                                    setSelectedTransaction({
+                                                                        ...trx,
+                                                                        db_id: trx.id,
+                                                                        id: trx.batch_number,
+                                                                        amount: trx.net_value,
+                                                                        actual_amount: itemsInBatch.reduce((sum, i) => sum + (parseFloat(i.qty) * parseFloat(i.price.replace(/,/g, ''))), 0),
+                                                                        items: itemsInBatch.length,
+                                                                        target_items: trx.total_items,
+                                                                        lineItems: itemsInBatch
+                                                                    });
+                                                                }}
+                                                                className="group p-5 bg-gray-50 border border-gray-200 rounded-2xl flex items-center justify-between hover:bg-gray-100 hover:border-green-600/30 transition-all cursor-pointer"
+                                                            >
+                                                                <div className="flex items-center gap-6">
+                                                                    <div className="p-3 bg-gray-100 rounded-xl text-green-700">
+                                                                        <Package className="w-5 h-5" />
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="text-[11px] font-bold text-gray-900 tracking-tight">{trx.batch_number}</p>
+                                                                        <p className="text-[10px] text-gray-500">{trx.date}</p>
+                                                                    </div>
                                                                 </div>
-                                                                <div>
-                                                                    <p className="text-[11px] font-bold text-gray-900 tracking-tight">{trx.batch_number}</p>
-                                                                    <p className="text-[10px] text-gray-500">{trx.date}</p>
+                                                                <div className="text-right flex items-center gap-8">
+                                                                    <div className="text-right">
+                                                                        <p className="text-[11px] font-bold text-gray-900">{trx.net_value}</p>
+                                                                        <p className="text-[10px] text-gray-500">{batchItems[trx.batch_number]?.length || 0} Batched Items</p>
+                                                                    </div>
+                                                                    <span className={`text-[8px] font-bold px-2 py-1 rounded-md tracking-widest ${trx.payment_status === 'PAID' ? 'bg-green-100 text-green-700 translate-x-2' : 'bg-yellow-500/10 text-yellow-500'}`}>
+                                                                        {trx.payment_status === 'PAID' ? 'SETTLED' : 'UNPAID'}
+                                                                    </span>
+                                                                    <ArrowUpRight className="w-4 h-4 text-gray-300 group-hover:text-green-700 transition-all" />
                                                                 </div>
                                                             </div>
-                                                            <div className="text-right flex items-center gap-8">
-                                                                <div className="text-right">
-                                                                    <p className="text-[11px] font-bold text-gray-900">{trx.net_value}</p>
-                                                                    <p className="text-[10px] text-gray-500">{batchItems[trx.batch_number]?.length || 0} Batched Items</p>
-                                                                </div>
-                                                                <span className={`text-[8px] font-bold px-2 py-1 rounded-md tracking-widest ${trx.payment_status === 'PAID' ? 'bg-green-100 text-green-700 translate-x-2' : 'bg-yellow-500/10 text-yellow-500'}`}>
-                                                                    {trx.payment_status === 'PAID' ? 'SETTLED' : 'UNPAID'}
-                                                                </span>
-                                                                <ArrowUpRight className="w-4 h-4 text-gray-300 group-hover:text-green-700 transition-all" />
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                {profileBatches.filter(b => b.supplier_id === selectedSupplier.id).length === 0 && (
-                                                    <div className="p-12 text-center border border-dashed border-gray-200 rounded-3xl">
-                                                        <Package className="w-8 h-8 text-gray-900/5 mx-auto mb-3" />
-                                                        <p className="text-xs text-gray-400 font-medium">No procurement history recorded for this supplier.</p>
+                                                        ))}
                                                     </div>
-                                                )}
-                                            </div>
-                                        )}
+                                                    {supplierBatches.length === 0 && (
+                                                        <div className="p-12 text-center border border-dashed border-gray-200 rounded-3xl">
+                                                            <Package className="w-8 h-8 text-gray-900/5 mx-auto mb-3" />
+                                                            <p className="text-xs text-gray-400 font-medium">No procurement history recorded for this supplier.</p>
+                                                        </div>
+                                                    )}
+                                                    <Pagination
+                                                        currentPage={historyPage}
+                                                        totalPages={totalHistoryPages}
+                                                        totalItems={totalHistoryBatches}
+                                                        itemsPerPage={historyPerPage}
+                                                        onPageChange={setHistoryPage}
+                                                        label="procurement records"
+                                                    />
+                                                </div>
+                                            );
+                                        })()}
 
                                         {activeProfileTab === 'History' && selectedTransaction && (
                                             <div className="animate-fade-in h-full flex flex-col">
@@ -1717,169 +1771,200 @@ useEffect(() => {
                                             </div>
                                         )}
 
-                                        {activeProfileTab === 'Ledger' && (
-                                            <div className="space-y-8 animate-fade-in pr-2 max-h-[500px] overflow-y-auto custom-scrollbar">
-                                                {/* Credit Notes Section */}
-                                                {profileReturns.filter(r => r.resolution_type === 'CREDIT_NOTE').length > 0 && (
-                                                    <div className="mb-10 space-y-4">
-                                                        <h4 className="text-[11px] font-bold text-green-800 uppercase tracking-widest flex items-center gap-2">
-                                                            <span className="w-1.5 h-4 bg-green-500 rounded-full"></span>
-                                                            Authorized Credit Balances
-                                                        </h4>
-                                                        <div className="grid grid-cols-2 gap-4">
-                                                            {profileReturns.filter(r => r.resolution_type === 'CREDIT_NOTE').map(note => (
-                                                                <div key={note.id} className="p-5 bg-[#F3F9F5] border border-green-200 rounded-2xl flex items-center justify-between hover:bg-green-50 transition-all group shadow-sm">
-                                                                    <div className="flex items-center gap-4">
-                                                                        <div className="p-3 bg-green-100 rounded-xl text-green-700 group-hover:scale-110 transition-transform">
-                                                                            <FileText className="w-5 h-5" />
+                                        {activeProfileTab === 'Ledger' && (() => {
+                                            const allLedgerEntries = getLedgerEntries();
+                                            const ledgerPerPage = 8;
+                                            const totalLedgerEntries = allLedgerEntries.length;
+                                            const totalLedgerPages = Math.ceil(totalLedgerEntries / ledgerPerPage) || 1;
+                                            const paginatedLedgerEntries = allLedgerEntries.slice((ledgerPage - 1) * ledgerPerPage, ledgerPage * ledgerPerPage);
+
+                                            return (
+                                                <div className="space-y-8 animate-fade-in">
+                                                    {/* Credit Notes Section */}
+                                                    {profileReturns.filter(r => r.resolution_type === 'CREDIT_NOTE').length > 0 && (
+                                                        <div className="mb-10 space-y-4">
+                                                            <h4 className="text-[11px] font-bold text-green-800 uppercase tracking-widest flex items-center gap-2">
+                                                                <span className="w-1.5 h-4 bg-green-500 rounded-full"></span>
+                                                                Authorized Credit Balances
+                                                            </h4>
+                                                            <div className="grid grid-cols-2 gap-4">
+                                                                {profileReturns.filter(r => r.resolution_type === 'CREDIT_NOTE').map(note => (
+                                                                    <div key={note.id} className="p-5 bg-[#F3F9F5] border border-green-200 rounded-2xl flex items-center justify-between hover:bg-green-50 transition-all group shadow-sm">
+                                                                        <div className="flex items-center gap-4">
+                                                                            <div className="p-3 bg-green-100 rounded-xl text-green-700 group-hover:scale-110 transition-transform">
+                                                                                <FileText className="w-5 h-5" />
+                                                                            </div>
+                                                                            <div>
+                                                                                <p className="text-[12px] font-black text-gray-900 tracking-widest uppercase">{note.credit_note_number}</p>
+                                                                                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">Origin: {note.return_number}</p>
+                                                                            </div>
                                                                         </div>
-                                                                        <div>
-                                                                            <p className="text-[12px] font-black text-gray-900 tracking-widest uppercase">{note.credit_note_number}</p>
-                                                                            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">Origin: {note.return_number}</p>
+                                                                        <div className="text-right">
+                                                                            <p className="text-sm font-black text-green-700">Rs. {(parseFloat(note.refund_amount) || 0).toLocaleString()}</p>
+                                                                            <p className="text-[9px] text-gray-400 uppercase font-black tracking-widest mt-1">Avail. Credit</p>
                                                                         </div>
                                                                     </div>
-                                                                    <div className="text-right">
-                                                                        <p className="text-sm font-black text-green-700">Rs. {(parseFloat(note.refund_amount) || 0).toLocaleString()}</p>
-                                                                        <p className="text-[9px] text-gray-400 uppercase font-black tracking-widest mt-1">Avail. Credit</p>
-                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    <div className="space-y-4">
+                                                        <div className="flex items-center justify-between mb-4">
+                                                            <div>
+                                                                <h4 className="text-[13px] font-bold text-green-900 uppercase tracking-[0.3em]">Supplier Ledger</h4>
+                                                                <p className="text-[10px] text-gray-500 mt-1 uppercase font-bold tracking-widest">Statement of all financial dealings</p>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="bg-white border border-green-200 rounded-[24px] overflow-hidden shadow-sm">
+                                                            <table className="w-full text-left">
+                                                                <thead>
+                                                                    <tr className="bg-[#C1DFCD] border-b border-green-200">
+                                                                        <th className="px-6 py-4 text-[10px] font-black text-green-900 uppercase tracking-widest">Date</th>
+                                                                        <th className="px-6 py-4 text-[10px] font-black text-green-900 uppercase tracking-widest">Reference No</th>
+                                                                        <th className="px-6 py-4 text-[10px] font-black text-green-900 uppercase tracking-widest">Description</th>
+                                                                        <th className="px-6 py-4 text-[10px] font-black text-green-900 uppercase tracking-widest text-right">Debit / Credit</th>
+                                                                        <th className="px-6 py-4 text-[10px] font-black text-green-900 uppercase tracking-widest text-center">Status</th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody className="divide-y divide-gray-100">
+                                                                    {paginatedLedgerEntries.map((entry, idx) => (
+                                                                        <tr key={idx} className="hover:bg-green-50/50 transition-colors group">
+                                                                            <td className="px-6 py-5">
+                                                                                <span className="text-[11px] font-bold text-gray-700 tracking-tight">
+                                                                                    {new Date(entry.date).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                                                                </span>
+                                                                            </td>
+                                                                            <td className="px-6 py-5">
+                                                                                <span className={`text-[11px] font-black tracking-widest ${entry.type === 'PAYMENT' ? 'text-green-600' : 'text-gray-900'}`}>
+                                                                                    {entry.ref}
+                                                                                </span>
+                                                                            </td>
+                                                                            <td className="px-6 py-5">
+                                                                                 <div className="flex items-center gap-3">
+                                                                                     <div className={`p-2 rounded-xl ${entry.type === 'PAYMENT' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                                                                                         {entry.type === 'PAYMENT' ? <CreditCard className="w-3.5 h-3.5" /> : <FileText className="w-3.5 h-3.5" />}
+                                                                                     </div>
+                                                                                     <div>
+                                                                                         <span className="text-[11px] font-bold text-gray-700 uppercase tracking-widest block">
+                                                                                             {entry.type === 'PAYMENT' ? `Settlement via ${entry.method}` : 'Stock Procurement'}
+                                                                                         </span>
+                                                                                         {entry.type === 'PAYMENT' && entry.paid_by_role && (
+                                                                                             <span className={`inline-block mt-0.5 text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${
+                                                                                                 entry.paid_by_role === 'Admin'
+                                                                                                     ? 'bg-purple-100 text-purple-800 border-purple-200'
+                                                                                                     : 'bg-blue-100 text-blue-800 border-blue-200'
+                                                                                             }`}>
+                                                                                                 {entry.paid_by_role}: {entry.paid_by_name || 'System'}
+                                                                                             </span>
+                                                                                         )}
+                                                                                     </div>
+                                                                                 </div>
+                                                                            </td>
+                                                                            <td className={`px-6 py-5 text-right font-black text-sm ${entry.type === 'PAYMENT' ? 'text-green-600' : 'text-gray-800'}`}>
+                                                                                {entry.type === 'PAYMENT' ? '-' : '+'} Rs. {entry.amount.toLocaleString()}
+                                                                            </td>
+                                                                            <td className="px-6 py-5 text-center">
+                                                                                <span className={`text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg border ${entry.status === 'ACCEPTED' || entry.status === 'SETTLED' ? 'bg-[#F3F9F5] text-green-700 border-green-200' : 'bg-orange-50 text-orange-600 border-orange-200'}`}>
+                                                                                    {entry.status}
+                                                                                </span>
+                                                                            </td>
+                                                                        </tr>
+                                                                    ))}
+                                                                </tbody>
+                                                            </table>
+                                                            {allLedgerEntries.length === 0 && (
+                                                                <div className="p-20 text-center">
+                                                                    <Activity className="w-8 h-8 text-green-200 mx-auto mb-4" />
+                                                                    <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">No ledger entries found for this supplier.</p>
                                                                 </div>
-                                                            ))}
+                                                            )}
+                                                            <Pagination
+                                                                currentPage={ledgerPage}
+                                                                totalPages={totalLedgerPages}
+                                                                totalItems={totalLedgerEntries}
+                                                                itemsPerPage={ledgerPerPage}
+                                                                onPageChange={setLedgerPage}
+                                                                label="ledger transactions"
+                                                            />
                                                         </div>
                                                     </div>
-                                                )}
+                                                </div>
+                                            );
+                                        })()}
 
-                                                <div className="space-y-4">
+                                        {activeProfileTab === 'Returns' && (() => {
+                                            const returnsPerPage = 8;
+                                            const totalReturnsCount = profileReturns.length;
+                                            const totalReturnsPages = Math.ceil(totalReturnsCount / returnsPerPage) || 1;
+                                            const paginatedReturns = profileReturns.slice((returnsPage - 1) * returnsPerPage, returnsPage * returnsPerPage);
+
+                                            return (
+                                                <div className="space-y-4 animate-fade-in">
                                                     <div className="flex items-center justify-between mb-4">
                                                         <div>
-                                                            <h4 className="text-[13px] font-bold text-green-900 uppercase tracking-[0.3em]">Supplier Ledger</h4>
-                                                            <p className="text-[10px] text-gray-500 mt-1 uppercase font-bold tracking-widest">Statement of all financial dealings</p>
+                                                            <h4 className="text-[11px] font-bold text-gray-900 uppercase tracking-[0.3em]">Stock Returns</h4>
+                                                            <p className="text-[9px] text-gray-400 mt-1 uppercase">History of returned items</p>
                                                         </div>
                                                     </div>
 
-                                                    <div className="bg-white border border-green-200 rounded-[24px] overflow-hidden shadow-sm">
+                                                    <div className="bg-gray-50 border border-gray-200 rounded-3xl overflow-hidden">
                                                         <table className="w-full text-left">
                                                             <thead>
-                                                                <tr className="bg-[#C1DFCD] border-b border-green-200">
-                                                                    <th className="px-6 py-4 text-[10px] font-black text-green-900 uppercase tracking-widest">Date</th>
-                                                                    <th className="px-6 py-4 text-[10px] font-black text-green-900 uppercase tracking-widest">Reference No</th>
-                                                                    <th className="px-6 py-4 text-[10px] font-black text-green-900 uppercase tracking-widest">Description</th>
-                                                                    <th className="px-6 py-4 text-[10px] font-black text-green-900 uppercase tracking-widest text-right">Debit / Credit</th>
-                                                                    <th className="px-6 py-4 text-[10px] font-black text-green-900 uppercase tracking-widest text-center">Status</th>
+                                                                <tr className="border-b border-gray-200 bg-gray-50">
+                                                                    <th className="px-6 py-4 text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em]">Return No</th>
+                                                                    <th className="px-6 py-4 text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em]">Item</th>
+                                                                    <th className="px-6 py-4 text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em]">Qty</th>
+                                                                    <th className="px-6 py-4 text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em]">Type</th>
+                                                                    <th className="px-6 py-4 text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em] text-center">Status</th>
                                                                 </tr>
                                                             </thead>
-                                                            <tbody className="divide-y divide-gray-100">
-                                                                {getLedgerEntries().map((entry, idx) => (
-                                                                    <tr key={idx} className="hover:bg-green-50/50 transition-colors group">
+                                                            <tbody className="divide-y divide-white/[0.03]">
+                                                                {paginatedReturns.map((ret, idx) => (
+                                                                    <tr key={idx} className="hover:bg-gray-50 transition-colors group">
                                                                         <td className="px-6 py-5">
-                                                                            <span className="text-[11px] font-bold text-gray-700 tracking-tight">
-                                                                                {new Date(entry.date).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                                                                            </span>
+                                                                            <div className="flex flex-col">
+                                                                                <span className="text-[10px] font-black text-gray-900 tracking-widest uppercase">{ret.return_number}</span>
+                                                                                <span className="text-[8px] text-gray-400 font-bold mt-1">{new Date(ret.created_at).toLocaleDateString()}</span>
+                                                                            </div>
                                                                         </td>
                                                                         <td className="px-6 py-5">
-                                                                            <span className={`text-[11px] font-black tracking-widest ${entry.type === 'PAYMENT' ? 'text-green-600' : 'text-gray-900'}`}>
-                                                                                {entry.ref}
-                                                                            </span>
+                                                                            <span className="text-[10px] font-bold text-gray-700">{ret.inventory?.ingredient_name}</span>
                                                                         </td>
                                                                         <td className="px-6 py-5">
-                                                                             <div className="flex items-center gap-3">
-                                                                                 <div className={`p-2 rounded-xl ${entry.type === 'PAYMENT' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
-                                                                                     {entry.type === 'PAYMENT' ? <CreditCard className="w-3.5 h-3.5" /> : <FileText className="w-3.5 h-3.5" />}
-                                                                                 </div>
-                                                                                 <div>
-                                                                                     <span className="text-[11px] font-bold text-gray-700 uppercase tracking-widest block">
-                                                                                         {entry.type === 'PAYMENT' ? `Settlement via ${entry.method}` : 'Stock Procurement'}
-                                                                                     </span>
-                                                                                     {entry.type === 'PAYMENT' && entry.paid_by_role && (
-                                                                                         <span className={`inline-block mt-0.5 text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${
-                                                                                             entry.paid_by_role === 'Admin'
-                                                                                                 ? 'bg-purple-100 text-purple-800 border-purple-200'
-                                                                                                 : 'bg-blue-100 text-blue-800 border-blue-200'
-                                                                                         }`}>
-                                                                                             {entry.paid_by_role}: {entry.paid_by_name || 'System'}
-                                                                                         </span>
-                                                                                     )}
-                                                                                 </div>
-                                                                             </div>
+                                                                            <span className="text-xs font-black text-[#ff5252]">{ret.quantity}</span>
                                                                         </td>
-                                                                        <td className={`px-6 py-5 text-right font-black text-sm ${entry.type === 'PAYMENT' ? 'text-green-600' : 'text-gray-800'}`}>
-                                                                            {entry.type === 'PAYMENT' ? '-' : '+'} Rs. {entry.amount.toLocaleString()}
+                                                                        <td className="px-6 py-5">
+                                                                            <span className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">{ret.return_type}</span>
                                                                         </td>
                                                                         <td className="px-6 py-5 text-center">
-                                                                            <span className={`text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg border ${entry.status === 'ACCEPTED' || entry.status === 'SETTLED' ? 'bg-[#F3F9F5] text-green-700 border-green-200' : 'bg-orange-50 text-orange-600 border-orange-200'}`}>
-                                                                                {entry.status}
+                                                                            <span className={`text-[8px] font-black uppercase tracking-[0.1em] px-2 py-1 rounded border ${ret.status === 'APPROVED' || ret.status === 'COMPLETED' ? 'bg-green-500/5 text-green-500/60 border-green-500/10' : 'bg-yellow-500/5 text-yellow-500/60 border-yellow-500/10'}`}>
+                                                                                {ret.status}
                                                                             </span>
                                                                         </td>
                                                                     </tr>
                                                                 ))}
                                                             </tbody>
                                                         </table>
-                                                        {getLedgerEntries().length === 0 && (
+                                                        {profileReturns.length === 0 && (
                                                             <div className="p-20 text-center">
-                                                                <Activity className="w-8 h-8 text-green-200 mx-auto mb-4" />
-                                                                <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">No ledger entries found for this supplier.</p>
+                                                                <Activity className="w-8 h-8 text-gray-900/5 mx-auto mb-4" />
+                                                                <p className="text-xs text-gray-400 font-medium">No returns recorded for this supplier.</p>
                                                             </div>
                                                         )}
+                                                        <Pagination
+                                                            currentPage={returnsPage}
+                                                            totalPages={totalReturnsPages}
+                                                            totalItems={totalReturnsCount}
+                                                            itemsPerPage={returnsPerPage}
+                                                            onPageChange={setReturnsPage}
+                                                            label="stock returns"
+                                                        />
                                                     </div>
                                                 </div>
-                                            </div>
-                                        )}
-
-                                        {activeProfileTab === 'Returns' && (
-                                            <div className="space-y-4 animate-fade-in">
-                                                <div className="flex items-center justify-between mb-4">
-                                                    <div>
-                                                        <h4 className="text-[11px] font-bold text-gray-900 uppercase tracking-[0.3em]">Stock Returns</h4>
-                                                        <p className="text-[9px] text-gray-400 mt-1 uppercase">History of returned items</p>
-                                                    </div>
-                                                </div>
-
-                                                <div className="bg-gray-50 border border-gray-200 rounded-3xl overflow-hidden">
-                                                    <table className="w-full text-left">
-                                                        <thead>
-                                                            <tr className="border-b border-gray-200 bg-gray-50">
-                                                                <th className="px-6 py-4 text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em]">Return No</th>
-                                                                <th className="px-6 py-4 text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em]">Item</th>
-                                                                <th className="px-6 py-4 text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em]">Qty</th>
-                                                                <th className="px-6 py-4 text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em]">Type</th>
-                                                                <th className="px-6 py-4 text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em] text-center">Status</th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody className="divide-y divide-white/[0.03]">
-                                                            {profileReturns.map((ret, idx) => (
-                                                                <tr key={idx} className="hover:bg-gray-50 transition-colors group">
-                                                                    <td className="px-6 py-5">
-                                                                        <div className="flex flex-col">
-                                                                            <span className="text-[10px] font-black text-gray-900 tracking-widest uppercase">{ret.return_number}</span>
-                                                                            <span className="text-[8px] text-gray-400 font-bold mt-1">{new Date(ret.created_at).toLocaleDateString()}</span>
-                                                                        </div>
-                                                                    </td>
-                                                                    <td className="px-6 py-5">
-                                                                        <span className="text-[10px] font-bold text-gray-700">{ret.inventory?.ingredient_name}</span>
-                                                                    </td>
-                                                                    <td className="px-6 py-5">
-                                                                        <span className="text-xs font-black text-[#ff5252]">{ret.quantity}</span>
-                                                                    </td>
-                                                                    <td className="px-6 py-5">
-                                                                        <span className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">{ret.return_type}</span>
-                                                                    </td>
-                                                                    <td className="px-6 py-5 text-center">
-                                                                        <span className={`text-[8px] font-black uppercase tracking-[0.1em] px-2 py-1 rounded border ${ret.status === 'APPROVED' || ret.status === 'COMPLETED' ? 'bg-green-500/5 text-green-500/60 border-green-500/10' : 'bg-yellow-500/5 text-yellow-500/60 border-yellow-500/10'}`}>
-                                                                            {ret.status}
-                                                                        </span>
-                                                                    </td>
-                                                                </tr>
-                                                            ))}
-                                                        </tbody>
-                                                    </table>
-                                                    {profileReturns.length === 0 && (
-                                                        <div className="p-20 text-center">
-                                                            <Activity className="w-8 h-8 text-gray-900/5 mx-auto mb-4" />
-                                                            <p className="text-xs text-gray-400 font-medium">No returns recorded for this supplier.</p>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        )}
+                                            );
+                                        })()}
                                     </div>
                                 </div>
                             </div>

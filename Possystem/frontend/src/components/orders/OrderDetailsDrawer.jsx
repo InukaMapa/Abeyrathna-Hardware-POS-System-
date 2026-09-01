@@ -30,11 +30,10 @@ const OrderDetailsDrawer = ({ isOpen, onClose, table, onRefresh }) => {
                     onClose();
                 }
             } else {
-                alert('Failed to update order status');
+                console.error('Failed to update order status');
             }
         } catch (error) {
             console.error('Error updating order status:', error);
-            alert('Error updating order status');
         } finally {
             setLoading(false);
         }
@@ -42,8 +41,6 @@ const OrderDetailsDrawer = ({ isOpen, onClose, table, onRefresh }) => {
 
     const handleCloseBill = async () => {
         if (!order) return;
-
-        if (!confirm('Are you sure you want to close this bill?')) return;
 
         setLoading(true);
         try {
@@ -59,13 +56,11 @@ const OrderDetailsDrawer = ({ isOpen, onClose, table, onRefresh }) => {
             if (response.ok) {
                 await onRefresh();
                 onClose();
-                alert('Bill closed successfully!');
             } else {
-                alert('Failed to close bill');
+                console.error('Failed to close bill');
             }
         } catch (error) {
             console.error('Error closing bill:', error);
-            alert('Error closing bill');
         } finally {
             setLoading(false);
         }

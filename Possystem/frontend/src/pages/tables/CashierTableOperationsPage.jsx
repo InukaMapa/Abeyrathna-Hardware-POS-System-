@@ -83,19 +83,12 @@ const CashierTableOperationsPage = ({ onNavigate }) => {
     // Handle table click
     const handleTableClick = (table) => {
         if (userRole === 'ADMIN') {
-            // Read-only for admins
             return;
         }
 
         if (table.hasActiveOrder) {
-            // TODO: Open Order Details view
             console.log('📋 View order for table:', table.tableId);
-            alert(`Order Details for Counter ${table.tableId}\n\nStatus: ${table.orderStatus}\nTotal: Rs. ${table.totalAmount}\n\n(Order details panel coming soon)`);
         } else {
-            // Navigate to Create Order page
-            console.log('➕ Create order for table:', table.tableId);
-
-            // Find the place name for this table
             let placeName = '';
             for (const place of places) {
                 const foundTable = place.tables.find(t => t.tableId === table.tableId);
@@ -105,13 +98,11 @@ const CashierTableOperationsPage = ({ onNavigate }) => {
                 }
             }
 
-            // Store table data for the CreateOrderPage
             sessionStorage.setItem('selectedTable', JSON.stringify({
                 ...table,
                 placeName: placeName
             }));
 
-            // Navigate to create order page
             onNavigate('create-order');
         }
     };
