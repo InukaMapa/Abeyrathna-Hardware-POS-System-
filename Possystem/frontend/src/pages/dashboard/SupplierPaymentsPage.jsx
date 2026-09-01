@@ -14,6 +14,7 @@ const SupplierPaymentsPage = ({ onNavigate }) => {
     const [suppliers, setSuppliers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedPaymentProcessing, setSelectedPaymentProcessing] = useState(null);
+    const [paymentSubmitting, setPaymentSubmitting] = useState(false);
     const [paymentForm, setPaymentForm] = useState({
         type: 'Full',
         amount: '',
@@ -121,8 +122,9 @@ const SupplierPaymentsPage = ({ onNavigate }) => {
     };
 
     const handleCompletePaymentForm = async () => {
-        if (!selectedPaymentProcessing) return;
+        if (!selectedPaymentProcessing || paymentSubmitting) return;
 
+        setPaymentSubmitting(true);
         try {
             const token = localStorage.getItem('token');
             const headers = { Authorization: `Bearer ${token}` };
@@ -134,16 +136,17 @@ const SupplierPaymentsPage = ({ onNavigate }) => {
                 notes: paymentForm.notes
             }, { headers });
 
-            alert("Payment Processed Successfully!");
             setSelectedPaymentProcessing(null);
             
             // Dispatch event to refresh Counter drawer active shift summary
             window.dispatchEvent(new CustomEvent('cash-movement-added'));
 
-            fetchInitialData();
+            await fetchInitialData();
         } catch (error) {
             console.error('Payment processing failed:', error);
             alert("Payment Failed: " + (error.response?.data?.message || error.message));
+        } finally {
+            setPaymentSubmitting(false);
         }
     };
 
@@ -713,7 +716,7 @@ const SupplierPaymentsPage = ({ onNavigate }) => {
                             <div style={{ marginTop: '24px', borderTop: '1px solid var(--border-color)', paddingTop: '20px' }}>
                                 <button
                                     onClick={handleCompletePaymentForm}
-                                    disabled={!paymentForm.amount}
+                                    disabled={!paymentForm.amount || paymentSubmitting}
                                     className="cash-action-button primary"
                                     style={{
                                         width: '100%',
@@ -721,10 +724,12 @@ const SupplierPaymentsPage = ({ onNavigate }) => {
                                         fontSize: '0.88rem',
                                         fontWeight: '600',
                                         background: 'linear-gradient(135deg, var(--accent-color), var(--accent-hover))',
-                                        boxShadow: '0 10px 24px rgba(212, 160, 23, 0.18)'
+                                        boxShadow: '0 10px 24px rgba(212, 160, 23, 0.18)',
+                                        opacity: paymentSubmitting ? 0.6 : 1,
+                                        cursor: paymentSubmitting ? 'not-allowed' : 'pointer'
                                     }}
                                 >
-                                    Authorize & Complete Payment
+                                    {paymentSubmitting ? 'Processing Payment...' : 'Authorize & Complete Payment'}
                                 </button>
                             </div>
                         </div>

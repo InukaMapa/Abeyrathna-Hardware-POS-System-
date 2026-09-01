@@ -21,14 +21,13 @@ const TopBar = ({ onNavigate }) => {
             return !activeShift;
         } catch (err) {
             console.error('Failed to check shift status', err);
-            return true; // Allow logout if API fails to avoid locking user in
+            return true;
         }
     };
 
     const handleLogout = async () => {
         const canLogout = await checkActiveShift();
         if (!canLogout) {
-            alert('Please end your active shift in the Cash Counter before logging out.');
             if (onNavigate) onNavigate('cash-counter');
             return;
         }

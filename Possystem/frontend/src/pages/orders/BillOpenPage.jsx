@@ -118,8 +118,9 @@ const BillOpenPage = ({ orderId, onNavigate }) => {
 
             // Load saved values if present
             if (orderData.customer_name) setCustomerName(orderData.customer_name);
-            if (orderData.discount) setOverallDiscountValue(orderData.discount);
-            if (orderData.other_charges) setOtherCharges(orderData.other_charges);
+            if (orderData.discount !== undefined && orderData.discount !== null) setOverallDiscountValue(parseFloat(orderData.discount) || 0);
+            if (orderData.other_charges !== undefined && orderData.other_charges !== null) setOtherCharges(orderData.other_charges);
+            if (orderData.other_charges_reason) setOtherChargesReason(orderData.other_charges_reason);
             if (orderData.notes) setNotes(orderData.notes);
 
             // Update status to BILL_OPEN if not already
@@ -137,7 +138,6 @@ const BillOpenPage = ({ orderId, onNavigate }) => {
         } catch (err) {
             console.error('Failed to load order', err);
             setErrorMessage('Failed to load order');
-            alert('Failed to load order');
             onNavigate('orders');
         } finally {
             setLoading(false);
@@ -342,7 +342,6 @@ const BillOpenPage = ({ orderId, onNavigate }) => {
     }, [inventoryItems, isCompleted]);
 
     const handleRemoveItem = (index) => {
-        if (!window.confirm('Remove this item from the order?')) return;
         setItems(prev => prev.filter((_, idx) => idx !== index));
     };
 
@@ -357,6 +356,7 @@ const BillOpenPage = ({ orderId, onNavigate }) => {
     } else {
         overallDiscountAmount = priceAfterItemDiscounts * ((parseFloat(overallDiscountValue) || 0) / 100);
     }
+    const totalDiscountAmount = overallDiscountAmount + totalItemDiscounts;
 
     const parsedOtherCharges = parseFloat(otherCharges) || 0;
     const hasOtherCharges = parsedOtherCharges > 0;
@@ -419,11 +419,6 @@ const BillOpenPage = ({ orderId, onNavigate }) => {
             await printImageAndOpenDrawer(base64Image, selectedPrinter);
         } catch (err) {
             console.error('Print failed:', err);
-            if (err.message && err.message.includes('Connection blocked by client')) {
-                alert('Connection blocked by QZ Tray! Site Manager localhost warning.');
-            } else {
-                alert('QZ Tray print failed. Make sure QZ Tray is running.');
-            }
         } finally {
             setPrinting(false);
         }
@@ -479,15 +474,10 @@ const BillOpenPage = ({ orderId, onNavigate }) => {
     }, []);
 
     const handleCompletePayment = async () => {
+        if (actionLoading || isCompleted) return;
         if (hasOtherCharges && !normalizedOtherChargesReason) {
             setOtherChargesReasonError('Reason is required when other charges are added.');
             return;
-        }
-
-        if (totalReceived < grandTotal) {
-            if (!window.confirm(`Amount received (Rs. ${totalReceived.toFixed(2)}) is less than Grand Total (Rs. ${grandTotal.toFixed(2)}). Continue?`)) {
-                return;
-            }
         }
 
         setActionLoading(true);
@@ -495,8 +485,16 @@ const BillOpenPage = ({ orderId, onNavigate }) => {
             const token = localStorage.getItem('token');
 
             // 1. Sync local items back to cart DB first
+            const totalDiscountAmount = overallDiscountAmount + totalItemDiscounts;
             const cartPayload = {
                 customer_phone: customerPhone,
+                customer_name: customerName,
+                discount: totalDiscountAmount,
+                other_charges: parsedOtherCharges,
+                other_charges_reason: hasOtherCharges ? normalizedOtherChargesReason : null,
+                notes: notes,
+                final_total: grandTotal,
+                total_amount: grandTotal,
                 items: items.map(item => {
                     const batchVariant = Array.isArray(item.selected_variants)
                         ? item.selected_variants.find(v => v.type === 'STOCK_BATCH')
@@ -543,7 +541,7 @@ const BillOpenPage = ({ orderId, onNavigate }) => {
                     final_total: grandTotal,
                     customer_phone: customerPhone,
                     customer_name: customerName,
-                    discount: overallDiscountAmount,
+                    discount: totalDiscountAmount,
                     other_charges: parsedOtherCharges,
                     other_charges_reason: hasOtherCharges ? normalizedOtherChargesReason : null,
                     payments: normalizedPayments,
@@ -557,22 +555,36 @@ const BillOpenPage = ({ orderId, onNavigate }) => {
                     handlePrintBill();
                 }, 500);
             } else {
-                alert('Failed to complete payment.');
+                setErrorMessage('Failed to complete payment.');
             }
         } catch (err) {
             console.error('Payment error:', err);
-            alert('Error completing payment.');
+            setErrorMessage('Error completing payment.');
         } finally {
             setActionLoading(false);
         }
     };
 
-    const handleSaveBill = async () => {
+    const handleSaveAndHold = async () => {
+        if (hasOtherCharges && !normalizedOtherChargesReason) {
+            setOtherChargesReasonError('Reason is required when other charges are added.');
+            return;
+        }
+
+        if (actionLoading) return;
         setActionLoading(true);
         try {
             const token = localStorage.getItem('token');
+            const totalDiscountAmount = overallDiscountAmount + totalItemDiscounts;
             const cartPayload = {
                 customer_phone: customerPhone,
+                customer_name: customerName,
+                discount: totalDiscountAmount,
+                other_charges: parsedOtherCharges,
+                other_charges_reason: hasOtherCharges ? normalizedOtherChargesReason : null,
+                notes: notes,
+                final_total: grandTotal,
+                total_amount: grandTotal,
                 items: items.map(item => {
                     const batchVariant = Array.isArray(item.selected_variants)
                         ? item.selected_variants.find(v => v.type === 'STOCK_BATCH')
@@ -599,18 +611,16 @@ const BillOpenPage = ({ orderId, onNavigate }) => {
                 throw new Error(errPayload.error || 'Failed to update order items.');
             }
 
-            alert('✅ Bill updated and saved successfully on hold.');
             onNavigate('orders');
         } catch (err) {
             console.error('Save bill failed:', err);
-            alert(err.message || 'Failed to save bill changes.');
+            setErrorMessage(err.message || 'Failed to save bill changes.');
         } finally {
             setActionLoading(false);
         }
     };
 
     const handleCancelBill = async () => {
-        if (!window.confirm('Cancel this bill? This completely deletes the order.')) return;
         setActionLoading(true);
         try {
             const token = localStorage.getItem('token');
@@ -619,13 +629,13 @@ const BillOpenPage = ({ orderId, onNavigate }) => {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (response.ok) {
-                alert('Order Cancelled.');
                 onNavigate('orders');
             } else {
-                alert('Failed to cancel.');
+                setErrorMessage('Failed to cancel order.');
             }
         } catch (err) {
-            alert('Error cancelling order');
+            console.error('Cancel bill error:', err);
+            setErrorMessage('Error cancelling order');
         } finally {
             setActionLoading(false);
         }
@@ -710,20 +720,36 @@ const BillOpenPage = ({ orderId, onNavigate }) => {
                                 </div>
 
                                 <div className="thermal-rule"></div>
-                                <div className="thermal-total-row"><span>SUB TOTAL</span><strong>{subtotal.toFixed(2)}</strong></div>
+                                <div className="thermal-total-row"><span>SUB TOTAL</span><strong>Rs. {subtotal.toFixed(2)}</strong></div>
+                                {totalItemDiscounts > 0 && (
+                                    <div className="thermal-total-row thermal-discount-row">
+                                        <span>ITEM DISCOUNT</span>
+                                        <strong>- Rs. {totalItemDiscounts.toFixed(2)}</strong>
+                                    </div>
+                                )}
                                 {overallDiscountAmount > 0 && (
-                                    <div className="thermal-total-row"><span>DISCOUNT</span><strong>- {overallDiscountAmount.toFixed(2)}</strong></div>
+                                    <div className="thermal-total-row thermal-discount-row">
+                                        <span>{overallDiscountType === 'percent' ? `BILL DISCOUNT (${overallDiscountValue}%)` : 'BILL DISCOUNT'}</span>
+                                        <strong>- Rs. {overallDiscountAmount.toFixed(2)}</strong>
+                                    </div>
+                                )}
+                                {totalDiscountAmount > 0 && (
+                                    <div className="thermal-saved-banner">
+                                        *** TOTAL SAVED / DISCOUNT: - Rs. {totalDiscountAmount.toFixed(2)} ***
+                                    </div>
                                 )}
                                 {parsedOtherCharges > 0 && (
                                     <>
-                                        <div className="thermal-total-row"><span>OTHER CHARGES</span><strong>+ {parsedOtherCharges.toFixed(2)}</strong></div>
-                                        <div className="thermal-reason">
-                                            <span>Reason:</span>
-                                            <strong>{normalizedOtherChargesReason}</strong>
-                                        </div>
+                                        <div className="thermal-total-row"><span>OTHER CHARGES</span><strong>+ Rs. {parsedOtherCharges.toFixed(2)}</strong></div>
+                                        {normalizedOtherChargesReason && (
+                                            <div className="thermal-reason">
+                                                <span>Reason:</span>
+                                                <strong>{normalizedOtherChargesReason}</strong>
+                                            </div>
+                                        )}
                                     </>
                                 )}
-                                <div className="thermal-total-row thermal-net"><span>NET TOTAL</span><strong>{grandTotal.toFixed(2)}</strong></div>
+                                <div className="thermal-total-row thermal-net"><span>NET TOTAL</span><strong>Rs. {grandTotal.toFixed(2)}</strong></div>
                                 {receiptPaymentRows.map((payment, index) => (
                                     <div key={`${payment.method}-${index}`} className="thermal-total-row">
                                         <span>{payment.method.toUpperCase()}</span>
@@ -789,20 +815,6 @@ const BillOpenPage = ({ orderId, onNavigate }) => {
                                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
                                             )}
                                             {printing ? 'Printing...' : 'Print Bill'}
-                                        </button>
-                                        <button onClick={() => {
-                                            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({
-                                                orderId: order.order_id,
-                                                date: currentTime,
-                                                items,
-                                                otherCharges: parsedOtherCharges,
-                                                otherChargesReason: hasOtherCharges ? normalizedOtherChargesReason : null,
-                                                grandTotal
-                                            }));
-                                            const dlAnchorElem = document.createElement('a'); dlAnchorElem.setAttribute("href", dataStr); dlAnchorElem.setAttribute("download", `bill_${order.order_id}.json`); dlAnchorElem.click();
-                                        }} className="w-full py-2 bg-white border border-gray-200 text-gray-800 hover:bg-gray-50 font-bold uppercase tracking-widest text-[10px] rounded-lg transition-all flex items-center justify-center gap-1.5">
-                                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                                            Download Logs
                                         </button>
                                     </div>
                                 </div>

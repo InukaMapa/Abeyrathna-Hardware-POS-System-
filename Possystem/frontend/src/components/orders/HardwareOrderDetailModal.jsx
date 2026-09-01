@@ -44,17 +44,16 @@ const HardwareOrderDetailModal = ({ isOpen, onClose, order, onRefresh }) => {
                     onClose();
                 }
             } else {
-                alert('Failed to update order status');
+                console.error('Failed to update order status');
             }
         } catch (error) {
-            alert('Error updating order status');
+            console.error('Error updating order status', error);
         } finally {
             setLoading(false);
         }
     };
 
     const handleCancelOrder = async () => {
-        if (!window.confirm('Are you absolutely sure you want to cancel and delete this order?')) return;
         setLoading(true);
         try {
             const token = localStorage.getItem('token');
@@ -65,19 +64,17 @@ const HardwareOrderDetailModal = ({ isOpen, onClose, order, onRefresh }) => {
             if (response.ok) {
                 await onRefresh();
                 onClose();
-                alert('Order cancelled completely.');
             } else {
-                alert('Failed to cancel order.');
+                console.error('Failed to cancel order.');
             }
         } catch (err) {
-            alert('Error cancelling order');
+            console.error('Error cancelling order', err);
         } finally {
             setLoading(false);
         }
     };
 
     const handleRemoveItem = async (orderItemId) => {
-        if (!window.confirm('Remove this item from the order?')) return;
         setLoading(true);
         try {
             const token = localStorage.getItem('token');
@@ -88,18 +85,17 @@ const HardwareOrderDetailModal = ({ isOpen, onClose, order, onRefresh }) => {
             if (response.ok) {
                 await onRefresh();
             } else {
-                alert('Failed to remove item.');
+                console.error('Failed to remove item.');
             }
         } catch (err) {
-            alert('Error removing item.');
+            console.error('Error removing item.', err);
         } finally {
             setLoading(false);
         }
     };
 
     const handleAddItem = async () => {
-        if (!selectedItemId) return alert('Please select an item');
-        if (addQuantity <= 0) return alert('Quantity must be at least 1');
+        if (!selectedItemId || addQuantity <= 0) return;
 
         setLoading(true);
         try {
@@ -111,7 +107,7 @@ const HardwareOrderDetailModal = ({ isOpen, onClose, order, onRefresh }) => {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    menu_item_id: selectedItemId, // schema references it as menu_item_id in some places
+                    menu_item_id: selectedItemId,
                     quantity: addQuantity,
                     variants: []
                 })
@@ -121,10 +117,10 @@ const HardwareOrderDetailModal = ({ isOpen, onClose, order, onRefresh }) => {
                 setSelectedItemId('');
                 setAddQuantity(1);
             } else {
-                alert('Failed to add item.');
+                console.error('Failed to add item.');
             }
         } catch (err) {
-            alert('Error adding item.');
+            console.error('Error adding item.', err);
         } finally {
             setLoading(false);
         }
@@ -254,8 +250,20 @@ const HardwareOrderDetailModal = ({ isOpen, onClose, order, onRefresh }) => {
                     )}
 
                     {/* Total Summary */}
-                    <div className="border-t border-[#333] pt-6 mb-8">
-                        <div className="flex justify-between items-end">
+                    <div className="border-t border-[#333] pt-6 mb-8 space-y-2">
+                        {order.discount > 0 && (
+                            <div className="flex justify-between items-center text-xs">
+                                <span className="text-[10px] font-black uppercase tracking-widest text-gray-500">Discount</span>
+                                <span className="font-mono font-bold text-red-500">- Rs. {parseFloat(order.discount).toFixed(2)}</span>
+                            </div>
+                        )}
+                        {order.other_charges > 0 && (
+                            <div className="flex justify-between items-center text-xs">
+                                <span className="text-[10px] font-black uppercase tracking-widest text-gray-500">Other Charges</span>
+                                <span className="font-mono font-bold text-emerald-400">+ Rs. {parseFloat(order.other_charges).toFixed(2)}</span>
+                            </div>
+                        )}
+                        <div className="flex justify-between items-end pt-2 border-t border-[#252525]">
                             <span className="text-[10px] font-black uppercase tracking-widest text-gray-500">Grand Total</span>
                             <span className="text-3xl font-black text-red-600 tracking-tighter">
                                 Rs. {parseFloat(order.total_amount).toFixed(2)}

@@ -1333,13 +1333,23 @@ export const createEmulatedBatch = async (req, res) => {
     }
 };
 
+const activePayoutLocks = new Set();
+
 /**
  * Emulated batch pay endpoint.
  * @route POST /api/inventory/batches/:id/pay
  */
 export const payEmulatedBatch = async (req, res) => {
+    const { id } = req.params;
+    const lockKey = String(id);
+
+    if (activePayoutLocks.has(lockKey)) {
+        return res.status(409).json({ message: 'Payment processing is already in progress for this batch. Please wait.' });
+    }
+
+    activePayoutLocks.add(lockKey);
+
     try {
-        const { id } = req.params;
         const { amount, method, reference, notes } = req.body;
 
         const { data: payout, error: getError } = await supabase
@@ -1353,7 +1363,6 @@ export const payEmulatedBatch = async (req, res) => {
         }
 
         const payoutTotalAmount = parseFloat(payout.amount || 0);
-        const newPaymentAmount = parseFloat(amount || payoutTotalAmount);
 
         let currentPaid = 0;
         let previousPayments = [];
@@ -1372,6 +1381,21 @@ export const payEmulatedBatch = async (req, res) => {
             } else {
                 legacyNotes = payout.notes;
             }
+        }
+
+        const remainingBalance = Math.max(0, payoutTotalAmount - currentPaid);
+
+        if (payout.status === 'COMPLETED' || remainingBalance <= 0) {
+            return res.status(400).json({ message: 'This payout has already been fully paid and completed.' });
+        }
+
+        const requestedPaymentAmount = parseFloat(amount);
+        const newPaymentAmount = Number.isFinite(requestedPaymentAmount) && requestedPaymentAmount > 0
+            ? Math.min(requestedPaymentAmount, remainingBalance)
+            : remainingBalance;
+
+        if (newPaymentAmount <= 0) {
+            return res.status(400).json({ message: 'Invalid payment amount.' });
         }
 
         const newPaidAmount = currentPaid + newPaymentAmount;
@@ -1491,6 +1515,8 @@ export const payEmulatedBatch = async (req, res) => {
     } catch (err) {
         console.error('Error settling payment:', err);
         res.status(500).json({ message: 'Internal server error while settling payment.' });
+    } finally {
+        activePayoutLocks.delete(lockKey);
     }
 };
 

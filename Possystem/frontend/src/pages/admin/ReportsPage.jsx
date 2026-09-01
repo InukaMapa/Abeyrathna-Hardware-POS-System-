@@ -15,6 +15,7 @@ import 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import html2canvas from 'html2canvas';
 import DashboardLayout from '../../components/layout/DashboardLayout';
+import Pagination from '../../components/common/Pagination';
 import { API_BASE_URL } from '../../config/api';
 import axios from 'axios';
 import '../../styles/dashboard.css';
@@ -37,9 +38,26 @@ const ReportsPage = ({ onNavigate }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [sortOrder, setSortOrder] = useState('newest');
 
+    // Pagination states for report tables
+    const [salesPage, setSalesPage] = useState(1);
+    const [inventoryPage, setInventoryPage] = useState(1);
+    const [supplierPage, setSupplierPage] = useState(1);
+    const [purchasePage, setPurchasePage] = useState(1);
+
     useEffect(() => {
         setSearchTerm('');
-    }, [activeTab]);
+        setSalesPage(1);
+        setInventoryPage(1);
+        setSupplierPage(1);
+        setPurchasePage(1);
+    }, [activeTab, dateRange]);
+
+    useEffect(() => {
+        setSalesPage(1);
+        setInventoryPage(1);
+        setSupplierPage(1);
+        setPurchasePage(1);
+    }, [searchTerm, sortOrder]);
 
     const [stats, setStats] = useState(null);
     const [, setLoading] = useState(true);
@@ -743,48 +761,65 @@ supplier.email
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div className="overflow-x-auto table-container">
-                                                <table className="w-full text-left">
-                                                    <thead className="bg-white border-b border-gray-100">
-                                                        <tr>
-                                                            <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Date</th>
-                                                            <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Invoice</th>
-                                                            <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Customer</th>
-                                                            <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Cashier</th>
-                                                            <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Amount</th>
-                                                            <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Profit</th>
-                                                            <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Items</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody className="divide-y divide-gray-50">
-                                                        {salesReportLoading && (
-                                                            <tr>
-                                                                <td colSpan="7" className="px-6 py-8 text-center text-sm font-semibold text-gray-400">Loading sales...</td>
-                                                            </tr>
-                                                        )}
-                                                        {!salesReportLoading && filteredOrders.length === 0 && (
-                                                            <tr>
-                                                                <td colSpan="7" className="px-6 py-8 text-center text-sm font-semibold text-gray-400">No sales found matching search or filter</td>
-                                                            </tr>
-                                                        )}
-                                                        {!salesReportLoading && filteredOrders.map((row) => (
-                                                            <tr key={row.order_id} onClick={() => setSelectedSale(row)} className="hover:bg-emerald-50/40 transition-all cursor-pointer">
-                                                                <td className="px-6 py-4 text-sm text-gray-600">{formatDateTime(row.closed_at || row.created_at)}</td>
-                                                                <td className="px-6 py-4 text-sm font-bold text-gray-800">#INV-{row.order_id}</td>
-                                                                <td className="px-6 py-4 text-sm text-gray-600">{row.customer_phone || 'Walk-in Customer'}</td>
-                                                                <td className="px-6 py-4 text-sm text-gray-600">{row.cashier?.cashier_name || 'N/A'}</td>
-                                                                <td className="px-6 py-4 text-sm font-medium text-slate-800">{formatCurrency(row.total_amount)}</td>
-                                                                <td className="px-6 py-4 text-sm font-medium text-emerald-700">{formatCurrency(row.profit)}</td>
-                                                                <td className="px-6 py-4">
-                                                                    <span className="px-2 py-1 bg-slate-50 text-slate-600 text-[10px] font-medium rounded-md uppercase">
-                                                                        {row.order_items?.length || 0} Items
-                                                                    </span>
-                                                                </td>
-                                                            </tr>
-                                                        ))}
-                                                    </tbody>
-                                                </table>
-                                            </div>
+                                            {(() => {
+                                                const salesPerPage = 12;
+                                                const totalSalesCount = filteredOrders.length;
+                                                const totalSalesPages = Math.ceil(totalSalesCount / salesPerPage) || 1;
+                                                const paginatedOrders = filteredOrders.slice((salesPage - 1) * salesPerPage, salesPage * salesPerPage);
+
+                                                return (
+                                                    <div className="overflow-x-auto table-container">
+                                                        <table className="w-full text-left">
+                                                            <thead className="bg-white border-b border-gray-100">
+                                                                <tr>
+                                                                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Date</th>
+                                                                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Invoice</th>
+                                                                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Customer</th>
+                                                                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Cashier</th>
+                                                                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Amount</th>
+                                                                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Profit</th>
+                                                                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Items</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody className="divide-y divide-gray-50">
+                                                                {salesReportLoading && (
+                                                                    <tr>
+                                                                        <td colSpan="7" className="px-6 py-8 text-center text-sm font-semibold text-gray-400">Loading sales...</td>
+                                                                    </tr>
+                                                                )}
+                                                                {!salesReportLoading && filteredOrders.length === 0 && (
+                                                                    <tr>
+                                                                        <td colSpan="7" className="px-6 py-8 text-center text-sm font-semibold text-gray-400">No sales found matching search or filter</td>
+                                                                    </tr>
+                                                                )}
+                                                                {!salesReportLoading && paginatedOrders.map((row) => (
+                                                                    <tr key={row.order_id} onClick={() => setSelectedSale(row)} className="hover:bg-emerald-50/40 transition-all cursor-pointer">
+                                                                        <td className="px-6 py-4 text-sm text-gray-600">{formatDateTime(row.closed_at || row.created_at)}</td>
+                                                                        <td className="px-6 py-4 text-sm font-bold text-gray-800">#INV-{row.order_id}</td>
+                                                                        <td className="px-6 py-4 text-sm text-gray-600">{row.customer_phone || 'Walk-in Customer'}</td>
+                                                                        <td className="px-6 py-4 text-sm text-gray-600">{row.cashier?.cashier_name || 'N/A'}</td>
+                                                                        <td className="px-6 py-4 text-sm font-medium text-slate-800">{formatCurrency(row.total_amount)}</td>
+                                                                        <td className="px-6 py-4 text-sm font-medium text-emerald-700">{formatCurrency(row.profit)}</td>
+                                                                        <td className="px-6 py-4">
+                                                                            <span className="px-2 py-1 bg-slate-50 text-slate-600 text-[10px] font-medium rounded-md uppercase">
+                                                                                {row.order_items?.length || 0} Items
+                                                                            </span>
+                                                                        </td>
+                                                                    </tr>
+                                                                ))}
+                                                            </tbody>
+                                                        </table>
+                                                        <Pagination
+                                                            currentPage={salesPage}
+                                                            totalPages={totalSalesPages}
+                                                            totalItems={totalSalesCount}
+                                                            itemsPerPage={salesPerPage}
+                                                            onPageChange={setSalesPage}
+                                                            label="sales transactions"
+                                                        />
+                                                    </div>
+                                                );
+                                            })()}
                                         </div>
                                     </div>
                                 )}
@@ -915,49 +950,66 @@ supplier.email
                                                     />
                                                 </div>
                                             </div>
-                                            <div className="overflow-x-auto table-container">
-                                                <table className="w-full text-left">
-                                                    <thead className="bg-white border-b border-gray-100">
-                                                        <tr>
-                                                            <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Product</th>
-                                                            <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Category</th>
-                                                            <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Current Stock</th>
-                                                            <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Reorder Level</th>
-                                                            <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Status</th>
-                                                            <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Warehouse / Store</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody className="divide-y divide-gray-50">
-                                                        {inventoryReportLoading && (
-                                                            <tr>
-                                                                <td colSpan="6" className="px-6 py-8 text-center text-sm font-semibold text-gray-400">Loading inventory report...</td>
-                                                            </tr>
-                                                        )}
-                                                        {!inventoryReportLoading && filteredInventoryItems.length === 0 && (
-                                                            <tr>
-                                                                <td colSpan="6" className="px-6 py-8 text-center text-sm font-semibold text-gray-400">No inventory data found matching search.</td>
-                                                            </tr>
-                                                        )}
-                                                        {!inventoryReportLoading && filteredInventoryItems.map((item) => (
-                                                            <tr key={item.id} className="hover:bg-emerald-50/30 transition-all">
-                                                                <td className="px-6 py-4">
-                                                                    <p className="text-sm font-bold text-gray-900">{item.ingredient_name}</p>
-                                                                    <p className="text-xs text-gray-400 mt-0.5">{item.item_code || 'No item code'}</p>
-                                                                </td>
-                                                                <td className="px-6 py-4 text-sm text-gray-600">{item.category || 'Uncategorized'}</td>
-                                                                <td className="px-6 py-4 text-sm font-black text-gray-800">{item.quantity} {item.unit || ''}</td>
-                                                                <td className="px-6 py-4 text-sm text-gray-600">{item.reorder_level} {item.unit || ''}</td>
-                                                                <td className="px-6 py-4">
-                                                                    <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase ${item.status === 'In Stock' ? 'bg-emerald-50 text-emerald-700' : item.status === 'Low Stock' ? 'bg-amber-50 text-amber-700' : 'bg-red-50 text-red-700'}`}>
-                                                                        {item.status}
-                                                                    </span>
-                                                                </td>
-                                                                <td className="px-6 py-4 text-sm text-gray-600">{item.storage_location || 'Not Specified'}</td>
-                                                            </tr>
-                                                        ))}
-                                                    </tbody>
-                                                </table>
-                                            </div>
+                                            {(() => {
+                                                const inventoryPerPage = 12;
+                                                const totalInventoryCount = filteredInventoryItems.length;
+                                                const totalInventoryPages = Math.ceil(totalInventoryCount / inventoryPerPage) || 1;
+                                                const paginatedInventory = filteredInventoryItems.slice((inventoryPage - 1) * inventoryPerPage, inventoryPage * inventoryPerPage);
+
+                                                return (
+                                                    <div className="overflow-x-auto table-container">
+                                                        <table className="w-full text-left">
+                                                            <thead className="bg-white border-b border-gray-100">
+                                                                <tr>
+                                                                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Product</th>
+                                                                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Category</th>
+                                                                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Current Stock</th>
+                                                                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Reorder Level</th>
+                                                                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Status</th>
+                                                                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Warehouse / Store</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody className="divide-y divide-gray-50">
+                                                                {inventoryReportLoading && (
+                                                                    <tr>
+                                                                        <td colSpan="6" className="px-6 py-8 text-center text-sm font-semibold text-gray-400">Loading inventory report...</td>
+                                                                    </tr>
+                                                                )}
+                                                                {!inventoryReportLoading && filteredInventoryItems.length === 0 && (
+                                                                    <tr>
+                                                                        <td colSpan="6" className="px-6 py-8 text-center text-sm font-semibold text-gray-400">No inventory data found matching search.</td>
+                                                                    </tr>
+                                                                )}
+                                                                {!inventoryReportLoading && paginatedInventory.map((item) => (
+                                                                    <tr key={item.id} className="hover:bg-emerald-50/30 transition-all">
+                                                                        <td className="px-6 py-4">
+                                                                            <p className="text-sm font-bold text-gray-900">{item.ingredient_name}</p>
+                                                                            <p className="text-xs text-gray-400 mt-0.5">{item.item_code || 'No item code'}</p>
+                                                                        </td>
+                                                                        <td className="px-6 py-4 text-sm text-gray-600">{item.category || 'Uncategorized'}</td>
+                                                                        <td className="px-6 py-4 text-sm font-black text-gray-800">{item.quantity} {item.unit || ''}</td>
+                                                                        <td className="px-6 py-4 text-sm text-gray-600">{item.reorder_level} {item.unit || ''}</td>
+                                                                        <td className="px-6 py-4">
+                                                                            <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase ${item.status === 'In Stock' ? 'bg-emerald-50 text-emerald-700' : item.status === 'Low Stock' ? 'bg-amber-50 text-amber-700' : 'bg-red-50 text-red-700'}`}>
+                                                                                {item.status}
+                                                                            </span>
+                                                                        </td>
+                                                                        <td className="px-6 py-4 text-sm text-gray-600">{item.storage_location || 'Not Specified'}</td>
+                                                                    </tr>
+                                                                ))}
+                                                            </tbody>
+                                                        </table>
+                                                        <Pagination
+                                                            currentPage={inventoryPage}
+                                                            totalPages={totalInventoryPages}
+                                                            totalItems={totalInventoryCount}
+                                                            itemsPerPage={inventoryPerPage}
+                                                            onPageChange={setInventoryPage}
+                                                            label="inventory items"
+                                                        />
+                                                    </div>
+                                                );
+                                            })()}
                                         </div>
                                     </div>
                                 )}
@@ -997,54 +1049,71 @@ supplier.email
                                                     />
                                                 </div>
                                             </div>
-                                            <div className="overflow-x-auto table-container">
-                                                <table className="w-full text-left">
-                                                    <thead className="bg-white border-b border-gray-100">
-                                                        <tr>
-                                                            <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Supplier</th>
-                                                            <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Contact</th>
-                                                            <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Products</th>
-                                                            <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Purchases</th>
-                                                            <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Due</th>
-                                                            <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Last Purchase</th>
-                                                            <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Status</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody className="divide-y divide-gray-50">
-                                                        {supplierReportLoading && (
-                                                            <tr>
-                                                                <td colSpan="7" className="px-6 py-8 text-center text-sm font-semibold text-gray-400">Loading supplier reports...</td>
-                                                            </tr>
-                                                        )}
-                                                        {!supplierReportLoading && filteredSupplierReports.length === 0 && (
-                                                            <tr>
-                                                                <td colSpan="7" className="px-6 py-8 text-center text-sm font-semibold text-gray-400">No suppliers found.</td>
-                                                            </tr>
-                                                        )}
-                                                        {!supplierReportLoading && filteredSupplierReports.map((supplier) => (
-                                                            <tr key={supplier.id} className="hover:bg-emerald-50/40 transition-all">
-                                                                <td className="px-6 py-4">
-                                                                    <p className="text-sm font-bold text-gray-900">{supplier.supplier_name}</p>
-                                                                    <p className="text-xs text-gray-400 mt-0.5">{supplier.supplier_id} · {supplier.company_name || 'Individual'}</p>
-                                                                </td>
-                                                                <td className="px-6 py-4">
-                                                                    <p className="text-sm text-gray-700">{supplier.phone_number || 'N/A'}</p>
-                                                                    <p className="text-xs text-gray-400 mt-0.5">{supplier.email || 'No email'}</p>
-                                                                </td>
-                                                                <td className="px-6 py-4 text-sm font-bold text-gray-800">{supplier.metrics.products_count}</td>
-                                                                <td className="px-6 py-4 text-sm font-medium text-slate-800">{formatCurrency(supplier.metrics.total_purchases)}</td>
-                                                                <td className="px-6 py-4 text-sm font-medium text-slate-800">{formatCurrency(supplier.metrics.due_payments)}</td>
-                                                                <td className="px-6 py-4 text-sm text-gray-600">{supplier.metrics.last_purchase_date ? new Date(supplier.metrics.last_purchase_date).toLocaleDateString() : 'N/A'}</td>
-                                                                <td className="px-6 py-4">
-                                                                    <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase ${supplier.metrics.status === 'Active' ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
-                                                                        {supplier.metrics.status}
-                                                                    </span>
-                                                                </td>
-                                                            </tr>
-                                                        ))}
-                                                    </tbody>
-                                                </table>
-                                            </div>
+                                            {(() => {
+                                                const supplierPerPage = 12;
+                                                const totalSupplierCount = filteredSupplierReports.length;
+                                                const totalSupplierPages = Math.ceil(totalSupplierCount / supplierPerPage) || 1;
+                                                const paginatedSupplierReports = filteredSupplierReports.slice((supplierPage - 1) * supplierPerPage, supplierPage * supplierPerPage);
+
+                                                return (
+                                                    <div className="overflow-x-auto table-container">
+                                                        <table className="w-full text-left">
+                                                            <thead className="bg-white border-b border-gray-100">
+                                                                <tr>
+                                                                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Supplier</th>
+                                                                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Contact</th>
+                                                                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Products</th>
+                                                                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Purchases</th>
+                                                                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Due</th>
+                                                                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Last Purchase</th>
+                                                                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Status</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody className="divide-y divide-gray-50">
+                                                                {supplierReportLoading && (
+                                                                    <tr>
+                                                                        <td colSpan="7" className="px-6 py-8 text-center text-sm font-semibold text-gray-400">Loading supplier reports...</td>
+                                                                    </tr>
+                                                                )}
+                                                                {!supplierReportLoading && filteredSupplierReports.length === 0 && (
+                                                                    <tr>
+                                                                        <td colSpan="7" className="px-6 py-8 text-center text-sm font-semibold text-gray-400">No suppliers found.</td>
+                                                                    </tr>
+                                                                )}
+                                                                {!supplierReportLoading && paginatedSupplierReports.map((supplier) => (
+                                                                    <tr key={supplier.id} className="hover:bg-emerald-50/40 transition-all">
+                                                                        <td className="px-6 py-4">
+                                                                            <p className="text-sm font-bold text-gray-900">{supplier.supplier_name}</p>
+                                                                            <p className="text-xs text-gray-400 mt-0.5">{supplier.supplier_id} · {supplier.company_name || 'Individual'}</p>
+                                                                        </td>
+                                                                        <td className="px-6 py-4">
+                                                                            <p className="text-sm text-gray-700">{supplier.phone_number || 'N/A'}</p>
+                                                                            <p className="text-xs text-gray-400 mt-0.5">{supplier.email || 'No email'}</p>
+                                                                        </td>
+                                                                        <td className="px-6 py-4 text-sm font-bold text-gray-800">{supplier.metrics.products_count}</td>
+                                                                        <td className="px-6 py-4 text-sm font-medium text-slate-800">{formatCurrency(supplier.metrics.total_purchases)}</td>
+                                                                        <td className="px-6 py-4 text-sm font-medium text-slate-800">{formatCurrency(supplier.metrics.due_payments)}</td>
+                                                                        <td className="px-6 py-4 text-sm text-gray-600">{supplier.metrics.last_purchase_date ? new Date(supplier.metrics.last_purchase_date).toLocaleDateString() : 'N/A'}</td>
+                                                                        <td className="px-6 py-4">
+                                                                            <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase ${supplier.metrics.status === 'Active' ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
+                                                                                {supplier.metrics.status}
+                                                                            </span>
+                                                                        </td>
+                                                                    </tr>
+                                                                ))}
+                                                            </tbody>
+                                                        </table>
+                                                        <Pagination
+                                                            currentPage={supplierPage}
+                                                            totalPages={totalSupplierPages}
+                                                            totalItems={totalSupplierCount}
+                                                            itemsPerPage={supplierPerPage}
+                                                            onPageChange={setSupplierPage}
+                                                            label="suppliers"
+                                                        />
+                                                    </div>
+                                                );
+                                            })()}
                                         </div>
                                     </div>
                                 )}
@@ -1059,6 +1128,10 @@ supplier.email
                                                 totalDue: filteredPurchases.reduce((sum, b) => sum + b.dueAmount, 0),
                                                 maxPurchase: filteredPurchases.length > 0 ? Math.max(...filteredPurchases.map(b => b.netValue)) : 0
                                             };
+                                            const purchasePerPage = 12;
+                                            const totalPurchaseCount = filteredPurchases.length;
+                                            const totalPurchasePages = Math.ceil(totalPurchaseCount / purchasePerPage) || 1;
+                                            const paginatedPurchases = filteredPurchases.slice((purchasePage - 1) * purchasePerPage, purchasePage * purchasePerPage);
                                             
                                             return (
                                                 <>
@@ -1135,7 +1208,7 @@ supplier.email
                                                                             <td colSpan="8" className="px-6 py-8 text-center text-sm font-semibold text-gray-400">No purchase records found matching search or filter</td>
                                                                         </tr>
                                                                     )}
-                                                                    {!purchaseReportLoading && filteredPurchases.map((row) => (
+                                                                    {!purchaseReportLoading && paginatedPurchases.map((row) => (
                                                                         <tr key={row.id || row.batch_number} onClick={() => setSelectedPurchase(row)} className="hover:bg-emerald-50/40 transition-all cursor-pointer">
                                                                             <td className="px-6 py-4 text-sm text-gray-600">{formatDateTime(row.batch_date || row.created_at)}</td>
                                                                             <td className="px-6 py-4 text-sm font-bold text-gray-800">{row.batch_number}</td>
@@ -1155,6 +1228,14 @@ supplier.email
                                                                     ))}
                                                                 </tbody>
                                                             </table>
+                                                            <Pagination
+                                                                currentPage={purchasePage}
+                                                                totalPages={totalPurchasePages}
+                                                                totalItems={totalPurchaseCount}
+                                                                itemsPerPage={purchasePerPage}
+                                                                onPageChange={setPurchasePage}
+                                                                label="procurement batches"
+                                                            />
                                                         </div>
                                                     </div>
                                                 </>
