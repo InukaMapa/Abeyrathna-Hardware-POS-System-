@@ -6955,6 +6955,22 @@ button.inventory-category-add.inventory-category-add:disabled {
     text-align: right;
 }
 
+.thermal-discount-row strong {
+    color: #b91c1c;
+    font-weight: 800;
+}
+
+.thermal-saved-banner {
+    text-align: center;
+    font-size: 11px;
+    font-weight: 800;
+    margin: 5px 0;
+    padding: 3px 0;
+    letter-spacing: 0.5px;
+    border-top: 1px dashed #475569;
+    border-bottom: 1px dashed #475569;
+}
+
 .thermal-net {
     margin-top: 8px;
     padding-top: 7px;

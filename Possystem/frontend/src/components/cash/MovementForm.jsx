@@ -101,6 +101,9 @@ const MovementForm = ({ shiftId, availableAfter, onMovementAdded }) => {
         }
     };
 
+
+
+
     const handleRefundSelect = (e) => {
         const refundId = e.target.value;
         setSelectedRefundId(refundId);
@@ -121,6 +124,7 @@ const MovementForm = ({ shiftId, availableAfter, onMovementAdded }) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (loading) return;
         setLoading(true);
         setError(null);
 

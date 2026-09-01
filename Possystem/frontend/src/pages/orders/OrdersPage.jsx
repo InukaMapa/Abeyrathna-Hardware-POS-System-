@@ -263,7 +263,14 @@ const OrdersPage = ({ onNavigate }) => {
                                             </div>
                                         </td>
                                         <td className="p-5">
-                                            <span className="orders-amount tabular-nums">Rs. {parseFloat(order.total_amount).toFixed(2)}</span>
+                                            <div className="flex flex-col">
+                                                <span className="orders-amount tabular-nums">Rs. {parseFloat(order.total_amount).toFixed(2)}</span>
+                                                {parseFloat(order.discount) > 0 && (
+                                                    <span className="text-[10px] text-red-400 font-bold tracking-wider uppercase mt-0.5">
+                                                        Saved Rs. {parseFloat(order.discount).toFixed(2)}
+                                                    </span>
+                                                )}
+                                            </div>
                                         </td>
                                         <td className="p-5 text-center">
                                             <span className="orders-status-badge">

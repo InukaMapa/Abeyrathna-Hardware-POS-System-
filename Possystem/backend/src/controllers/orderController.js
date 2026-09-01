@@ -180,6 +180,10 @@ const findOpenShiftForCashier = async (req) => {
  * @access CASHIER only
  * 
  * Business Rules:
+ * @route POST /api/orders
+ * @access CASHIER only
+ * 
+ * Business Rules:
  * - Only ONE active order per table at a time
  * - Active order = status NOT 'CLOSED'
  * - Staff ID comes from JWT token
@@ -188,7 +192,7 @@ const findOpenShiftForCashier = async (req) => {
  */
 export const createOrder = async (req, res) => {
     try {
-        const { table_id, items, customer_phone } = req.body;
+        const { table_id, items, customer_phone, customer_name, discount, other_charges, other_charges_reason, notes, final_total, total_amount: customTotal } = req.body;
 
         // Extract staff_id from JWT (populated by protect middleware)
         const staffId = req.user?.userId;
@@ -327,13 +331,17 @@ export const createOrder = async (req, res) => {
 
         const orderInsertData = {
             table_id: tableIdInt,
-            total_amount: totalAmount,
+            total_amount: final_total !== undefined ? Number(final_total) : (customTotal !== undefined ? Number(customTotal) : totalAmount),
             status: 'PLACED',
             customer_phone: customer_phone || null,
+            customer_name: customer_name || null,
+            discount: discount !== undefined ? Number(discount) || 0 : 0,
+            other_charges: other_charges !== undefined ? Number(other_charges) || 0 : 0,
+            other_charges_reason: other_charges_reason || null,
+            notes: notes || null,
             shift_id: shiftCheck.shift?.shift_id || null
         };
 
-        // Add staff_id if it exists (some schemas might not have this field yet)
         if (staffId) {
             orderInsertData.staff_id = staffId;
         }
@@ -346,7 +354,6 @@ export const createOrder = async (req, res) => {
 
         if (orderError) {
             console.error('Error creating order:', orderError);
-            // Handle specific Foreign Key Violation for table_id
             if (orderError.code === '23503') {
                 return res.status(400).json({ error: `Table ID ${tableIdInt} does not exist.` });
             }
@@ -1001,6 +1008,7 @@ export const getOrderById = async (req, res) => {
     }
 };
 
+
 /**
  * Replace entire cart items for an order
  * @route PUT /api/orders/:id/cart
@@ -1008,7 +1016,7 @@ export const getOrderById = async (req, res) => {
 export const updateOrderCart = async (req, res) => {
     try {
         const { id } = req.params;
-        const { items, customer_phone } = req.body; // array of items: { id, quantity }
+        const { items, customer_phone, customer_name, discount, other_charges, other_charges_reason, notes, final_total, total_amount: customTotal } = req.body; // array of items: { id, quantity }
 
         const shiftCheck = await findOpenShiftForCashier(req);
         if (!shiftCheck.allowed) {
@@ -1026,7 +1034,12 @@ export const updateOrderCart = async (req, res) => {
         if (itemIds.length === 0) {
             // Empty cart basically means clearing it
             await supabase.from('order_items').delete().eq('order_id', id);
-            await supabase.from('orders').update({ total_amount: 0, customer_phone: customer_phone || null }).eq('order_id', id);
+            await supabase.from('orders').update({
+                total_amount: 0,
+                customer_phone: customer_phone || null,
+                customer_name: customer_name || null,
+                discount: discount !== undefined ? Number(discount) || 0 : 0
+            }).eq('order_id', id);
             return res.status(200).json({ message: 'Cart updated successfully', totalAmount: 0 });
         }
 
@@ -1080,18 +1093,25 @@ export const updateOrderCart = async (req, res) => {
             if (insError) throw insError;
         }
 
-        // 4. Update order total & customer phone
+        // 4. Update order total & customer phone & adjustments
+        const updatePayload = {
+            total_amount: final_total !== undefined ? Number(final_total) : (customTotal !== undefined ? Number(customTotal) : totalAmount),
+            customer_phone: customer_phone || null
+        };
+        if (customer_name !== undefined) updatePayload.customer_name = customer_name || null;
+        if (discount !== undefined) updatePayload.discount = Number(discount) || 0;
+        if (other_charges !== undefined) updatePayload.other_charges = Number(other_charges) || 0;
+        if (other_charges_reason !== undefined) updatePayload.other_charges_reason = other_charges_reason || null;
+        if (notes !== undefined) updatePayload.notes = notes || null;
+
         const { error: updError } = await supabase
             .from('orders')
-            .update({
-                total_amount: totalAmount,
-                customer_phone: customer_phone || null
-            })
+            .update(updatePayload)
             .eq('order_id', id);
 
         if (updError) throw updError;
 
-        res.status(200).json({ message: 'Cart updated successfully', totalAmount });
+        res.status(200).json({ message: 'Cart updated successfully', totalAmount: updatePayload.total_amount });
     } catch (error) {
         console.error('Error updating order cart:', error);
         res.status(500).json({ error: 'Failed to update order cart' });
