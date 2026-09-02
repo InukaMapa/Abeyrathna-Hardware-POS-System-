@@ -81,60 +81,33 @@ const InventoryPage = ({ onNavigate }) => {
                 headers: { Authorization: `Bearer ${token}` }
             });
             
-            const { canDelete, reason } = response.data;
+            const { canDelete, title, message } = response.data;
             
             if (canDelete) {
                 setDeleteModal({
                     show: true,
                     item,
-                    title: 'Delete Product',
-                    message: 'Are you sure you want to permanently delete this product? This action cannot be undone.',
+                    title: title || 'Delete Product',
+                    message: message || `Are you sure you want to permanently delete "${item.ingredient_name}"? This action cannot be undone.`,
                     type: 'confirm'
                 });
             } else {
-                let message = '';
-                let title = '';
-                if (reason === 'all_failed') {
-                    title = 'Cannot Delete Product';
-                    message = 'This product cannot be deleted because inventory is still available, there are outstanding supplier payments, and it has associated supplier returns.';
-                } else if (reason === 'both_failed') {
-                    title = 'Cannot Delete Product';
-                    message = 'This product cannot be deleted because inventory is still available and there are outstanding supplier payments. Set inventory to 0 and clear all payments before deleting.';
-                } else if (reason === 'stock_and_returns') {
-                    title = 'Cannot Delete Product';
-                    message = 'This product cannot be deleted because there is still inventory in stock and it has associated supplier returns.';
-                } else if (reason === 'payments_and_returns') {
-                    title = 'Cannot Delete Product';
-                    message = 'This product cannot be deleted because there are outstanding supplier payments and it has associated supplier returns.';
-                } else if (reason === 'stock_exists') {
-                    title = 'Stock Exists';
-                    message = 'This product cannot be deleted because there is still inventory in stock. Reduce the inventory quantity to 0 before deleting.';
-                } else if (reason === 'pending_payments') {
-                    title = 'Pending Supplier Payments';
-                    message = 'This product cannot be deleted because there are outstanding supplier payments associated with it. Clear all supplier payments before deleting.';
-                } else if (reason === 'has_returns') {
-                    title = 'Return History Exists';
-                    message = 'This product cannot be deleted because it has associated supplier returns. Products with return history cannot be permanently deleted.';
-                } else {
-                    title = 'Validation Error';
-                    message = 'This product cannot be deleted because it does not meet the deletion requirements.';
-                }
-                
                 setDeleteModal({
                     show: true,
                     item: null,
-                    title,
-                    message,
+                    title: title || 'Cannot Delete Product',
+                    message: message || 'This product cannot be deleted because it does not meet the deletion requirements.',
                     type: 'warning'
                 });
             }
         } catch (error) {
             console.error('Error validating delete:', error);
+            const errorMsg = error.response?.data?.message || 'Unable to delete the product. Please try again later.';
             setDeleteModal({
                 show: true,
                 item: null,
-                title: 'Error',
-                message: 'Unable to delete the product. Please try again later.',
+                title: 'Cannot Delete Product',
+                message: errorMsg,
                 type: 'warning'
             });
         }
@@ -144,7 +117,7 @@ const InventoryPage = ({ onNavigate }) => {
         setDeleteLoading(true);
         try {
             const token = localStorage.getItem('token');
-            await axios.delete(`${API_BASE_URL}/inventory/${id}`, {
+            const res = await axios.delete(`${API_BASE_URL}/inventory/${id}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             
@@ -155,16 +128,19 @@ const InventoryPage = ({ onNavigate }) => {
                 show: true,
                 item: null,
                 title: 'Success',
-                message: 'Product deleted successfully.',
+                message: res.data?.message || 'Product deleted successfully.',
                 type: 'success'
             });
+
+            // Re-fetch inventory in background to keep pagination & total count fresh
+            fetchInventory();
         } catch (error) {
             console.error('Error deleting item:', error);
             const errorMsg = error.response?.data?.message || 'Unable to delete the product. Please try again later.';
             setDeleteModal({
                 show: true,
                 item: null,
-                title: 'Error',
+                title: 'Cannot Delete Product',
                 message: errorMsg,
                 type: 'warning'
             });

@@ -46,6 +46,7 @@ const ReceiveInventoryModal = ({ onClose, onSuccess, initialItem, initialQuantit
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (loading) return;
         if (!initialItem) {
             alert('Please select a product first.');
             return;
