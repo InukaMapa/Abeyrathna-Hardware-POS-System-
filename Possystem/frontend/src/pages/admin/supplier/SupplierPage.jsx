@@ -412,6 +412,25 @@ const [paymentStats, setPaymentStats] = useState({ totalItems: 0, totalInvoiced:
         }
     }, [suppliers, supplierParams]);
 
+    const [isRefreshingProfile, setIsRefreshingProfile] = useState(false);
+
+    const refreshSupplierData = async (supplierId = selectedSupplier?.id) => {
+        setIsRefreshingProfile(true);
+        try {
+            await Promise.all([
+                fetchBatches(),
+                fetchSuppliers(),
+                fetchGlobalReturns(),
+                supplierId ? fetchProductsForSupplier(supplierId) : Promise.resolve(),
+                supplierId ? fetchReturnsForSupplier(supplierId) : Promise.resolve()
+            ]);
+        } catch (e) {
+            console.error("Error refreshing supplier data:", e);
+        } finally {
+            setIsRefreshingProfile(false);
+        }
+    };
+
     useEffect(() => {
         if (selectedSupplier) {
             setSellerNote("Key strategic partner for hardware and power tools. High reliability score with consistent inventory fulfillment.");
@@ -429,10 +448,45 @@ const [paymentStats, setPaymentStats] = useState({ totalItems: 0, totalInvoiced:
                 bank_account_no: selectedSupplier.bank_account_no || '',
                 bank_branch: selectedSupplier.bank_branch || ''
             });
+            fetchBatches();
             fetchReturnsForSupplier(selectedSupplier.id);
             fetchProductsForSupplier(selectedSupplier.id);
         }
     }, [selectedSupplier, supplierParams]);
+
+    // Auto-refresh data when switching profile tabs
+    useEffect(() => {
+        if (selectedSupplier?.id) {
+            fetchBatches();
+            if (activeProfileTab === 'Products') {
+                fetchProductsForSupplier(selectedSupplier.id);
+            } else if (activeProfileTab === 'Returns') {
+                fetchReturnsForSupplier(selectedSupplier.id);
+            }
+        }
+    }, [activeProfileTab]);
+
+    // Auto-refresh data when page or browser window regains focus/visibility
+    useEffect(() => {
+        const handleAutoRefresh = () => {
+            if (document.visibilityState === 'visible') {
+                fetchBatches();
+                fetchSuppliers();
+                if (selectedSupplier?.id) {
+                    fetchProductsForSupplier(selectedSupplier.id);
+                    fetchReturnsForSupplier(selectedSupplier.id);
+                }
+            }
+        };
+
+        window.addEventListener('focus', handleAutoRefresh);
+        document.addEventListener('visibilitychange', handleAutoRefresh);
+
+        return () => {
+            window.removeEventListener('focus', handleAutoRefresh);
+            document.removeEventListener('visibilitychange', handleAutoRefresh);
+        };
+    }, [selectedSupplier]);
 
 // Compute supplier summary stats
 useEffect(() => {
@@ -1109,7 +1163,7 @@ useEffect(() => {
                                 onClose={() => setAddProductModalOpen(false)}
                                 onSuccess={() => {
                                     setAddProductModalOpen(false);
-                                    fetchProductsForSupplier(selectedSupplier?.id);
+                                    refreshSupplierData(selectedSupplier?.id);
                                 }}
                             />
                         )}
@@ -1120,7 +1174,7 @@ useEffect(() => {
                                 onClose={() => setReceivingItem(null)}
                                 onSuccess={() => {
                                     setReceivingItem(null);
-                                    fetchProductsForSupplier(selectedSupplier?.id);
+                                    refreshSupplierData(selectedSupplier?.id);
                                 }}
                             />
                         )}
@@ -1180,13 +1234,25 @@ useEffect(() => {
                                                     </div>
                                                 </div>
                                             </div>
-                                            <button
-                                                onClick={() => setSelectedSupplier(null)}
-                                                className="supplier-profile-back supplier-profile-close p-2 hover:bg-gray-100 rounded-lg transition-all group"
-                                            >
-                                                <ArrowLeft className="w-4 h-4 text-gray-400 group-hover:text-gray-900" />
-                                                <span>Back to Suppliers</span>
-                                            </button>
+                                            <div className="flex items-center gap-3">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => refreshSupplierData(selectedSupplier?.id)}
+                                                    disabled={isRefreshingProfile}
+                                                    className="p-2 px-3 hover:bg-green-50 text-gray-600 hover:text-green-800 border border-gray-200 rounded-xl transition-all flex items-center gap-2 text-xs font-bold shadow-sm cursor-pointer disabled:opacity-50"
+                                                    title="Refresh Supplier Data"
+                                                >
+                                                    <RefreshCcw className={`w-3.5 h-3.5 text-green-700 ${isRefreshingProfile ? 'animate-spin' : ''}`} />
+                                                    <span>{isRefreshingProfile ? 'Refreshing...' : 'Refresh'}</span>
+                                                </button>
+                                                <button
+                                                    onClick={() => setSelectedSupplier(null)}
+                                                    className="supplier-profile-back supplier-profile-close p-2 hover:bg-gray-100 rounded-lg transition-all group"
+                                                >
+                                                    <ArrowLeft className="w-4 h-4 text-gray-400 group-hover:text-gray-900" />
+                                                    <span>Back to Suppliers</span>
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
 

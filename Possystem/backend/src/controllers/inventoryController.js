@@ -807,6 +807,116 @@ export const updateInventoryItem = async (req, res) => {
 
 /**
  * Validate deletion of an inventory item.
+/**
+ * Helper to check whether a product is eligible for deletion:
+ * 1. Product quantity must be 0 (no remaining stock).
+ * 2. Product must have no pending/due supplier payments.
+ */
+const checkProductDeletionEligibility = async (item) => {
+    const quantity = parseFloat(item.quantity || 0);
+    const stockExists = quantity > 0;
+
+    // Fetch all supplier payout requests to check for unpaid or partially paid dues for this item
+    const { data: payouts, error: payoutError } = await supabase
+        .from('supplier_payout_requests')
+        .select('*');
+
+    if (payoutError) throw payoutError;
+
+    const parseNames = (notes) => {
+        if (!notes) return [];
+        const regex = /(?:Purchased|Added)\s+(\d+(?:\.\d+)?)\s*x\s+(.*?)\s*\(Rs\.\s*(\d+(?:\.\d+)?)\s*each\)/gi;
+        const names = [];
+        let match;
+        while ((match = regex.exec(notes)) !== null) {
+            names.push(match[2].trim().toLowerCase());
+        }
+        return names;
+    };
+
+    const lowerName = (item.ingredient_name || '').trim().toLowerCase();
+    const itemCode = (item.item_code || '').trim().toLowerCase();
+
+    const duePayouts = [];
+    (payouts || []).forEach(p => {
+        const amount = parseFloat(p.amount || 0);
+        let paid_amount = 0;
+        let notesText = p.notes || '';
+        if (notesText && notesText.startsWith('{')) {
+            try {
+                const parsed = JSON.parse(notesText);
+                paid_amount = parseFloat(parsed.paid_amount || 0);
+                notesText = parsed.legacy_notes || '';
+            } catch (e) {}
+        }
+        if (p.status === 'COMPLETED' && paid_amount === 0) {
+            paid_amount = amount;
+        }
+        const remaining_balance = Math.max(0, amount - paid_amount);
+
+        // Check if this payout has remaining balance due or status is PENDING
+        if (remaining_balance > 0 || p.status === 'PENDING') {
+            const namesInPayout = parseNames(notesText);
+            const matches = namesInPayout.length > 0
+                ? namesInPayout.some(n => n === lowerName || n.includes(lowerName) || lowerName.includes(n))
+                : (lowerName && notesText.toLowerCase().includes(lowerName)) || (itemCode && notesText.toLowerCase().includes(itemCode));
+
+            if (matches) {
+                duePayouts.push({
+                    id: p.id,
+                    payout_number: p.payout_number,
+                    remaining_balance: remaining_balance > 0 ? remaining_balance : amount,
+                    total_amount: amount,
+                    status: p.status
+                });
+            }
+        }
+    });
+
+    const hasDuePayments = duePayouts.length > 0;
+    const totalDueAmount = duePayouts.reduce((sum, d) => sum + d.remaining_balance, 0);
+
+    const canDelete = !stockExists && !hasDuePayments;
+
+    let reason = null;
+    let title = '';
+    let message = '';
+
+    if (stockExists && hasDuePayments) {
+        reason = 'stock_and_payments';
+        title = 'Cannot Delete: Stock & Dues Pending';
+        const payoutRefs = duePayouts.map(d => d.payout_number).filter(Boolean).join(', ');
+        message = `This product cannot be deleted because it still has ${quantity} ${item.unit || 'units'} in stock and an outstanding supplier payment of Rs. ${totalDueAmount.toLocaleString()}${payoutRefs ? ` (Payment Ref: ${payoutRefs})` : ''}. You must reduce the inventory quantity to 0 and settle all outstanding supplier payments before this product can be deleted.`;
+    } else if (stockExists) {
+        reason = 'stock_exists';
+        title = 'Cannot Delete: Stock Remaining';
+        message = `This product cannot be deleted because it still has ${quantity} ${item.unit || 'units'} in stock. The inventory quantity must be 0 before this product can be permanently deleted.`;
+    } else if (hasDuePayments) {
+        reason = 'pending_payments';
+        title = 'Cannot Delete: Supplier Dues Pending';
+        const payoutRefs = duePayouts.map(d => d.payout_number).filter(Boolean).join(', ');
+        message = `This product cannot be deleted because there is an outstanding supplier payment of Rs. ${totalDueAmount.toLocaleString()}${payoutRefs ? ` (Payment Ref: ${payoutRefs})` : ''}. All supplier payments associated with this product must be cleared before it can be deleted.`;
+    } else {
+        reason = 'eligible';
+        title = 'Delete Product';
+        message = `Are you sure you want to permanently delete "${item.ingredient_name}"? This action cannot be undone.`;
+    }
+
+    return {
+        canDelete,
+        reason,
+        title,
+        message,
+        quantity,
+        unit: item.unit || 'units',
+        hasDuePayments,
+        totalDueAmount,
+        duePayouts
+    };
+};
+
+/**
+ * Validate whether an inventory item can be deleted.
  * @route GET /api/inventory/:id/validate-delete
  */
 export const validateDeleteInventoryItem = async (req, res) => {
@@ -816,7 +926,7 @@ export const validateDeleteInventoryItem = async (req, res) => {
         // Fetch the item
         const { data: item, error: fetchError } = await supabase
             .from('inventory')
-            .select('ingredient_name, quantity')
+            .select('*')
             .eq('id', id)
             .maybeSingle();
 
@@ -824,82 +934,9 @@ export const validateDeleteInventoryItem = async (req, res) => {
             return res.status(404).json({ message: 'Product not found.' });
         }
 
-        const quantity = parseFloat(item.quantity || 0);
-        const stockExists = quantity > 0;
+        const eligibility = await checkProductDeletionEligibility(item);
 
-        // Check pending supplier payments
-        const { data: payouts, error: payoutError } = await supabase
-            .from('supplier_payout_requests')
-            .select('notes, status')
-            .eq('status', 'PENDING');
-
-        if (payoutError) throw payoutError;
-
-        const parseNames = (notes) => {
-            if (!notes) return [];
-            const regex = /(?:Purchased|Added)\s+(\d+(?:\.\d+)?)\s*x\s+(.*?)\s*\(Rs\.\s*(\d+(?:\.\d+)?)\s*each\)/gi;
-            const names = [];
-            let match;
-            while ((match = regex.exec(notes)) !== null) {
-                names.push(match[2].trim().toLowerCase());
-            }
-            return names;
-        };
-
-        const lowerName = item.ingredient_name.trim().toLowerCase();
-        const pendingPayments = (payouts || []).some(p => {
-            let notes = p.notes || '';
-            if (notes.startsWith('{')) {
-                try {
-                    const parsed = JSON.parse(notes);
-                    notes = parsed.legacy_notes || '';
-                } catch (e) {
-                    // ignore
-                }
-            }
-            const namesInPayout = parseNames(notes);
-            if (namesInPayout.length === 0) {
-                return notes.toLowerCase().includes(lowerName);
-            }
-            return namesInPayout.includes(lowerName);
-        });
-
-        // Check supplier returns
-        const { data: returns, error: returnsError } = await supabase
-            .from('supplier_returns')
-            .select('id')
-            .eq('item_id', id)
-            .limit(1);
-
-        if (returnsError) throw returnsError;
-        const hasReturns = returns && returns.length > 0;
-
-        const canDelete = !stockExists && !pendingPayments && !hasReturns;
-
-        let reason = null;
-        if (stockExists && pendingPayments && hasReturns) {
-            reason = 'all_failed';
-        } else if (stockExists && pendingPayments) {
-            reason = 'both_failed';
-        } else if (stockExists && hasReturns) {
-            reason = 'stock_and_returns';
-        } else if (pendingPayments && hasReturns) {
-            reason = 'payments_and_returns';
-        } else if (stockExists) {
-            reason = 'stock_exists';
-        } else if (pendingPayments) {
-            reason = 'pending_payments';
-        } else if (hasReturns) {
-            reason = 'has_returns';
-        }
-
-        return res.status(200).json({
-            canDelete,
-            reason,
-            quantity,
-            pendingPayments,
-            hasReturns
-        });
+        return res.status(200).json(eligibility);
     } catch (err) {
         console.error('Error validating delete:', err);
         return res.status(500).json({ message: 'Internal server error validating product deletion.' });
@@ -917,7 +954,7 @@ export const deleteInventoryItem = async (req, res) => {
         // Fetch the item
         const { data: item, error: fetchError } = await supabase
             .from('inventory')
-            .select('ingredient_name, quantity')
+            .select('*')
             .eq('id', id)
             .maybeSingle();
 
@@ -925,82 +962,36 @@ export const deleteInventoryItem = async (req, res) => {
             return res.status(404).json({ message: 'Product not found.' });
         }
 
-        const quantity = parseFloat(item.quantity || 0);
-        const stockExists = quantity > 0;
+        const eligibility = await checkProductDeletionEligibility(item);
 
-        // Check pending supplier payments
-        const { data: payouts, error: payoutError } = await supabase
-            .from('supplier_payout_requests')
-            .select('notes, status')
-            .eq('status', 'PENDING');
-
-        if (payoutError) throw payoutError;
-
-        const parseNames = (notes) => {
-            if (!notes) return [];
-            const regex = /(?:Purchased|Added)\s+(\d+(?:\.\d+)?)\s*x\s+(.*?)\s*\(Rs\.\s*(\d+(?:\.\d+)?)\s*each\)/gi;
-            const names = [];
-            let match;
-            while ((match = regex.exec(notes)) !== null) {
-                names.push(match[2].trim().toLowerCase());
-            }
-            return names;
-        };
-
-        const lowerName = item.ingredient_name.trim().toLowerCase();
-        const pendingPayments = (payouts || []).some(p => {
-            let notes = p.notes || '';
-            if (notes.startsWith('{')) {
-                try {
-                    const parsed = JSON.parse(notes);
-                    notes = parsed.legacy_notes || '';
-                } catch (e) {
-                    // ignore
-                }
-            }
-            const namesInPayout = parseNames(notes);
-            if (namesInPayout.length === 0) {
-                return notes.toLowerCase().includes(lowerName);
-            }
-            return namesInPayout.includes(lowerName);
-        });
-
-        // Check supplier returns
-        const { data: returns, error: returnsError } = await supabase
-            .from('supplier_returns')
-            .select('id')
-            .eq('item_id', id)
-            .limit(1);
-
-        if (returnsError) throw returnsError;
-        const hasReturns = returns && returns.length > 0;
-
-        if (stockExists || pendingPayments || hasReturns) {
-            let message = '';
-            if (stockExists && pendingPayments && hasReturns) {
-                message = 'This product cannot be deleted because inventory is still available, there are outstanding supplier payments, and it has associated supplier returns.';
-            } else if (stockExists && pendingPayments) {
-                message = 'This product cannot be deleted because inventory is still available and there are outstanding supplier payments. Set inventory to 0 and clear all payments before deleting.';
-            } else if (stockExists && hasReturns) {
-                message = 'This product cannot be deleted because there is still inventory in stock and it has associated supplier returns.';
-            } else if (pendingPayments && hasReturns) {
-                message = 'This product cannot be deleted because there are outstanding supplier payments and it has associated supplier returns.';
-            } else if (stockExists) {
-                message = 'This product cannot be deleted because there is still inventory in stock. Reduce the inventory quantity to 0 before deleting.';
-            } else if (pendingPayments) {
-                message = 'This product cannot be deleted because there are outstanding supplier payments associated with it. Clear all supplier payments before deleting.';
-            } else if (hasReturns) {
-                message = 'This product cannot be deleted because it has associated supplier returns. Products with return history cannot be permanently deleted.';
-            }
-            return res.status(400).json({ message });
+        if (!eligibility.canDelete) {
+            return res.status(400).json({
+                message: eligibility.message,
+                title: eligibility.title,
+                reason: eligibility.reason
+            });
         }
 
+        // Disassociate any completed supplier returns referencing this item so historical accounting stays intact
+        await supabase
+            .from('supplier_returns')
+            .update({ item_id: null })
+            .eq('item_id', id);
+
+        // Delete any related batch item records
+        await supabase
+            .from('inventory_batch_items')
+            .delete()
+            .eq('inventory_id', id);
+
+        // Permanently delete the inventory item
         const { error } = await supabase.from('inventory').delete().eq('id', id);
         if (error) throw error;
+
         res.status(200).json({ message: 'Product deleted successfully.' });
     } catch (err) {
         console.error('Error deleting item:', err);
-        res.status(500).json({ message: 'Server error' });
+        res.status(500).json({ message: 'Server error deleting product: ' + (err.message || 'Unknown error') });
     }
 };
 

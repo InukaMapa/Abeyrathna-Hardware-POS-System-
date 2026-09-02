@@ -27,6 +27,7 @@ const SupplierReturnsPage = ({ onNavigate }) => {
     const [batches, setBatches] = useState([]);
     const [inventoryItems, setInventoryItems] = useState([]);
     const [errorMessage, setErrorMessage] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
         if (showForm) {
@@ -127,12 +128,22 @@ const SupplierReturnsPage = ({ onNavigate }) => {
 
     const handleCreateReturn = async (e) => {
         e.preventDefault();
+        if (isSubmitting) return;
+
+        const returnQty = parseFloat(formData.quantity);
+        if (isNaN(returnQty) || returnQty <= 0) {
+            alert("Please enter a valid return quantity greater than 0.");
+            return;
+        }
+
+        setIsSubmitting(true);
         try {
             const token = localStorage.getItem('token');
             const selectedTier = (selectedItemInfo?.stock_price_tiers || []).find(t => t.id === selectedTierId);
             
             const payload = {
                 ...formData,
+                quantity: returnQty,
                 notes: JSON.stringify({
                     tier_id: selectedTierId,
                     buying_price: selectedTier ? selectedTier.buying_price : null,
@@ -146,7 +157,11 @@ const SupplierReturnsPage = ({ onNavigate }) => {
             setShowForm(false);
             fetchInitialData();
             alert("Return Recorded Successfully!");
-        } catch (err) { alert("Failed to record return: " + (err.response?.data?.message || err.message)); }
+        } catch (err) { 
+            alert("Failed to record return: " + (err.response?.data?.message || err.message)); 
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     const handleItemSelect = (itemId) => {
@@ -541,27 +556,32 @@ const SupplierReturnsPage = ({ onNavigate }) => {
                                             </div>
                                         )}
                                         <div>
-                                            <label className="text-[11px] font-bold text-green-800 mb-2 block">Return Quantity</label>
+                                            <div className="flex justify-between items-center mb-2">
+                                                <label className="text-[11px] font-bold text-green-800 block">Return Quantity *</label>
+                                                {selectedItemInfo && (
+                                                    <span className="text-[10px] text-green-700 font-bold uppercase">
+                                                        Shelf Stock: {
+                                                            selectedTierId
+                                                                ? (selectedItemInfo.stock_price_tiers || []).find(t => t.id === selectedTierId)?.quantity_remaining || 0
+                                                                : selectedItemInfo.quantity
+                                                        } {selectedItemInfo.unit || ''}
+                                                    </span>
+                                                )}
+                                            </div>
                                             <input
                                                 type="number"
-                                                placeholder="0.00"
+                                                step="any"
+                                                min="0.01"
+                                                placeholder="Enter exact quantity to return..."
                                                 value={formData.quantity}
-                                                max={
-                                                    selectedTierId
-                                                        ? (selectedItemInfo?.stock_price_tiers || []).find(t => t.id === selectedTierId)?.quantity_remaining || 0
-                                                        : selectedItemInfo?.quantity || 1000
-                                                }
                                                 onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
                                                 required
                                                 className="w-full bg-white border border-green-200 rounded-xl px-4 py-3 text-sm text-gray-800 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 transition-all"
                                             />
-                                            {selectedItemInfo && (
-                                                <p className="text-[10px] text-green-700 font-bold mt-1.5 uppercase">
-                                                    Max Available: {
-                                                        selectedTierId
-                                                            ? (selectedItemInfo.stock_price_tiers || []).find(t => t.id === selectedTierId)?.quantity_remaining || 0
-                                                            : selectedItemInfo.quantity
-                                                    }
+                                            {selectedItemInfo && formData.quantity && parseFloat(formData.quantity) > (selectedTierId ? ((selectedItemInfo.stock_price_tiers || []).find(t => t.id === selectedTierId)?.quantity_remaining || 0) : (selectedItemInfo.quantity || 0)) && (
+                                                <p className="text-[10px] text-amber-700 font-semibold mt-1.5 flex items-center gap-1">
+                                                    <AlertCircle className="w-3.5 h-3.5 text-amber-600 inline shrink-0" />
+                                                    Note: Entered quantity ({formData.quantity}) exceeds remaining shelf stock. Stock will be reduced to 0 upon return.
                                                 </p>
                                             )}
                                         </div>
@@ -630,11 +650,28 @@ const SupplierReturnsPage = ({ onNavigate }) => {
                                     </div>
 
                                     <div className="flex justify-end gap-4 pt-4">
-                                        <button type="button" onClick={() => setShowForm(false)} className="supplier-returns-form-btn px-6 py-3 rounded-xl border border-gray-300 text-gray-600 font-bold text-sm hover:bg-gray-50 transition-all">
+                                        <button 
+                                            type="button" 
+                                            disabled={isSubmitting}
+                                            onClick={() => setShowForm(false)} 
+                                            className="supplier-returns-form-btn px-6 py-3 rounded-xl border border-gray-300 text-gray-600 font-bold text-sm hover:bg-gray-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
                                             Cancel
                                         </button>
-                                        <button type="submit" className="supplier-returns-form-btn px-6 py-3 rounded-xl bg-green-700 text-white font-bold text-sm hover:bg-green-800 transition-all shadow-md">
-                                            Authorize & Create Return
+                                        <button 
+                                            type="submit" 
+                                            disabled={isSubmitting}
+                                            aria-busy={isSubmitting}
+                                            className="supplier-returns-form-btn px-6 py-3 rounded-xl bg-green-700 text-white font-bold text-sm hover:bg-green-800 transition-all shadow-md flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                                        >
+                                            {isSubmitting ? (
+                                                <>
+                                                    <RefreshCcw className="w-4 h-4 animate-spin" />
+                                                    Processing Return...
+                                                </>
+                                            ) : (
+                                                'Authorize & Create Return'
+                                            )}
                                         </button>
                                     </div>
                                 </form>
