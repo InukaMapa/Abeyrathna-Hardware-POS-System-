@@ -187,6 +187,7 @@ const AddInventoryModal = ({ onClose, onSuccess, onScanBillClick, categories = [
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (loading) return;
         if (barcodeCheck.existingItem) {
             alert(`This barcode already exists for ${barcodeCheck.existingItem.ingredient_name}. Please use a different barcode or receive stock for the existing item.`);
             return;

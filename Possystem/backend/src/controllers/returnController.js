@@ -1,5 +1,8 @@
 import { supabase } from '../config/db.js';
 
+// In-memory cache to debounce rapid concurrent duplicate returns
+const recentReturnSubmissions = new Map();
+
 /**
  * Fetch all supplier returns with filters.
  * @route GET /api/inventory/returns
@@ -41,8 +44,35 @@ export const createSupplierReturn = async (req, res) => {
             return_type, reason, warehouse_location, notes
         } = req.body;
 
-        if (!item_id || !supplier_id || !quantity) {
+        if (!item_id || !supplier_id || quantity === undefined || quantity === null) {
             return res.status(400).json({ message: 'Missing required fields.' });
+        }
+
+        const parsedQuantity = parseFloat(quantity);
+        if (isNaN(parsedQuantity) || parsedQuantity <= 0) {
+            return res.status(400).json({ message: 'Quantity must be a valid positive number.' });
+        }
+
+        // Prevent duplicate submissions within 4 seconds (e.g. from accidental double-clicks)
+        const userId = req.user?.id || 'system';
+        const debounceKey = `${userId}_${item_id}_${supplier_id}_${parsedQuantity}_${(reason || '').trim()}`;
+        const now = Date.now();
+        if (recentReturnSubmissions.has(debounceKey)) {
+            const lastTime = recentReturnSubmissions.get(debounceKey);
+            if (now - lastTime < 4000) {
+                console.warn(`[Deduplication] Blocked duplicate return submission for key: ${debounceKey}`);
+                return res.status(409).json({ message: 'A return for this item was just created. Please wait a moment.' });
+            }
+        }
+        recentReturnSubmissions.set(debounceKey, now);
+
+        // Prune old entries
+        if (recentReturnSubmissions.size > 100) {
+            for (const [key, timestamp] of recentReturnSubmissions.entries()) {
+                if (now - timestamp > 10000) {
+                    recentReturnSubmissions.delete(key);
+                }
+            }
         }
 
         // 1. Generate Return Number
@@ -55,7 +85,7 @@ export const createSupplierReturn = async (req, res) => {
                 return_number: returnNumber,
                 item_id,
                 supplier_id,
-                quantity: parseFloat(quantity),
+                quantity: parsedQuantity,
                 return_type,
                 reason,
                 warehouse_location,
@@ -76,7 +106,7 @@ export const createSupplierReturn = async (req, res) => {
             .single();
 
         if (!itemError) {
-            const newQty = Math.max(0, parseFloat(item.quantity) - parseFloat(quantity));
+            const newQty = Math.max(0, parseFloat(item.quantity || 0) - parsedQuantity);
             
             let tier_id = null;
             if (notes) {
@@ -95,7 +125,7 @@ export const createSupplierReturn = async (req, res) => {
                 try {
                     let tiers = JSON.parse(item.supplier_info);
                     if (Array.isArray(tiers)) {
-                        let remainingToDeduct = parseFloat(quantity);
+                        let remainingToDeduct = parsedQuantity;
                         if (tier_id) {
                             const tier = tiers.find(t => t.id === tier_id);
                             if (tier) {

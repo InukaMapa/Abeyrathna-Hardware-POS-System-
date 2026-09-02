@@ -58,6 +58,7 @@ const ReturnManagementPage = ({ onNavigate, returnId }) => {
     };
 
     const handleResolve = async () => {
+        if (processing) return;
         if (returnData?.status !== 'PENDING') {
             alert('This return has already been processed.');
             return;
@@ -78,8 +79,9 @@ const ReturnManagementPage = ({ onNavigate, returnId }) => {
             onNavigate('supplier-returns');
         } catch (err) {
             alert("Resolution failed: " + (err.response?.data?.message || err.message));
+        } finally {
+            setProcessing(false);
         }
-        setProcessing(false);
     };
 
     if (loading) return <div className="h-screen bg-[#F5FAF7] flex items-center justify-center text-sm font-semibold text-gray-700">Loading return details...</div>;
